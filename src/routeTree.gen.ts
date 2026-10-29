@@ -9,50 +9,246 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShellRouteImport } from './routes/_shell'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ShellIndexRouteImport } from './routes/_shell.index'
+import { Route as ShellAccountsRouteImport } from './routes/_shell.accounts'
+import { Route as ShellBudgetsRouteImport } from './routes/_shell.budgets'
+import { Route as ShellLoansRouteImport } from './routes/_shell.loans'
+import { Route as ShellReportsRouteImport } from './routes/_shell.reports'
+import { Route as ShellSettingsRouteImport } from './routes/_shell.settings'
+import { Route as ShellSpacesRouteImport } from './routes/_shell.spaces'
+import { Route as ShellTransactionsRouteImport } from './routes/_shell.transactions'
 
-const IndexRoute = IndexRouteImport.update({
+const ShellRoute = ShellRouteImport.update({
+  id: '/_shell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShellIndexRoute = ShellIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellAccountsRoute = ShellAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellBudgetsRoute = ShellBudgetsRouteImport.update({
+  id: '/budgets',
+  path: '/budgets',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellLoansRoute = ShellLoansRouteImport.update({
+  id: '/loans',
+  path: '/loans',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellReportsRoute = ShellReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellSettingsRoute = ShellSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellSpacesRoute = ShellSpacesRouteImport.update({
+  id: '/spaces',
+  path: '/spaces',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellTransactionsRoute = ShellTransactionsRouteImport.update({
+  id: '/transactions',
+  path: '/transactions',
+  getParentRoute: () => ShellRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof ShellIndexRoute
+  '/auth': typeof AuthRoute
+  '/accounts': typeof ShellAccountsRoute
+  '/budgets': typeof ShellBudgetsRoute
+  '/loans': typeof ShellLoansRoute
+  '/reports': typeof ShellReportsRoute
+  '/settings': typeof ShellSettingsRoute
+  '/spaces': typeof ShellSpacesRoute
+  '/transactions': typeof ShellTransactionsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/accounts': typeof ShellAccountsRoute
+  '/budgets': typeof ShellBudgetsRoute
+  '/loans': typeof ShellLoansRoute
+  '/reports': typeof ShellReportsRoute
+  '/settings': typeof ShellSettingsRoute
+  '/spaces': typeof ShellSpacesRoute
+  '/transactions': typeof ShellTransactionsRoute
+  '/': typeof ShellIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_shell': typeof ShellRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_shell/accounts': typeof ShellAccountsRoute
+  '/_shell/budgets': typeof ShellBudgetsRoute
+  '/_shell/loans': typeof ShellLoansRoute
+  '/_shell/reports': typeof ShellReportsRoute
+  '/_shell/settings': typeof ShellSettingsRoute
+  '/_shell/spaces': typeof ShellSpacesRoute
+  '/_shell/transactions': typeof ShellTransactionsRoute
+  '/_shell/': typeof ShellIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/accounts'
+    | '/budgets'
+    | '/loans'
+    | '/reports'
+    | '/settings'
+    | '/spaces'
+    | '/transactions'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/auth'
+    | '/accounts'
+    | '/budgets'
+    | '/loans'
+    | '/reports'
+    | '/settings'
+    | '/spaces'
+    | '/transactions'
+    | '/'
+  id:
+    | '__root__'
+    | '/_shell'
+    | '/auth'
+    | '/_shell/accounts'
+    | '/_shell/budgets'
+    | '/_shell/loans'
+    | '/_shell/reports'
+    | '/_shell/settings'
+    | '/_shell/spaces'
+    | '/_shell/transactions'
+    | '/_shell/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  ShellRoute: typeof ShellRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_shell': {
+      id: '/_shell'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ShellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_shell/': {
+      id: '/_shell/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ShellIndexRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/accounts': {
+      id: '/_shell/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof ShellAccountsRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/budgets': {
+      id: '/_shell/budgets'
+      path: '/budgets'
+      fullPath: '/budgets'
+      preLoaderRoute: typeof ShellBudgetsRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/loans': {
+      id: '/_shell/loans'
+      path: '/loans'
+      fullPath: '/loans'
+      preLoaderRoute: typeof ShellLoansRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/reports': {
+      id: '/_shell/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ShellReportsRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/settings': {
+      id: '/_shell/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ShellSettingsRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/spaces': {
+      id: '/_shell/spaces'
+      path: '/spaces'
+      fullPath: '/spaces'
+      preLoaderRoute: typeof ShellSpacesRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/transactions': {
+      id: '/_shell/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof ShellTransactionsRouteImport
+      parentRoute: typeof ShellRoute
     }
   }
 }
 
+interface ShellRouteChildren {
+  ShellAccountsRoute: typeof ShellAccountsRoute
+  ShellBudgetsRoute: typeof ShellBudgetsRoute
+  ShellLoansRoute: typeof ShellLoansRoute
+  ShellReportsRoute: typeof ShellReportsRoute
+  ShellSettingsRoute: typeof ShellSettingsRoute
+  ShellSpacesRoute: typeof ShellSpacesRoute
+  ShellTransactionsRoute: typeof ShellTransactionsRoute
+  ShellIndexRoute: typeof ShellIndexRoute
+}
+
+const ShellRouteChildren: ShellRouteChildren = {
+  ShellAccountsRoute: ShellAccountsRoute,
+  ShellBudgetsRoute: ShellBudgetsRoute,
+  ShellLoansRoute: ShellLoansRoute,
+  ShellReportsRoute: ShellReportsRoute,
+  ShellSettingsRoute: ShellSettingsRoute,
+  ShellSpacesRoute: ShellSpacesRoute,
+  ShellTransactionsRoute: ShellTransactionsRoute,
+  ShellIndexRoute: ShellIndexRoute,
+}
+
+const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  ShellRoute: ShellRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
