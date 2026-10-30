@@ -30,7 +30,7 @@ function Accounts() {
     e.preventDefault();
     if (!store || !spaceId) return;
     const o = opening.trim() ? parseAmount(opening) : 0;
-    if (o === null || !name.trim()) return toast.error("Enter a name and valid opening balance.");
+    if (o === null || !name.trim()) { toast.error("Enter a name and valid opening balance."); return; }
     await createAccount(store, spaceId, name, type, o);
     setName(""); setOpening("");
     toast.success("Account added");
@@ -61,7 +61,7 @@ function AccountCard({ id }: { id: string }) {
   const [open, setOpen] = useState(centsToInput(openingTotal(id, snap.transactions)));
   async function fix() {
     const v = parseSignedAmount(open);
-    if (v === null || !store) return toast.error("Invalid amount");
+    if (v === null || !store) { toast.error("Invalid amount"); return; }
     await correctOpening(store, snap, id, v);
     toast.success("Recorded as an opening balance correction");
   }
