@@ -30,7 +30,7 @@ export function Panel({ title, action, children, className }: { title?: ReactNod
   );
 }
 
-export function Stat({ label, value, hint, tone }: { label: string; value: number; hint?: ReactNode; tone?: "income" | "expense" | "net" | "managed" }) {
+export function Stat({ label, value, hint, tone }: { label: string; value: number; hint?: ReactNode; tone?: "income" | "expense" | "net" | "managed" | undefined }) {
   const color =
     tone === "income" ? "text-income" : tone === "expense" ? "text-expense" : tone === "managed" ? "text-managed"
       : tone === "net" ? (value < 0 ? "text-expense" : "text-income") : "text-foreground";
