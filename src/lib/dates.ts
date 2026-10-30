@@ -11,7 +11,7 @@ export function currentMonth(): string {
   return monthKey(todayManila());
 }
 export function addMonths(key: string, n: number): string {
-  const [y, m] = key.split("-").map(Number);
+  const [y = 0, m = 1] = key.split("-").map(Number);
   const t = y * 12 + (m - 1) + n;
   return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
 }
