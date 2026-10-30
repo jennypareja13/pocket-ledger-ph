@@ -41,7 +41,7 @@ export interface ValidationCtx {
   categories: LocalRecord<{ type: string }>[];
   loans: LocalRecord<{ principal: number }>[];
   /** Outstanding of the referenced loan, excluding the tx being edited. */
-  loanOutstanding?: number;
+  loanOutstanding?: number | undefined;
 }
 
 export function validateTx(tx: TxInput, ctx: ValidationCtx): string | null {

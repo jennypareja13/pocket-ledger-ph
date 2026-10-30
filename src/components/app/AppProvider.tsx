@@ -15,8 +15,8 @@ export type AuthState =
 
 export interface SyncStatus {
   running: boolean;
-  lastSyncedAt?: string;
-  error?: string;
+  lastSyncedAt?: string | undefined;
+  error?: string | undefined;
   initialDone: boolean;
 }
 
@@ -30,7 +30,7 @@ interface AppCtx {
   auth: AuthState;
   store: LedgerStore | null;
   snap: Snapshot;
-  loadError?: string;
+  loadError?: string | undefined;
   online: boolean;
   sync: SyncStatus;
   syncNow: () => Promise<void>;

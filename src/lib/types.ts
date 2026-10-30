@@ -7,8 +7,8 @@ export interface Meta {
   rev: number;
   /** Stable id of the latest local change; used as idempotency key on upload. */
   mutation_id: string;
-  error?: string;
-  server?: { data: unknown; deleted: boolean; rev: number };
+  error?: string | undefined;
+  server?: { data: unknown; deleted: boolean; rev: number } | undefined;
 }
 
 export interface LocalRecord<D = unknown> {
@@ -23,50 +23,50 @@ export interface LocalRecord<D = unknown> {
 }
 
 export type SpaceType = "personal" | "managed";
-export interface SpaceData { name: string; type: SpaceType; archived?: boolean; note?: string }
+export interface SpaceData { name: string; type: SpaceType; archived?: boolean | undefined; note?: string | undefined }
 
 export type AccountType = "cash" | "bank" | "ewallet" | "savings" | "other";
-export interface AccountData { name: string; type: AccountType; archived?: boolean }
+export interface AccountData { name: string; type: AccountType; archived?: boolean | undefined }
 
 export type CategoryType = "income" | "expense";
-export interface CategoryData { name: string; type: CategoryType; archived?: boolean; system?: "fee" }
+export interface CategoryData { name: string; type: CategoryType; archived?: boolean | undefined; system?: "fee" | undefined }
 
 export type TxType = "income" | "expense" | "transfer" | "lend" | "loan_repayment" | "adjustment";
 export interface Entry {
-  account_id?: string;
-  loan_id?: string;
+  account_id?: string | undefined;
+  loan_id?: string | undefined;
   /** Signed centavos. Positive increases the account/receivable. */
   delta: number;
   /** Set only on movements that count in income/expense reports. */
-  report?: "income" | "expense";
-  category_id?: string;
+  report?: "income" | "expense" | undefined;
+  category_id?: string | undefined;
 }
 export interface TxData {
   type: TxType;
   date: string; // YYYY-MM-DD
   /** Centavos. Positive, except adjustments which may be negative. */
   amount: number;
-  fee?: number;
-  category_id?: string;
-  fee_category_id?: string;
+  fee?: number | undefined;
+  category_id?: string | undefined;
+  fee_category_id?: string | undefined;
   account_id: string;
-  to_account_id?: string;
-  loan_id?: string;
-  note?: string;
+  to_account_id?: string | undefined;
+  loan_id?: string | undefined;
+  note?: string | undefined;
   /** Derived, linked balance movements. Rebuilt on every save. */
   entries: Entry[];
 }
 
 export interface BudgetData { category_id: string; month: string; amount: number }
-export interface BorrowerData { name: string; note?: string; archived?: boolean }
+export interface BorrowerData { name: string; note?: string | undefined; archived?: boolean | undefined }
 export interface LoanData {
   borrower_id: string;
   account_id: string;
   principal: number;
   date: string;
-  due_date?: string;
-  note?: string;
-  settled_at?: string;
+  due_date?: string | undefined;
+  note?: string | undefined;
+  settled_at?: string | undefined;
 }
 
 export type Space = LocalRecord<SpaceData>;
