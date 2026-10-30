@@ -26,7 +26,7 @@ export interface Snapshot {
 
 export interface Change {
   kind: Kind;
-  id?: string;
+  id?: string | undefined;
   space_id: string | null;
   data: unknown;
   deleted?: boolean;
