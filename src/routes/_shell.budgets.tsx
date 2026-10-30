@@ -50,7 +50,7 @@ function Budgets() {
               <Input aria-label={`Budget for ${r.category.data.name}`} inputMode="decimal" placeholder="No budget" defaultValue={r.limit ? centsToInput(r.limit) : ""}
                 onBlur={async (e) => {
                   const v = e.target.value.trim() ? parseAmount(e.target.value) : 0;
-                  if (v === null || !store) return toast.error("Invalid amount");
+                  if (v === null || !store) { toast.error("Invalid amount"); return; }
                   if (v !== r.limit) { await setBudget(store, snap, spaceId, r.category.id, month, v); toast.success("Budget saved"); }
                 }} />
             </li>
