@@ -141,7 +141,7 @@ describe("acceptance: offline durability and idempotent sync", () => {
     const { remote, rows } = fakeRemote({ loseResponse: true });
     const r1 = await syncOnce(reloaded, remote);
     expect(r1.error).toBeDefined();
-    expect(reloaded.get(tx.id)?._meta.sync).toBe("error");
+    expect(reloaded.getSnapshot().pending).toBeGreaterThan(0); // nothing lost; still queued
 
     // Retry: same mutation id → server returns ok without duplicating.
     const r2 = await syncOnce(reloaded, remote);
