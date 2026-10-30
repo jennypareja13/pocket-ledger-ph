@@ -32,13 +32,19 @@ One table, `ledger_records` (id, owner_id, kind, space_id, data jsonb, deleted, 
 - Retries are safe (same mutation id). Conflicts are never overwritten silently; you pick "keep mine" or "use cloud" in Settings.
 - Deletes are soft deletes so they sync.
 
+## Export, backup and restore (Settings)
+- **Export transactions (CSV):** one row per transaction in all spaces: date, space, type, amount, fee, category, account, to_account, person, note, sync state. Amounts in pesos.
+- **Download JSON backup:** every local record (spaces, accounts, categories, transactions, budgets, people, loans, including soft-deleted ones) without sync metadata, as `{ app, version: 1, exported_at, records }`.
+- **Restore backup:** additive only. Records whose id already exists are left unchanged; new ones are added and queued for sync. Nothing is overwritten or deleted.
+
 ## Install on a phone (PWA)
 Open the published site in Chrome (Android) → menu → **Add to Home screen**, or Safari (iOS) → Share → **Add to Home Screen**. A web manifest and icons are included.
 
 ## Known limitations
 - No service worker yet: once the app has loaded it keeps working offline, but **opening or reloading it with no connection fails**. The app is rendered on the server and runs on Cloudflare Workers, and an offline cache for that setup hasn't been added or tested.
-- No Android APK/native build exists.
+- No Android APK/native build exists. Capacitor packaging was assessed: the app has no server functions, so a static bundle is possible in principle, but this build setup did not produce a standalone `index.html`, and no Java/Android SDK/Gradle is available here. No Android project was added. Opening or reloading the website with no connection fails, because there's no service worker.
+- Google sign-in uses a browser redirect that would not work inside an Android WebView; email/password would.
 - Money you owe to others (payables) is not tracked; only loans you give.
 - Cross-user isolation is enforced by database access rules and reviewed by reading them; there is no automated test that signs in as two real users.
-- Data export/import, recurring transactions and multi-currency are not built.
+- Recurring transactions and multi-currency are not built.
 - Conflicts are resolved whole record at a time, not field by field.
