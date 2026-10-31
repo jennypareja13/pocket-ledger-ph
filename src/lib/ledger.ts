@@ -32,6 +32,19 @@ export function buildEntries(tx: TxInput): Entry[] {
       return [{ account_id: tx.account_id, delta: a }, { loan_id: tx.loan_id, delta: -a }];
     case "adjustment":
       return [{ account_id: tx.account_id, delta: a }];
+    case "reimbursement_claim": {
+      const covered = tx.reimbursable ?? 0;
+      return [
+        { account_id: tx.account_id, delta: -covered },
+        { loan_id: tx.loan_id, delta: covered },
+        ...(a > covered ? [{ account_id: tx.account_id, delta: -(a - covered), report: "expense" as const, category_id: tx.category_id }] : []),
+      ];
+    }
+    case "reimbursement_payment":
+    case "investment_withdrawal":
+      return [{ account_id: tx.account_id, delta: a }, { loan_id: tx.loan_id, delta: -a }];
+    case "investment_funding":
+      return [{ account_id: tx.account_id, delta: -a }, { loan_id: tx.loan_id, delta: a }];
   }
 }
 
