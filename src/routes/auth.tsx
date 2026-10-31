@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/app/bits";
 import { GUEST_KEY } from "@/components/app/AppProvider";
+import { VaultLogo } from "@/components/app/vault-logo";
 import { APP_NAME } from "@/lib/config";
 
 export const Route = createFileRoute("/auth")({
@@ -52,8 +53,8 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border bg-card p-6 shadow-soft">
         <div>
-          <h1 className="font-display text-2xl">{APP_NAME}</h1>
-          <p className="text-sm text-muted-foreground">{mode === "in" ? "Sign in to sync your ledger." : "Create your private account."} First sign-in needs internet; after that the app works offline.</p>
+          <h1><VaultLogo /></h1>
+          <p className="text-sm text-muted-foreground">{mode === "in" ? "Sign in to sync your ledger." : "Create your private account."} Sign-in needs internet. Saved records stay on this device; opening the website also needs a connection.</p>
         </div>
         <Field label="Email" htmlFor="a-email"><Input id="a-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
         <Field label="Password" htmlFor="a-pw"><Input id="a-pw" type="password" minLength={6} required value={pw} onChange={(e) => setPw(e.target.value)} /></Field>

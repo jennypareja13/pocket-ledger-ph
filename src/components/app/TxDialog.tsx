@@ -42,8 +42,8 @@ export function TxDialog() {
   const activeAccounts = accounts.filter((a) => !a.data.archived || a.id === edit?.data.account_id || a.id === edit?.data.to_account_id);
   const cats = (t: "income" | "expense") => categories.filter((c) => c.data.type === t && (!c.data.archived || c.id === edit?.data.category_id));
   const feeCat = categories.find((c) => c.data.system === "fee") ?? cats("expense")[0];
-  const openLoans = loans.filter((l) => !l.data.settled_at || l.id === edit?.data.loan_id);
-  const borrowers = snap.borrowers.filter((b) => !b.data.archived);
+  const openLoans = loans.filter((l) => !l.data.module && (!l.data.settled_at || l.id === edit?.data.loan_id));
+  const borrowers = snap.borrowers.filter((b) => !b.data.archived && (b.space_id === spaceId || b.space_id === null));
 
   useEffect(() => {
     if (!txDialog.open) return;
@@ -92,7 +92,7 @@ export function TxDialog() {
         let borrowerId = f.borrower_id;
         if (borrowerId === "__new" || !borrowerId) {
           if (!f.new_borrower.trim()) throw new Error("Enter the person's name.");
-          const b = await store.save<BorrowerData>("borrower", null, { name: f.new_borrower.trim() });
+          const b = await store.save<BorrowerData>("borrower", spaceId, { name: f.new_borrower.trim() });
           borrowerId = b.id;
         }
         const s2 = store.getSnapshot();
@@ -139,7 +139,7 @@ export function TxDialog() {
   }
 
   const isLendEdit = !!edit && edit.data.type === "lend";
-  const loanRepayCount = isLendEdit ? snap.transactions.filter((t) => t.data.loan_id === edit!.data.loan_id && t.data.type === "loan_repayment").length : 0;
+  const loanRepayCount = isLendEdit ? snap.transactions.filter((t) => t.data.loan_id === edit?.data.loan_id && t.data.type === "loan_repayment").length : 0;
 
   return (
     <Dialog open={txDialog.open} onOpenChange={(o) => !o && closeTx()}>

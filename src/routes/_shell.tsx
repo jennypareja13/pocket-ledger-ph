@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { VaultLogo } from "@/components/app/vault-logo";
+import { mainSpaces, childSpaces } from "@/lib/selectors";
 import { APP_NAME } from "@/lib/config";
 import { createAccount, createSpace } from "@/lib/actions";
 import { parseAmount } from "@/lib/money";
@@ -23,16 +25,16 @@ export const Route = createFileRoute("/_shell")({
 });
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { to: "/", label: "Home", icon: LayoutDashboard },
+  { to: "/transactions", label: "Activity", icon: ArrowLeftRight },
   { to: "/accounts", label: "Accounts", icon: Wallet },
   { to: "/budgets", label: "Budgets", icon: PiggyBank },
-  { to: "/loans", label: "Owed to me", icon: HandCoins },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/loans", label: "Loans", icon: HandCoins },
+  { to: "/analysis", label: "Analysis", icon: BarChart3 },
   { to: "/spaces", label: "Spaces & categories", icon: Layers },
   { to: "/settings", label: "Settings & sync", icon: Settings },
 ] as const;
-const MOBILE = ["/", "/transactions", "/loans", "/reports"];
+const MOBILE = ["/transactions", "/budgets", "/", "/analysis"];
 
 function ShellRoute() {
   return (
@@ -64,9 +66,9 @@ function SpacePicker({ className }: { className?: string }) {
     <div className={className}>
       <label htmlFor="space-pick" className="sr-only">Financial space</label>
       <Select id="space-pick" value={spaceId ?? ""} onChange={(e) => setSpaceId(e.target.value)} className="h-9 font-medium">
-        {spaces.map((s) => (
-          <option key={s.id} value={s.id}>{s.data.name}{s.data.type === "managed" ? " (managed fund)" : ""}</option>
-        ))}
+        <optgroup label="Main Space">{mainSpaces(spaces).map((s) => <option key={s.id} value={s.id}>{s.data.name}</option>)}</optgroup>
+        <optgroup label="Managed Sub-spaces">{spaces.filter((s) => s.data.type === "managed").map((s) => <option key={s.id} value={s.id}>{s.data.name}</option>)}</optgroup>
+        {mainSpaces(spaces).some((s) => s.data.modules?.reimbursements) && <optgroup label="Reimbursement spaces">{spaces.filter((s) => s.data.purpose === "reimbursement" && mainSpaces(spaces).some((p) => p.data.modules?.reimbursements && childSpaces(p.id, spaces).some((c) => c.id === s.id))).map((s) => <option key={s.id} value={s.id}>{s.data.name}</option>)}</optgroup>}
       </Select>
     </div>
   );
@@ -74,6 +76,8 @@ function SpacePicker({ className }: { className?: string }) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const loc = useLocation();
+  const { snap, auth } = useApp();
+  const enabled = (module: "investments" | "reimbursements") => mainSpaces(snap.spaces).some((s) => s.data.modules?.[module]);
   return (
     <nav className="space-y-0.5" aria-label="Main">
       {NAV.map(({ to, label, icon: Icon }) => {
@@ -86,6 +90,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         );
       })}
+      {enabled("investments") && <Link to="/investments" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><Wallet className="size-4" />Investments</Link>}
+      {enabled("reimbursements") && <Link to="/reimbursements" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><HandCoins className="size-4" />Reimbursements</Link>}
+      {auth.status === "signed_in" && <Link to="/feedback" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><Menu className="size-4" />Give feedback</Link>}
     </nav>
   );
 }
@@ -99,22 +106,19 @@ function Layout() {
     <div className="min-h-screen md:grid md:grid-cols-[248px_1fr]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r bg-sidebar p-4 md:flex">
         <Link to="/" className="mb-6 flex items-center gap-2 px-2">
-          <span className="grid size-8 place-items-center rounded-lg bg-primary font-display text-primary-foreground">₱</span>
-          <span className="font-display text-lg">{APP_NAME}</span>
+          <VaultLogo />
         </Link>
         <SpacePicker className="mb-4" />
         <NavLinks />
         <div className="mt-auto space-y-3">
-          <Button className="w-full" onClick={() => openTx()}><Plus /> Add transaction</Button>
+          <Button className="w-full" disabled={!!space?.data.purpose} onClick={() => openTx()}><Plus /> Add transaction</Button>
           <SyncBadge className="w-full justify-center" />
         </div>
       </aside>
 
       <div className="min-w-0">
         <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-background/90 px-4 py-3 backdrop-blur md:hidden">
-          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary font-display text-sm text-primary-foreground">₱</span>
-          <SpacePicker className="min-w-0 flex-1" />
-          <SyncBadge />
+          <div className="flex w-full flex-wrap items-center justify-between gap-2"><VaultLogo /><SyncBadge /><SpacePicker className="w-full" /></div>
         </header>
         {space?.data.type === "managed" && (
           <div className="border-b bg-managed-soft px-4 py-2 text-center text-xs font-medium text-managed md:px-8">
@@ -126,16 +130,16 @@ function Layout() {
         </main>
       </div>
 
-      <button type="button" aria-label="Add transaction" onClick={() => openTx()}
+      {!space?.data.purpose && <Button type="button" aria-label="Add transaction" onClick={() => openTx()}
         className="fixed bottom-20 right-4 z-30 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-soft md:hidden">
         <Plus className="size-6" />
-      </button>
+      </Button>}
       <nav aria-label="Mobile" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
-        {NAV.filter((n) => MOBILE.includes(n.to)).map(({ to, label, icon: Icon }) => {
+        {MOBILE.flatMap((to) => NAV.filter((n) => n.to === to)).map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(to);
           return (
             <Link key={to} to={to} className={cn("flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium", active ? "text-primary" : "text-muted-foreground")}>
-              <Icon className="size-5" />{label === "Transactions" ? "Activity" : label === "Dashboard" ? "Home" : label}
+              <Icon className="size-5" />{label}
             </Link>
           );
         })}
@@ -180,7 +184,7 @@ function Onboarding() {
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">Welcome to {APP_NAME}</p>
           <h1 className="mt-1 font-display text-2xl">Set up your first space</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            A space keeps its own accounts, budgets and reports. You can add separate spaces for sinking funds or money you manage for others later.
+            A space keeps its own accounts, budgets and analysis. You can add separate spaces for sinking funds or money you manage for others later.
             {auth.status === "guest" && " You're using device-only mode."}
           </p>
         </div>
