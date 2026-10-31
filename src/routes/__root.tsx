@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: `${APP_NAME} — private, offline-first peso ledger.` },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "theme-color", content: "#2f7a6a" },
+      { name: "theme-color", content: "#176975" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
     ],
     links: [
@@ -93,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/logo.svg", type: "image/svg+xml" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],

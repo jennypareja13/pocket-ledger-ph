@@ -9,7 +9,7 @@ import type { Tx } from "@/lib/types";
 
 const ICONS = {
   income: ArrowDownLeft, expense: ArrowUpRight, transfer: ArrowLeftRight,
-  lend: HandCoins, loan_repayment: Undo2, adjustment: Scale,
+  lend: HandCoins, loan_repayment: Undo2, adjustment: Scale, reimbursement_claim: HandCoins, reimbursement_payment: Undo2, investment_funding: ArrowUpRight, investment_withdrawal: ArrowDownLeft,
 };
 
 export function TxRow({ tx }: { tx: Tx }) {
@@ -20,7 +20,7 @@ export function TxRow({ tx }: { tx: Tx }) {
   const sign = d.type === "income" || d.type === "loan_repayment" ? "+" : d.type === "expense" || d.type === "lend" ? "−" : d.type === "adjustment" && d.amount < 0 ? "−" : d.type === "adjustment" ? "+" : "";
   const tone = d.type === "income" ? "text-income" : d.type === "expense" ? "text-expense" : "text-foreground";
   return (
-    <button type="button" onClick={() => openTx({ edit: tx })}
+    <button type="button" onClick={() => { if (!d.type.startsWith("investment_") && !d.type.startsWith("reimbursement_")) openTx({ edit: tx }); }}
       className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring">
       <span className={cn("grid size-9 shrink-0 place-items-center rounded-full bg-muted [&_svg]:size-4", tone)}><Icon /></span>
       <span className="min-w-0 flex-1">

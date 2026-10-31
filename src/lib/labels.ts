@@ -37,6 +37,10 @@ export function describeTx(t: Tx, s: Snapshot): string {
       return `Lent to ${person()}`;
     case "loan_repayment":
       return `Repayment from ${person()}`;
+    case "reimbursement_claim": return "Reimbursement claim";
+    case "reimbursement_payment": return "Reimbursement received";
+    case "investment_funding": return "Investment contribution";
+    case "investment_withdrawal": return "Investment withdrawal";
     case "adjustment":
       return t.data.note ?? "Balance adjustment";
   }

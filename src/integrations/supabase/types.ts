@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          app_version: string | null
+          comment: string
+          contact_consent: boolean
+          created_at: string
+          device_context: string | null
+          feedback_type: string
+          id: string
+          owner_id: string
+          rating: number
+        }
+        Insert: {
+          app_version?: string | null
+          comment: string
+          contact_consent?: boolean
+          created_at?: string
+          device_context?: string | null
+          feedback_type: string
+          id?: string
+          owner_id?: string
+          rating: number
+        }
+        Update: {
+          app_version?: string | null
+          comment?: string
+          contact_consent?: boolean
+          created_at?: string
+          device_context?: string | null
+          feedback_type?: string
+          id?: string
+          owner_id?: string
+          rating?: number
+        }
+        Relationships: []
+      }
       ledger_records: {
         Row: {
           created_at: string

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { APP_NAME } from "@/lib/config";
 import { createSpace } from "@/lib/actions";
 import { formatPHP } from "@/lib/money";
-import { spaceCash } from "@/lib/selectors";
+import { mainSpaces, spaceCash } from "@/lib/selectors";
 import type { CategoryData, CategoryType, SpaceData, SpaceType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell/spaces")({
@@ -24,12 +24,13 @@ function Spaces() {
   const { spaceId, categories } = useSpace();
   const [name, setName] = useState("");
   const [type, setType] = useState<SpaceType>("managed");
+  const [parent, setParent] = useState("");
   const [cName, setCName] = useState("");
   const [cType, setCType] = useState<CategoryType>("expense");
   async function add(e: FormEvent) {
     e.preventDefault();
     if (!store || !name.trim()) return;
-    setSpaceId(await createSpace(store, name, type));
+    setSpaceId(await createSpace(store, name, type, parent || mainSpaces(snap.spaces)[0]?.id));
     setName("");
     toast.success("Space created");
   }
@@ -47,11 +48,12 @@ function Spaces() {
         <form onSubmit={add} className="grid gap-3 sm:grid-cols-3 sm:items-end">
           <Field label="Name" htmlFor="sp-n"><Input id="sp-n" placeholder="Sinking Fund" value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Ownership" htmlFor="sp-t"><Select id="sp-t" value={type} onChange={(e) => setType(e.target.value as SpaceType)}><option value="personal">My own money</option><option value="managed">Managed fund (held for others)</option></Select></Field>
+          {type === "managed" && <Field label="Main Space" htmlFor="sp-parent"><Select id="sp-parent" value={parent || mainSpaces(snap.spaces)[0]?.id || ""} onChange={(e) => setParent(e.target.value)}>{mainSpaces(snap.spaces).map((s) => <option key={s.id} value={s.id}>{s.data.name}</option>)}</Select></Field>}
           <Button type="submit">Create</Button>
         </form>
       </Panel>
       <Panel title="Spaces" className="mb-4">
-        {snap.spaces.map((s) => (
+        {snap.spaces.filter((s) => !s.data.purpose).map((s) => (
           <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2 text-sm last:border-0">
             <Input aria-label="Space name" defaultValue={s.data.name} className="max-w-xs"
               onBlur={(e) => e.target.value.trim() && e.target.value !== s.data.name && store?.save<SpaceData>("space", s.id, { ...s.data, name: e.target.value.trim() }, s.id)} />

@@ -17,14 +17,14 @@ const DEFAULT_CATEGORIES: Record<SpaceType, { income: string[]; expense: string[
   },
 };
 
-export async function createSpace(store: LedgerStore, name: string, type: SpaceType) {
+export async function createSpace(store: LedgerStore, name: string, type: SpaceType, parentId?: string) {
   const id = crypto.randomUUID();
   const d = DEFAULT_CATEGORIES[type];
   const cat = (n: string, t: "income" | "expense", system?: "fee"): Change => ({
     kind: "category", space_id: id, data: { name: n, type: t, ...(system ? { system } : {}) } satisfies CategoryData,
   });
   await store.apply([
-    { kind: "space", id, space_id: id, data: { name: name.trim(), type } satisfies SpaceData },
+    { kind: "space", id, space_id: id, data: { name: name.trim(), type, ...(type === "managed" ? { parent_space_id: parentId ?? store.getSnapshot().spaces.find((s) => s.data.type === "personal" && !s.data.purpose)?.id } : {}) } satisfies SpaceData },
     ...d.income.map((n) => cat(n, "income")),
     ...d.expense.map((n) => cat(n, "expense")),
     cat("Bank & transfer fees", "expense", "fee"),
@@ -60,7 +60,8 @@ export async function correctOpening(store: LedgerStore, snap: Snapshot, account
   if (!acc) throw new Error("Account not found");
   const diff = newOpening - openingTotal(accountId, snap.transactions);
   if (diff === 0) return;
-  await store.apply([adjustmentChange(acc.space_id!, accountId, diff, "Opening balance correction")]);
+  if (!acc.space_id) throw new Error("Account space not found");
+  await store.apply([adjustmentChange(acc.space_id, accountId, diff, "Opening balance correction")]);
 }
 
 export type TxInput = Omit<TxData, "entries">;

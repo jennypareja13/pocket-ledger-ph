@@ -1,4 +1,4 @@
-import type { Account, Budget, Category, Loan, LocalRecord, Tx } from "./types";
+import type { Account, Budget, Category, Loan, LocalRecord, Tx, Space } from "./types";
 
 export const live = <T extends LocalRecord>(rs: T[]) => rs.filter((r) => !r.deleted);
 
@@ -29,7 +29,7 @@ export function spaceCash(spaceId: string, accounts: Account[], txs: Tx[]): numb
 
 export function spaceReceivable(spaceId: string, loans: Loan[], txs: Tx[]): number {
   return live(loans)
-    .filter((l) => l.space_id === spaceId)
+    .filter((l) => l.space_id === spaceId && !l.data.module)
     .reduce((s, l) => s + loanOutstanding(l.id, txs), 0);
 }
 
@@ -63,7 +63,7 @@ export function periodTotals(spaceId: string, txs: Tx[], prefix: string): Period
 export function budgetRows(spaceId: string, month: string, categories: Category[], budgets: Budget[], txs: Tx[]) {
   const totals = periodTotals(spaceId, txs, month);
   return live(categories)
-    .filter((c) => c.space_id === spaceId && c.data.type === "expense" && !c.data.archived)
+    .filter((c) => c.space_id === spaceId && c.data.type === "expense" && live(budgets).some((b) => b.space_id === spaceId && b.data.month === month && b.data.category_id === c.id))
     .map((c) => {
       const b = live(budgets).find((x) => x.space_id === spaceId && x.data.category_id === c.id && x.data.month === month);
       const spent = totals.byCategory.get(c.id)?.total ?? 0;
@@ -78,4 +78,13 @@ export function budgetRows(spaceId: string, month: string, categories: Category[
         over: limit > 0 && spent > limit,
       };
     });
+}
+
+export function mainSpaces(spaces: Space[]) {
+  return live(spaces).filter((s) => s.data.type === "personal" && !s.data.purpose && !s.data.archived);
+}
+
+export function childSpaces(parentId: string, spaces: Space[]) {
+  const primary = mainSpaces(spaces)[0]?.id;
+  return live(spaces).filter((s) => !s.data.archived && (s.data.type === "managed" || s.data.purpose === "reimbursement") && (s.data.parent_space_id === parentId || (!s.data.parent_space_id && s.data.type === "managed" && primary === parentId)));
 }
