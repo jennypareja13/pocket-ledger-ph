@@ -5,13 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * PocketLedger design system: warm paper background, charcoal ink,
+ * PocketVault design system: warm paper background, charcoal ink,
  * restrained sage-teal accent. All colors are oklch tokens.
  */
 
 @theme inline {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  --font-display: "Manrope", ui-sans-serif, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -62,47 +62,52 @@
 }
 
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.975 0.008 85);
-  --foreground: oklch(0.26 0.012 60);
-  --card: oklch(0.993 0.004 85);
-  --card-foreground: oklch(0.26 0.012 60);
-  --popover: oklch(0.993 0.004 85);
-  --popover-foreground: oklch(0.26 0.012 60);
-  --primary: oklch(0.5 0.07 172);
-  --primary-foreground: oklch(0.985 0.006 85);
-  --primary-soft: oklch(0.93 0.03 170);
-  --secondary: oklch(0.945 0.012 85);
-  --secondary-foreground: oklch(0.3 0.012 60);
-  --muted: oklch(0.945 0.01 85);
-  --muted-foreground: oklch(0.52 0.012 60);
-  --accent: oklch(0.935 0.02 165);
-  --accent-foreground: oklch(0.3 0.04 172);
-  --destructive: oklch(0.55 0.17 28);
-  --destructive-foreground: oklch(0.985 0.006 85);
-  --income: oklch(0.5 0.1 158);
-  --expense: oklch(0.52 0.13 32);
-  --warning: oklch(0.6 0.13 70);
-  --warning-soft: oklch(0.95 0.04 80);
-  --managed: oklch(0.48 0.07 245);
-  --managed-soft: oklch(0.94 0.02 245);
-  --border: oklch(0.9 0.012 80);
-  --input: oklch(0.88 0.012 80);
-  --ring: oklch(0.6 0.07 172);
-  --chart-1: oklch(0.5 0.07 172);
-  --chart-2: oklch(0.6 0.11 40);
-  --chart-3: oklch(0.55 0.06 245);
-  --chart-4: oklch(0.7 0.1 85);
-  --chart-5: oklch(0.6 0.05 320);
-  --sidebar: oklch(0.96 0.01 85);
-  --sidebar-foreground: oklch(0.3 0.012 60);
-  --sidebar-primary: oklch(0.5 0.07 172);
-  --sidebar-primary-foreground: oklch(0.985 0.006 85);
-  --sidebar-accent: oklch(0.925 0.022 165);
-  --sidebar-accent-foreground: oklch(0.28 0.04 172);
-  --sidebar-border: oklch(0.9 0.012 80);
-  --sidebar-ring: oklch(0.6 0.07 172);
-  --shadow-soft: 0 1px 2px oklch(0.3 0.02 60 / 0.04), 0 8px 24px -12px oklch(0.3 0.02 60 / 0.12);
+  --radius: 0.5rem;
+  --brand-deep: #003942;
+  --brand-teal: #176975;
+  --brand-ocean: #439BA8;
+  --brand-aqua: #84D0DB;
+  --brand-ice: #CCF8FF;
+  --background: #f6f8f8;
+  --foreground: var(--brand-deep);
+  --card: #ffffff;
+  --card-foreground: var(--brand-deep);
+  --popover: #ffffff;
+  --popover-foreground: var(--brand-deep);
+  --primary: var(--brand-teal);
+  --primary-foreground: #ffffff;
+  --primary-soft: var(--brand-ice);
+  --secondary: var(--brand-aqua);
+  --secondary-foreground: var(--brand-deep);
+  --muted: #edf2f3;
+  --muted-foreground: var(--brand-teal);
+  --accent: var(--brand-ice);
+  --accent-foreground: var(--brand-deep);
+  --destructive: var(--brand-deep);
+  --destructive-foreground: #ffffff;
+  --income: var(--brand-teal);
+  --expense: var(--brand-deep);
+  --warning: var(--brand-teal);
+  --warning-soft: var(--brand-ice);
+  --managed: var(--brand-teal);
+  --managed-soft: var(--brand-ice);
+  --border: #dce6e8;
+  --input: #c3d5d8;
+  --ring: var(--brand-ocean);
+  --chart-1: var(--brand-teal);
+  --chart-2: var(--brand-ocean);
+  --chart-3: var(--brand-aqua);
+  --chart-4: var(--brand-deep);
+  --chart-5: var(--brand-ice);
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--brand-deep);
+  --sidebar-primary: var(--brand-teal);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--brand-ice);
+  --sidebar-accent-foreground: var(--brand-deep);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --shadow-soft: 0 2px 8px color-mix(in srgb, var(--brand-deep) 5%, transparent);
 }
 
 @layer base {
@@ -119,11 +124,11 @@
 
 @utility num {
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 @utility shadow-soft {
   box-shadow: var(--shadow-soft);
