@@ -83,7 +83,7 @@ export class LedgerStore {
       if (saved.items.length >= 100) { saved.dropped++; continue; }
       const raw = entry.raw;
       const object = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
-      saved.items.push({ id: typeof object.id === "string" ? object.id : "unknown", kind: typeof object.kind === "string" ? object.kind : "unknown", source: entry.source, reason: entry.reason, at: new Date().toISOString(), raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000) });
+      saved.items.push({ id: typeof object["id"] === "string" ? object["id"] : "unknown", kind: typeof object["kind"] === "string" ? object["kind"] : "unknown", source: entry.source, reason: entry.reason, at: new Date().toISOString(), raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000) });
     }
     check();
     await this.setKV("quarantine_v1", JSON.stringify(saved));

@@ -78,8 +78,6 @@ function SpacePicker({ className }: { className?: string }) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const loc = useLocation();
-  const { snap, auth } = useApp();
-  const enabled = (module: "investments" | "reimbursements") => mainSpaces(snap.spaces).some((s) => s.data.modules?.[module]);
   return (
     <nav className="space-y-0.5" aria-label="Main">
       {NAV.map(({ to, label, icon: Icon }) => {
@@ -92,9 +90,6 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         );
       })}
-      {enabled("investments") && <Link to="/investments" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><Wallet className="size-4" />Investments</Link>}
-      {enabled("reimbursements") && <Link to="/reimbursements" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><HandCoins className="size-4" />Reimbursements</Link>}
-      {auth.status === "signed_in" && <Link to="/feedback" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><Menu className="size-4" />Give feedback</Link>}
     </nav>
   );
 }
