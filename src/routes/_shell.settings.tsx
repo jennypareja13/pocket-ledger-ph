@@ -1,13 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useApp } from "@/components/app/AppProvider";
+import { useApp, useSpace } from "@/components/app/AppProvider";
 import { PageHeader, Panel } from "@/components/app/bits";
 import { useSyncSummary } from "@/components/app/SyncBadge";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
-import { describeTx, personForTx } from "@/lib/labels";
-import { centsToInput } from "@/lib/money";
-import type { LocalRecord } from "@/lib/types";
+import { describeTx } from "@/lib/labels";
+import { downloadFile, exportSpaceCsv } from "@/lib/csv";
+import { todayManila } from "@/lib/dates";
+import { MAX_BACKUP_BYTES, restoreBackup } from "@/lib/restore";
+import type { Quarantine } from "@/lib/store";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({ meta: [
@@ -17,39 +21,33 @@ export const Route = createFileRoute("/_shell/settings")({
   component: Settings,
 });
 
-function download(name: string, body: string, type: string) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([body], { type }));
-  a.download = name;
-  a.click();
-}
-
 function Settings() {
   const { auth, snap, store, syncNow, signOut } = useApp();
   const s = useSyncSummary();
   const nav = useNavigate();
+  const { space } = useSpace();
+  const [from, setFrom] = useState(todayManila().slice(0, 7) + "-01");
+  const [to, setTo] = useState(todayManila());
+  const [quarantine, setQuarantine] = useState<Quarantine>({ items: [], dropped: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    if (store) store.getQuarantine().then((value) => { if (!cancelled) setQuarantine(value); }).catch(() => { if (!cancelled) toast.error("Could not load skipped records."); });
+    return () => { cancelled = true; };
+  }, [store, snap.version]);
   const csv = () => {
-    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows = [["date", "space", "type", "amount", "fee", "category", "account", "to_account", "person", "note", "sync"]];
-    for (const t of snap.transactions) {
-      const d = t.data;
-      rows.push([d.date, snap.spaces.find((x) => x.id === t.space_id)?.data.name ?? "", d.type, centsToInput(d.amount), d.fee ? centsToInput(d.fee) : "",
-        snap.categories.find((c) => c.id === d.category_id)?.data.name ?? "", snap.accounts.find((a) => a.id === d.account_id)?.data.name ?? "",
-        snap.accounts.find((a) => a.id === d.to_account_id)?.data.name ?? "", personForTx(t, snap), d.note ?? "", t._meta.sync]);
-    }
-    download("transactions.csv", rows.map((r) => r.map(esc).join(",")).join("\n"), "text/csv");
+    if (!space) return;
+    try { const result = exportSpaceCsv(snap, space, from, to); downloadFile(result.filename, result.body, "text/csv;charset=utf-8"); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Could not export."); }
   };
-  const backup = () => download(`${APP_NAME}-backup.json`, JSON.stringify({ app: APP_NAME, version: 1, exported_at: new Date().toISOString(),
+  const backup = () => downloadFile(`${APP_NAME}-backup.json`, JSON.stringify({ app: APP_NAME, version: 1, exported_at: new Date().toISOString(),
     records: snap.all.map(({ _meta, ...r }) => r) }, null, 2), "application/json");
   async function restore(file: File) {
     if (!store) return;
     try {
-      const j = JSON.parse(await file.text());
-      if (j.version !== 1 || !Array.isArray(j.records)) throw new Error("Not a valid backup file");
-      const fresh = (j.records as LocalRecord[]).filter((r) => typeof r.id === "string" && r.kind && r.data && !store.get(r.id));
-      if (!confirm(`Import ${fresh.length} new record(s)? ${j.records.length - fresh.length} already exist and will be left unchanged.`)) return;
-      await store.putRaw(fresh.map((r) => ({ ...r, _meta: { sync: "pending", rev: 0, mutation_id: crypto.randomUUID() } })));
-      toast.success(`Imported ${fresh.length} record(s)`);
+      if (file.size > MAX_BACKUP_BYTES) throw new Error("Backup file must be 10 MB or smaller.");
+      const raw: unknown = JSON.parse(await file.text());
+      const count = await restoreBackup(store, raw, auth.status === "signed_in" ? "uuid" : "any", (fresh, skipped) => confirm(`Import ${fresh} new record(s)? ${skipped} already exist and will be left unchanged.`));
+      if (count !== null) toast.success(`Imported ${count} record(s)`);
     } catch (e) { toast.error(e instanceof Error ? e.message : "Restore failed"); }
   }
   return (
@@ -82,9 +80,15 @@ function Settings() {
             ))}
           </Panel>
         )}
+        {quarantine.items.length > 0 && <Panel title="Skipped records" className="lg:col-span-2">
+          <p className="text-sm">{quarantine.items.length} saved record(s); {quarantine.dropped} additional skipped record(s).</p>
+          <div className="my-3 space-y-2">{quarantine.items.map((item, index) => <p key={index} className="break-words text-sm">{item.kind} · {item.id.slice(0, 8)} · {item.source} — {item.reason}</p>)}</div>
+          <Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(JSON.stringify(quarantine, null, 2)); toast.success("Details copied."); } catch { toast.error("Could not copy details. Please retry."); } }}>Copy details</Button>
+        </Panel>}
         <Panel title="Export & backup" className="lg:col-span-2">
+          <p className="mb-3 text-sm">{space?.data.name ?? "No space selected"}</p>
+          <div className="mb-3 flex flex-wrap items-end gap-3"><label className="text-sm">From<Input aria-label="CSV from date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label><label className="text-sm">To<Input aria-label="CSV to date" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label><Button variant="outline" onClick={csv} disabled={!space}>Export transactions (CSV)</Button></div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={csv}>Export transactions (CSV)</Button>
             <Button variant="outline" onClick={backup}>Download JSON backup</Button>
             <label className="inline-flex cursor-pointer items-center rounded-md border px-4 text-sm">Restore backup…
               <input type="file" accept="application/json" className="sr-only" onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />

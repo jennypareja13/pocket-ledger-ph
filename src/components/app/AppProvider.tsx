@@ -18,6 +18,8 @@ export interface SyncStatus {
   lastSyncedAt?: string | undefined;
   error?: string | undefined;
   initialDone: boolean;
+  initialPullOkFlag?: boolean | undefined;
+  attempted?: boolean | undefined;
 }
 
 export interface TxDialogState {
@@ -58,9 +60,17 @@ const emptySnap = () => EMPTY;
 export const GUEST_KEY = "pl-guest";
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const activeRun = useRef<{ controller: AbortController; store: LedgerStore; userId: string } | null>(null);
+  const currentProfile = useRef<string | null>(null);
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   useEffect(() => {
     const apply = (s: Session | null) => {
+      const nextProfile = s?.user.id ?? (localStorage.getItem(GUEST_KEY) === "1" ? "guest" : null);
+      if (currentProfile.current !== nextProfile) {
+        activeRun.current?.controller.abort();
+        activeRun.current = null;
+        currentProfile.current = nextProfile;
+      }
       if (s) setAuth({ status: "signed_in", userId: s.user.id, email: s.user.email ?? "" });
       else if (localStorage.getItem(GUEST_KEY) === "1") setAuth({ status: "guest" });
       else setAuth({ status: "signed_out" });
@@ -68,7 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // getSession reads the saved session, so a previously signed-in user can open the app offline.
     supabase.auth.getSession().then(({ data }) => apply(data.session));
     const { data } = supabase.auth.onAuthStateChange((ev, s) => {
-      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") apply(s);
+      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT" || ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION") apply(s);
     });
     return () => data.subscription.unsubscribe();
   }, []);
@@ -107,25 +117,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const [sync, setSync] = useState<SyncStatus>({ running: false, initialDone: false });
-  const running = useRef(false);
   const signedIn = auth.status === "signed_in";
-  const syncNow = useCallback(async () => {
-    if (!store || !signedIn || !navigator.onLine || running.current) return;
-    running.current = true;
-    setSync((s) => ({ ...s, running: true }));
-    const r = await syncOnce(store, cloudRemote);
-    running.current = false;
-    setSync((s) => ({
-      running: false,
-      initialDone: true,
-      error: r.error,
-      lastSyncedAt: r.error ? s.lastSyncedAt : new Date().toISOString(),
-    }));
-  }, [store, signedIn]);
-
+  const userId = auth.status === "signed_in" ? auth.userId : null;
   useEffect(() => {
-    setSync({ running: false, initialDone: false });
-  }, [store]);
+    activeRun.current?.controller.abort();
+    activeRun.current = null;
+    setSync({ running: false, initialDone: false, initialPullOkFlag: false, attempted: false });
+    let cancelled = false;
+    if (store) store.getKV("initial_pull_ok").then((flag) => {
+      if (!cancelled) setSync((s) => ({ ...s, initialPullOkFlag: s.initialPullOkFlag || flag === "1" }));
+    }).catch((error: unknown) => {
+      if (!cancelled) setSync((s) => ({ ...s, error: error instanceof Error ? error.message : "Could not read initial sync status." }));
+    });
+    return () => {
+      cancelled = true;
+      activeRun.current?.controller.abort();
+      activeRun.current = null;
+    };
+  }, [store, userId]);
+
+  const syncNow = useCallback(async () => {
+    if (!store || !userId || currentProfile.current !== userId) return;
+    if (activeRun.current?.store === store && !activeRun.current.controller.signal.aborted) return;
+    if (!navigator.onLine) {
+      setSync((s) => ({ ...s, attempted: true, error: "You are offline. Connect to retry loading your cloud data." }));
+      return;
+    }
+    const run = { controller: new AbortController(), store, userId };
+    activeRun.current = run;
+    setSync((s) => ({ ...s, running: true, attempted: true, error: undefined }));
+    try {
+      const r = await syncOnce(store, cloudRemote, { userId, signal: run.controller.signal });
+      if (activeRun.current !== run || run.controller.signal.aborted) return;
+      if (r.pullOk) await store.setKV("initial_pull_ok", "1");
+      if (activeRun.current !== run || run.controller.signal.aborted) return;
+      setSync((s) => ({
+        ...s, initialDone: r.pullOk, initialPullOkFlag: s.initialPullOkFlag || r.pullOk,
+        error: r.error ?? (r.aborted ? "Sync was cancelled. Please retry." : undefined),
+        lastSyncedAt: r.pullOk ? new Date().toISOString() : s.lastSyncedAt,
+      }));
+    } catch (error) {
+      if (activeRun.current === run && !run.controller.signal.aborted) setSync((s) => ({ ...s, initialDone: false, error: error instanceof Error ? error.message : "Sync failed. Please retry." }));
+    } finally {
+      if (activeRun.current === run) {
+        activeRun.current = null;
+        setSync((s) => ({ ...s, running: false, error: run.controller.signal.aborted ? "Sync was cancelled. Please retry." : s.error }));
+      }
+    }
+  }, [store, userId]);
+
   useEffect(() => {
     if (!online) return;
     syncNow();
@@ -164,6 +204,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [txDialog, setTxDialog] = useState<TxDialogState>({ open: false });
 
   const signOut = async () => {
+    activeRun.current?.controller.abort();
+    activeRun.current = null;
+    setSync((s) => ({ ...s, running: false, initialDone: false, error: "Sync was cancelled." }));
     localStorage.removeItem(GUEST_KEY);
     if (signedIn) await supabase.auth.signOut();
     else setAuth({ status: "signed_out" });

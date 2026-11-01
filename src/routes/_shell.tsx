@@ -17,6 +17,7 @@ import { APP_NAME } from "@/lib/config";
 import { createAccount, createSpace } from "@/lib/actions";
 import { parseAmount } from "@/lib/money";
 import { ACCOUNT_TYPES } from "@/lib/labels";
+import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
 import type { AccountType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell")({
@@ -45,15 +46,16 @@ function ShellRoute() {
 }
 
 function Gate() {
-  const { auth, store, loadError, snap, online, sync } = useApp();
+  const { auth, store, loadError, snap, online, sync, syncNow } = useApp();
   if (auth.status === "loading") return <Spinner />;
   if (auth.status === "signed_out") return <Navigate to="/auth" replace />;
   if (loadError) return <p className="p-8 text-destructive">Could not open on-device storage: {loadError}</p>;
   if (!store) return <Spinner label="Opening your ledger…" />;
-  const activeSpaces = snap.spaces.filter((s) => !s.data.archived);
-  if (activeSpaces.length === 0) {
-    // Wait for the first download so a second device doesn't create a duplicate space.
-    if (auth.status === "signed_in" && online && !sync.initialDone) return <Spinner label="Fetching your data…" />;
+  const existingSpaces = snap.spaces;
+  if (existingSpaces.length === 0) {
+    const screen = decideEmptyLedgerScreen({ authStatus: auth.status, online, initialDone: sync.initialDone, initialPullOkFlag: sync.initialPullOkFlag === true, syncError: sync.error, running: sync.running, attempted: sync.attempted });
+    if (screen === "spinner") return <Spinner label="Fetching your data…" />;
+    if (screen === "retry") return <div className="mx-auto max-w-md space-y-4 p-8"><h1 className="font-display text-2xl">Couldn't load your cloud data</h1><p className="text-sm text-muted-foreground">{online ? "Please retry before setting up your ledger." : "You are offline. Connect to the internet and retry."}</p><Button onClick={syncNow} disabled={sync.running}>Retry</Button></div>;
     return <Onboarding />;
   }
   return <Layout />;
@@ -76,8 +78,6 @@ function SpacePicker({ className }: { className?: string }) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const loc = useLocation();
-  const { snap, auth } = useApp();
-  const enabled = (module: "investments" | "reimbursements") => mainSpaces(snap.spaces).some((s) => s.data.modules?.[module]);
   return (
     <nav className="space-y-0.5" aria-label="Main">
       {NAV.map(({ to, label, icon: Icon }) => {
@@ -90,9 +90,6 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         );
       })}
-      {enabled("investments") && <Link to="/investments" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><Wallet className="size-4" />Investments</Link>}
-      {enabled("reimbursements") && <Link to="/reimbursements" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><HandCoins className="size-4" />Reimbursements</Link>}
-      {auth.status === "signed_in" && <Link to="/feedback" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"><Menu className="size-4" />Give feedback</Link>}
     </nav>
   );
 }

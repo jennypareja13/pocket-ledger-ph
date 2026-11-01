@@ -31,7 +31,13 @@ export async function idbPersistence(profile: string): Promise<Persistence> {
       }),
     getKV: async (k) => ((await req(tx("kv", "readonly").get(k))) as string | undefined) ?? null,
     setKV: async (k, v) => {
-      await req(tx("kv", "readwrite").put(v, k));
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction("kv", "readwrite");
+        transaction.objectStore("kv").put(v, k);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
     },
   };
 }
