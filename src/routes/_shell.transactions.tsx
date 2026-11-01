@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { APP_NAME } from "@/lib/config";
 import { describeTx, personForTx, TX_TYPES } from "@/lib/labels";
 import { toast } from "sonner";
-import { csvFilename, downloadFile, transactionsCsv } from "@/lib/csv";
+import { downloadFile, exportSpaceCsv } from "@/lib/csv";
 import { formatDate, todayManila } from "@/lib/dates";
 
 export const Route = createFileRoute("/_shell/transactions")({
@@ -60,7 +60,7 @@ function Transactions() {
   return (
     <>
       <PageHeader title="Transactions" subtitle={space?.data.name} actions={!space?.data.purpose && <Button onClick={() => openTx()}><Plus /> Add</Button>} />
-      <div className="mb-5 flex flex-wrap items-end gap-3"><label className="text-sm">From<Input aria-label="CSV from date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label><label className="text-sm">To<Input aria-label="CSV to date" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label><Button variant="outline" onClick={() => { if (!space) return; try { downloadFile(csvFilename(space.data.name, from, to), transactionsCsv(snap, space.id, from, to), "text/csv;charset=utf-8"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not export."); } }}><Download />Download CSV</Button></div>
+      <div className="mb-5 flex flex-wrap items-end gap-3"><label className="text-sm">From<Input aria-label="CSV from date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label><label className="text-sm">To<Input aria-label="CSV to date" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label><Button variant="outline" onClick={() => { if (!space) return; try { const csv = exportSpaceCsv(snap, space, from, to); downloadFile(csv.filename, csv.body, "text/csv;charset=utf-8"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not export."); } }}><Download />Download CSV</Button></div>
       <Panel className="mb-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="relative sm:col-span-2 lg:col-span-1">
