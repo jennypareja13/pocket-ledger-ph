@@ -34,6 +34,16 @@ export interface Change {
 
 const uuid = () => crypto.randomUUID();
 
+export interface QuarantineItem {
+  id: string;
+  kind: string;
+  source: "pull" | "restore" | "push";
+  reason: string;
+  at: string;
+  raw: string;
+}
+export interface Quarantine { items: QuarantineItem[]; dropped: number }
+
 /** In-memory index over durable local storage. Every write is persisted before it resolves. */
 export class LedgerStore {
   private map = new Map<string, LocalRecord>();
@@ -59,6 +69,26 @@ export class LedgerStore {
   }
   setKV(k: string, v: string) {
     return this.p.setKV(k, v);
+  }
+
+  async getQuarantine(): Promise<Quarantine> {
+    const saved = await this.getKV("quarantine_v1");
+    return saved ? JSON.parse(saved) as Quarantine : { items: [], dropped: 0 };
+  }
+
+  async quarantine(records: { raw: unknown; source: QuarantineItem["source"]; reason: string }[], check: () => void = () => {}): Promise<void> {
+    const saved = await this.getQuarantine();
+    check();
+    for (const entry of records) {
+      if (saved.items.length >= 100) { saved.dropped++; continue; }
+      const raw = entry.raw;
+      const object = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
+      saved.items.push({ id: typeof object.id === "string" ? object.id : "unknown", kind: typeof object.kind === "string" ? object.kind : "unknown", source: entry.source, reason: entry.reason, at: new Date().toISOString(), raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000) });
+    }
+    check();
+    await this.setKV("quarantine_v1", JSON.stringify(saved));
+    check();
+    this.emit();
   }
 
   /** Raw write used by sync and restore; does not alter metadata. */
