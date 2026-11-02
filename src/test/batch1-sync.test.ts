@@ -9,6 +9,53 @@ const fake = (): Remote => ({ push: vi.fn(async (): Promise<PushResult> => ({ st
 const screen = (report: Awaited<ReturnType<typeof syncOnce>>) => decideEmptyLedgerScreen({ authStatus: "signed_in", online: true, initialDone: report.pullOk, initialPullOkFlag: false, attempted: true, syncError: report.error });
 
 describe("Batch 1 sync safety", () => {
+  it("deduplicates repeated malformed pulls without writing or emitting again", async () => {
+    const store = new LedgerStore(memoryPersistence());
+    const bad = row({ name: 5 });
+    const remote = fake();
+    remote.pull = async () => [bad, bad];
+    await syncOnce(store, remote);
+    const before = await store.getQuarantine();
+    const write = vi.spyOn(store, "setKV");
+    await syncOnce(store, remote);
+    expect(await store.getQuarantine()).toEqual(before);
+    expect(before.items).toHaveLength(1);
+    expect(before.dropped).toBe(0);
+    expect(write.mock.calls.filter(([key]) => key === "quarantine_v1")).toHaveLength(0);
+    const emit = vi.fn();
+    const unsubscribe = store.subscribe(emit);
+    await store.quarantine([{ raw: bad, source: "pull", reason: before.items[0]?.reason ?? "" }]);
+    expect(emit).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+  it("deduplicates retained items at the cap before counting dropped records", async () => {
+    const store = new LedgerStore(memoryPersistence());
+    const entries = Array.from({ length: 100 }, (_, id) => ({
+      raw: { id: String(id) }, source: "pull" as const, reason: "bad",
+    }));
+    await store.quarantine(entries);
+    const write = vi.spyOn(store, "setKV");
+    await store.quarantine(entries);
+    expect(write).not.toHaveBeenCalled();
+    await store.quarantine([
+      { raw: { id: "extra" }, source: "pull", reason: "bad" },
+      { raw: { id: "extra" }, source: "pull", reason: "bad" },
+    ]);
+    expect((await store.getQuarantine()).dropped).toBe(1);
+  });
+  it("compares source, id, reason and unknown raw text for quarantine dedupe", async () => {
+    const store = new LedgerStore(memoryPersistence());
+    await store.quarantine([
+      { raw: "first", source: "pull", reason: "bad" },
+      { raw: "first", source: "pull", reason: "bad" },
+      { raw: "second", source: "pull", reason: "bad" },
+      { raw: "first", source: "push", reason: "bad" },
+      { raw: "first", source: "pull", reason: "different" },
+      { raw: { id: "same", name: 1 }, source: "pull", reason: "bad" },
+      { raw: { id: "same", name: 2 }, source: "pull", reason: "bad" },
+    ]);
+    expect((await store.getQuarantine()).items).toHaveLength(5);
+  });
   it("continues later uploads and pulls after a record rejection", async () => {
     const store = new LedgerStore(memoryPersistence());
     const first = await store.save("borrower", null, { name: "First" });
