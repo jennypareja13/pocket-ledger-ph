@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { APP_NAME } from "@/lib/config";
 import { createSpace } from "@/lib/actions";
 import { formatPHP } from "@/lib/money";
-import { mainSpaces, spaceCash } from "@/lib/selectors";
+import { mainSpaces, spaceCash, spacesPageSpaces } from "@/lib/selectors";
 import type { CategoryData, CategoryType, SpaceData, SpaceType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell/spaces")({
@@ -21,7 +21,8 @@ export const Route = createFileRoute("/_shell/spaces")({
 
 function Spaces() {
   const { store, snap, setSpaceId } = useApp();
-  const { spaceId, categories } = useSpace();
+  const { space, spaceId, categories } = useSpace();
+  const isManaged = space?.data.type === "managed";
   const [name, setName] = useState("");
   const [type, setType] = useState<SpaceType>("managed");
   const [parent, setParent] = useState("");
@@ -44,16 +45,16 @@ function Spaces() {
   return (
     <>
       <PageHeader title="Spaces & categories" />
-      <Panel title="New space" className="mb-4">
+      {isManaged ? <p className="mb-4 text-sm text-muted-foreground">Switch to the Main Space to create a new space.</p> : <Panel title="New space" className="mb-4">
         <form onSubmit={add} className="grid gap-3 sm:grid-cols-3 sm:items-end">
           <Field label="Name" htmlFor="sp-n"><Input id="sp-n" placeholder="Sinking Fund" value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Ownership" htmlFor="sp-t"><Select id="sp-t" value={type} onChange={(e) => setType(e.target.value as SpaceType)}><option value="personal">My own money</option><option value="managed">Managed fund (held for others)</option></Select></Field>
           {type === "managed" && <Field label="Main Space" htmlFor="sp-parent"><Select id="sp-parent" value={parent || mainSpaces(snap.spaces)[0]?.id || ""} onChange={(e) => setParent(e.target.value)}>{mainSpaces(snap.spaces).map((s) => <option key={s.id} value={s.id}>{s.data.name}</option>)}</Select></Field>}
           <Button type="submit">Create</Button>
         </form>
-      </Panel>
+      </Panel>}
       <Panel title="Spaces" className="mb-4">
-        {snap.spaces.filter((s) => !s.data.purpose).map((s) => (
+        {spacesPageSpaces(spaceId, snap.spaces).map((s) => (
           <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2 text-sm last:border-0">
             <Input aria-label="Space name" defaultValue={s.data.name} className="max-w-xs"
               onBlur={(e) => e.target.value.trim() && e.target.value !== s.data.name && store?.save<SpaceData>("space", s.id, { ...s.data, name: e.target.value.trim() }, s.id)} />

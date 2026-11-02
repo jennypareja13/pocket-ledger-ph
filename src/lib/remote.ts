@@ -3,7 +3,8 @@ import { RecordRejected, SyncAbort, type PushResult, type Remote, type RemoteRow
 
 export function classifyRemoteError(error: { message: string; code?: string | undefined; status?: number | undefined }, status?: number): Error {
   const httpStatus = status ?? error.status;
-  if (httpStatus === 401 || httpStatus === 403 || error.code === "42501" || error.code === "PGRST301" || error.code === "PGRST302" || /jwt|not authenticated|unauthenticated/i.test(error.message)) return new SyncAbort(error.message, error.code, httpStatus);
+  if (httpStatus === 401 || error.code === "PGRST301" || error.code === "PGRST302" || /jwt|auth/i.test(error.message)) return new SyncAbort(error.message, error.code, httpStatus);
+  if (httpStatus !== undefined && (httpStatus >= 500 || httpStatus === 408 || httpStatus === 429)) return Object.assign(new Error(error.message), { code: error.code, status: httpStatus });
   if (error.code && !/^\d+$/.test(error.code)) return new RecordRejected(error.message, error.code, httpStatus);
   return Object.assign(new Error(error.message), { code: error.code, status: httpStatus });
 }

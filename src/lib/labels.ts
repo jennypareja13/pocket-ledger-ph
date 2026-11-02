@@ -1,5 +1,6 @@
 import type { AccountType, Tx, TxType } from "./types";
 import type { Snapshot } from "./store";
+import { ordinaryLoans } from "./selectors";
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: "cash", label: "Cash" },
@@ -24,7 +25,7 @@ export function describeTx(t: Tx, s: Snapshot): string {
   const acc = (id?: string) => s.accounts.find((a) => a.id === id)?.data.name ?? "Unknown account";
   const cat = (id?: string) => s.categories.find((c) => c.id === id)?.data.name ?? "Uncategorized";
   const person = () => {
-    const loan = s.loans.find((l) => l.id === t.data.loan_id);
+    const loan = ordinaryLoans(s.loans).find((l) => l.id === t.data.loan_id);
     return s.borrowers.find((b) => b.id === loan?.data.borrower_id)?.data.name ?? "someone";
   };
   switch (t.data.type) {
@@ -47,6 +48,6 @@ export function describeTx(t: Tx, s: Snapshot): string {
 }
 
 export function personForTx(t: Tx, s: Snapshot) {
-  const loan = s.loans.find((l) => l.id === t.data.loan_id);
+  const loan = ordinaryLoans(s.loans).find((l) => l.id === t.data.loan_id);
   return s.borrowers.find((b) => b.id === loan?.data.borrower_id)?.data.name ?? "";
 }

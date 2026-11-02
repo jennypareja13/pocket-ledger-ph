@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
 import { currentMonth, formatDate, formatMonth } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
-import { accountBalance, budgetRows, loanOutstanding, periodTotals, spaceCash, spaceReceivable } from "@/lib/selectors";
+import { accountBalance, budgetRows, homeSpaceOverview, loanOutstanding, ordinaryLoans, periodTotals, spaceCash, spaceReceivable } from "@/lib/selectors";
 import { accountTypeLabel } from "@/lib/labels";
 
 export const Route = createFileRoute("/_shell/")({
@@ -32,12 +32,10 @@ function Dashboard() {
   const cash = spaceCash(spaceId, snap.accounts, snap.transactions);
   const recv = spaceReceivable(spaceId, snap.loans, snap.transactions);
   const budget = budgetRows(spaceId, month, categories, budgets, transactions).filter((r) => r.limit > 0);
-  const openLoans = loans
+  const openLoans = ordinaryLoans(loans)
     .map((l) => ({ l, out: loanOutstanding(l.id, snap.transactions), who: snap.borrowers.find((b) => b.id === l.data.borrower_id)?.data.name }))
     .filter((x) => x.out > 0);
-  const spaces = snap.spaces.filter((s) => !s.data.archived);
-  const personal = spaces.filter((s) => s.data.type === "personal");
-  const managed = spaces.filter((s) => s.data.type === "managed");
+  const managed = homeSpaceOverview(spaceId, snap.spaces);
   const isManaged = space.data.type === "managed";
 
   return (
@@ -55,23 +53,12 @@ function Dashboard() {
         <Stat label="Net cash flow" value={t.net} tone="net" hint="Excludes transfers & loans" />
       </div>
 
-      {spaces.length > 1 && (
-        <Panel title="All spaces — kept separate" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Owned by me</p>
-              {personal.map((s) => (
-                <div key={s.id} className="flex justify-between py-1 text-sm"><span>{s.data.name}</span><span className="num font-medium">{formatPHP(spaceCash(s.id, snap.accounts, snap.transactions))}</span></div>
-              ))}
-            </div>
-            <div className="rounded-lg bg-managed-soft p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-managed">Managed funds (held for others)</p>
-              {managed.length === 0 && <p className="text-sm text-muted-foreground">None yet.</p>}
-              {managed.map((s) => (
-                <div key={s.id} className="flex justify-between py-1 text-sm"><span>{s.data.name}</span><span className="num font-medium">{formatPHP(spaceCash(s.id, snap.accounts, snap.transactions))}</span></div>
-              ))}
-            </div>
-          </div>
+      {managed.length > 0 && (
+        <Panel title="Managed funds - held for others" className="mt-4">
+          <p className="mb-2 text-xs text-muted-foreground">Not your personal money and not included in your balance</p>
+          {managed.map((s) => (
+            <div key={s.id} className="flex justify-between py-1 text-sm"><span>{s.data.name}</span><span className="num font-medium">{formatPHP(spaceCash(s.id, snap.accounts, snap.transactions))}</span></div>
+          ))}
         </Panel>
       )}
 

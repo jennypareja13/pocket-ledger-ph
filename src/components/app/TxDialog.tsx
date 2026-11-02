@@ -15,7 +15,7 @@ import { createLoan, deleteLoan, saveTransaction, type TxInput } from "@/lib/act
 import { buildEntries } from "@/lib/ledger";
 import { centsToInput, formatPHP, parseAmount, parseSignedAmount } from "@/lib/money";
 import { todayManila } from "@/lib/dates";
-import { loanOutstanding } from "@/lib/selectors";
+import { loanOutstanding, ordinaryLoans } from "@/lib/selectors";
 import type { BorrowerData, LoanData, TxType } from "@/lib/types";
 
 const TABS: { value: TxType; label: string }[] = [
@@ -42,7 +42,7 @@ export function TxDialog() {
   const activeAccounts = accounts.filter((a) => !a.data.archived || a.id === edit?.data.account_id || a.id === edit?.data.to_account_id);
   const cats = (t: "income" | "expense") => categories.filter((c) => c.data.type === t && (!c.data.archived || c.id === edit?.data.category_id));
   const feeCat = categories.find((c) => c.data.system === "fee") ?? cats("expense")[0];
-  const openLoans = loans.filter((l) => !l.data.module && (!l.data.settled_at || l.id === edit?.data.loan_id));
+  const openLoans = ordinaryLoans(loans).filter((l) => !l.data.settled_at || l.id === edit?.data.loan_id);
   const borrowers = snap.borrowers.filter((b) => !b.data.archived && (b.space_id === spaceId || b.space_id === null));
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export function TxDialog() {
     setError(undefined);
     if (edit) {
       const d = edit.data;
-      const loan = snap.loans.find((l) => l.id === d.loan_id);
+      const loan = ordinaryLoans(loans).find((l) => l.id === d.loan_id);
       setType(d.type);
       setF({
         date: d.date, amount: centsToInput(d.amount), fee: d.fee ? centsToInput(d.fee) : "",
@@ -101,7 +101,7 @@ export function TxDialog() {
           due_date: f.due_date || undefined, note: f.note.trim() || undefined,
         });
       } else if (type === "lend" && edit) {
-        const loan = snap.loans.find((l) => l.id === edit.data.loan_id);
+        const loan = ordinaryLoans(loans).find((l) => l.id === edit.data.loan_id);
         if (!loan) throw new Error("Loan not found.");
         const repaid = loan ? -(loanOutstanding(loan.id, snap.transactions, edit.id)) : 0;
         if (amount < repaid) throw new Error(`Amount can't be less than what was already repaid (${formatPHP(repaid)}).`);

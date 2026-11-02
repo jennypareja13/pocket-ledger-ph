@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { LedgerStore, memoryPersistence } from "@/lib/store";
-import { RecordRejected, SyncAbort, syncOnce, type Remote, type RemoteRow } from "@/lib/sync-engine";
+import { RecordRejected, SyncAbort, syncOnce, type PushResult, type Remote, type RemoteRow } from "@/lib/sync-engine";
 import { accountBalance } from "@/lib/selectors";
 import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
 
 const row = (data: unknown = { name: "Cloud", type: "personal" }, kind: RemoteRow["kind"] = "space"): RemoteRow => ({ id: crypto.randomUUID(), kind, space_id: null, data, deleted: false, rev: 1, last_mutation_id: crypto.randomUUID(), created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-01T00:00:00Z" });
-const fake = (): Remote => ({ push: vi.fn(async () => ({ status: "ok" as const, rev: 1 })), pull: vi.fn(async () => []) });
+const fake = (): Remote => ({ push: vi.fn(async (): Promise<PushResult> => ({ status: "ok", rev: 1 })), pull: vi.fn(async () => []) });
 const screen = (report: Awaited<ReturnType<typeof syncOnce>>) => decideEmptyLedgerScreen({ authStatus: "signed_in", online: true, initialDone: report.pullOk, initialPullOkFlag: false, attempted: true, syncError: report.error });
 
 describe("Batch 1 sync safety", () => {
@@ -14,7 +14,7 @@ describe("Batch 1 sync safety", () => {
     const first = await store.save("borrower", null, { name: "First" });
     const second = await store.save("borrower", null, { name: "Second" });
     const remote = fake();
-    remote.push = vi.fn(async (r) => { if (r.id === first.id) throw new RecordRejected("Invalid record", "23514", 400); return { status: "ok", rev: 1 }; });
+    remote.push = vi.fn(async (r): Promise<PushResult> => { if (r.id === first.id) throw new RecordRejected("Invalid record", "23514", 400); return { status: "ok", rev: 1 }; });
     const report = await syncOnce(store, remote);
     expect(report).toMatchObject({ failed: 1, pushed: 1, pullOk: true });
     expect(remote.pull).toHaveBeenCalledOnce();
@@ -53,7 +53,7 @@ describe("Batch 1 sync safety", () => {
   });
   it("caps quarantine at 100 and truncates raw to 4000 without deleting saved items", async () => {
     const store = new LedgerStore(memoryPersistence());
-    await store.quarantine(Array.from({ length: 102 }, () => ({ raw: { note: "x".repeat(5000) }, source: "pull", reason: "bad" })));
+    await store.quarantine(Array.from({ length: 102 }, (_, id) => ({ raw: { id: String(id), note: "x".repeat(5000) }, source: "pull", reason: "bad" })));
     const saved = await store.getQuarantine();
     expect(saved.items).toHaveLength(100); expect(saved.dropped).toBe(2); expect(saved.items[0]?.raw).toHaveLength(4000);
   });
@@ -68,19 +68,19 @@ describe("Batch 1 sync safety", () => {
   it("abort after first push discards its response and makes no subsequent writes or calls", async () => {
     const store = new LedgerStore(memoryPersistence()); await store.save("borrower", null, { name: "A" }); await store.save("borrower", null, { name: "B" });
     const controller = new AbortController(); const remote = fake();
-    remote.push = vi.fn(async () => { controller.abort(); return { status: "ok", rev: 1 }; });
+    remote.push = vi.fn(async (): Promise<PushResult> => { controller.abort(); return { status: "ok", rev: 1 }; });
     const write = vi.spyOn(store, "putRaw");
     expect((await syncOnce(store, remote, { userId: "A", signal: controller.signal })).aborted).toBe(true);
     expect(remote.push).toHaveBeenCalledOnce(); expect(remote.pull).not.toHaveBeenCalled(); expect(write).not.toHaveBeenCalled();
   });
   it("transient push failure preserves pending mutations and skips pull", async () => {
     const store = new LedgerStore(memoryPersistence()); const r = await store.save("borrower", null, { name: "A" });
-    const remote = fake(); remote.push = async () => { throw new Error("Network failed"); };
+    const remote = fake(); remote.push = async (): Promise<PushResult> => { throw new Error("Network failed"); };
     expect((await syncOnce(store, remote)).pullOk).toBe(false); expect(remote.pull).not.toHaveBeenCalled(); expect(store.get(r.id)?._meta).toEqual(r._meta);
   });
   it("invalid conflict data is rejected and does not stop pull", async () => {
     const store = new LedgerStore(memoryPersistence()); const r = await store.save("borrower", null, { name: "A" });
-    const remote = fake(); remote.push = async () => ({ status: "conflict", rev: 2, data: { name: 5 }, deleted: false });
+    const remote = fake(); remote.push = async (): Promise<PushResult> => ({ status: "conflict", rev: 2, data: { name: 5 }, deleted: false });
     const report = await syncOnce(store, remote); expect(report.failed).toBe(1); expect(report.pullOk).toBe(true); expect(store.get(r.id)?._meta.server).toBeUndefined();
   });
   it("failed pull forbids first onboarding; empty successful pull allows it", async () => {

@@ -88,3 +88,21 @@ export function childSpaces(parentId: string, spaces: Space[]) {
   const primary = mainSpaces(spaces)[0]?.id;
   return live(spaces).filter((s) => !s.data.archived && (s.data.type === "managed" || s.data.purpose === "reimbursement") && (s.data.parent_space_id === parentId || (!s.data.parent_space_id && s.data.type === "managed" && primary === parentId)));
 }
+
+/** Home shows only managed children of the selected active Main Space. */
+export function homeSpaceOverview(spaceId: string, spaces: Space[]): Space[] {
+  if (!mainSpaces(spaces).some((s) => s.id === spaceId)) return [];
+  return childSpaces(spaceId, spaces).filter((s) => s.data.type === "managed" && !s.data.purpose);
+}
+
+/** Managed-space editing must not reveal other spaces. */
+export function spacesPageSpaces(spaceId: string | null, spaces: Space[]): Space[] {
+  const selected = spaces.find((s) => s.id === spaceId);
+  return live(spaces).filter((s) =>
+    selected?.data.type === "managed" ? s.id === spaceId : !s.data.purpose,
+  );
+}
+
+export function ordinaryLoans(loans: Loan[]): Loan[] {
+  return loans.filter((l) => !l.data.module);
+}

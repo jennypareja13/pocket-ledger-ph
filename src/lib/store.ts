@@ -79,13 +79,23 @@ export class LedgerStore {
   async quarantine(records: { raw: unknown; source: QuarantineItem["source"]; reason: string }[], check: () => void = () => {}): Promise<void> {
     const saved = await this.getQuarantine();
     check();
+    const key = (item: Pick<QuarantineItem, "source" | "id" | "reason" | "raw">) =>
+      JSON.stringify([item.source, item.id, item.reason, item.id === "unknown" ? item.raw : ""]);
+    const seen = new Set(saved.items.map(key));
+    let changed = false;
     for (const entry of records) {
-      if (saved.items.length >= 100) { saved.dropped++; continue; }
       const raw = entry.raw;
       const object = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
-      saved.items.push({ id: typeof object["id"] === "string" ? object["id"] : "unknown", kind: typeof object["kind"] === "string" ? object["kind"] : "unknown", source: entry.source, reason: entry.reason, at: new Date().toISOString(), raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000) });
+      const item: QuarantineItem = { id: typeof object["id"] === "string" ? object["id"] : "unknown", kind: typeof object["kind"] === "string" ? object["kind"] : "unknown", source: entry.source, reason: entry.reason, at: new Date().toISOString(), raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000) };
+      const itemKey = key(item);
+      if (seen.has(itemKey)) continue;
+      seen.add(itemKey);
+      changed = true;
+      if (saved.items.length >= 100) { saved.dropped++; continue; }
+      saved.items.push(item);
     }
     check();
+    if (!changed) return;
     await this.setKV("quarantine_v1", JSON.stringify(saved));
     check();
     this.emit();

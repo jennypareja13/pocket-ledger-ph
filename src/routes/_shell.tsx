@@ -51,7 +51,7 @@ function Gate() {
   if (auth.status === "signed_out") return <Navigate to="/auth" replace />;
   if (loadError) return <p className="p-8 text-destructive">Could not open on-device storage: {loadError}</p>;
   if (!store) return <Spinner label="Opening your ledger…" />;
-  const existingSpaces = snap.spaces;
+  const existingSpaces = snap.spaces.filter((s) => !s.data.archived);
   if (existingSpaces.length === 0) {
     const screen = decideEmptyLedgerScreen({ authStatus: auth.status, online, initialDone: sync.initialDone, initialPullOkFlag: sync.initialPullOkFlag === true, syncError: sync.error, running: sync.running, attempted: sync.attempted });
     if (screen === "spinner") return <Spinner label="Fetching your data…" />;

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
 import { formatDate, todayManila } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
-import { loanOutstanding } from "@/lib/selectors";
+import { loanOutstanding, ordinaryLoans } from "@/lib/selectors";
 import type { LoanData } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell/loans")({
@@ -21,13 +21,14 @@ export const Route = createFileRoute("/_shell/loans")({
 function Loans() {
   const { store, snap, openTx } = useApp();
   const { loans } = useSpace();
+  const visibleLoans = ordinaryLoans(loans);
   return (
     <>
       <PageHeader title="Owed to me" subtitle="Lending and repayments move money, they are never income or expense."
         actions={<Button onClick={() => openTx({ preset: { type: "lend" } })}><Plus /> Lend money</Button>} />
-      {loans.length === 0 ? <Empty icon={<HandCoins />} title="No loans in this space" /> : (
+      {visibleLoans.length === 0 ? <Empty icon={<HandCoins />} title="No loans in this space" /> : (
         <div className="grid gap-4 md:grid-cols-2">
-          {loans.map((l) => {
+          {visibleLoans.map((l) => {
             const out = loanOutstanding(l.id, snap.transactions);
             const who = snap.borrowers.find((b) => b.id === l.data.borrower_id)?.data.name;
             const hist = snap.transactions.filter((t) => t.data.loan_id === l.id);

@@ -13,3 +13,4 @@
 - All money is integer centavos; balances/reports derive only from `TxData.entries` built by `buildEntries` (src/lib/ledger.ts) — keeps transfer/loan principal out of income/expense.
 - Local IndexedDB is the source of truth; cloud sync goes through the single `ledger_records` table + `push_record` RPC with mutation-id idempotency — enables offline-first without duplicates.
 - Keep tsconfig strict flags (exactOptionalPropertyTypes, noImplicitReturns); type optional fields as `?: T | undefined`.
+- Use presentation selectors for Home/Spaces visibility and ordinary-loan lists; keep them separate from accounting selectors so privacy filtering never changes balances.
