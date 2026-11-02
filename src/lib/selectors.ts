@@ -4,14 +4,16 @@ export const live = <T extends LocalRecord>(rs: T[]) => rs.filter((r) => !r.dele
 
 export function accountBalance(accountId: string, txs: Tx[]): number {
   let s = 0;
-  for (const t of txs) if (!t.deleted) for (const e of t.data.entries) if (e.account_id === accountId) s += e.delta;
+  for (const t of txs)
+    if (!t.deleted) for (const e of t.data.entries) if (e.account_id === accountId) s += e.delta;
   return s;
 }
 
 export function loanOutstanding(loanId: string, txs: Tx[], excludeTxId?: string): number {
   let s = 0;
   for (const t of txs)
-    if (!t.deleted && t.id !== excludeTxId) for (const e of t.data.entries) if (e.loan_id === loanId) s += e.delta;
+    if (!t.deleted && t.id !== excludeTxId)
+      for (const e of t.data.entries) if (e.loan_id === loanId) s += e.delta;
   return s;
 }
 
@@ -60,12 +62,27 @@ export function periodTotals(spaceId: string, txs: Tx[], prefix: string): Period
   return r;
 }
 
-export function budgetRows(spaceId: string, month: string, categories: Category[], budgets: Budget[], txs: Tx[]) {
+export function budgetRows(
+  spaceId: string,
+  month: string,
+  categories: Category[],
+  budgets: Budget[],
+  txs: Tx[],
+) {
   const totals = periodTotals(spaceId, txs, month);
   return live(categories)
-    .filter((c) => c.space_id === spaceId && c.data.type === "expense" && live(budgets).some((b) => b.space_id === spaceId && b.data.month === month && b.data.category_id === c.id))
+    .filter(
+      (c) =>
+        c.space_id === spaceId &&
+        c.data.type === "expense" &&
+        live(budgets).some(
+          (b) => b.space_id === spaceId && b.data.month === month && b.data.category_id === c.id,
+        ),
+    )
     .map((c) => {
-      const b = live(budgets).find((x) => x.space_id === spaceId && x.data.category_id === c.id && x.data.month === month);
+      const b = live(budgets).find(
+        (x) => x.space_id === spaceId && x.data.category_id === c.id && x.data.month === month,
+      );
       const spent = totals.byCategory.get(c.id)?.total ?? 0;
       const limit = b?.data.amount ?? 0;
       return {
@@ -81,12 +98,20 @@ export function budgetRows(spaceId: string, month: string, categories: Category[
 }
 
 export function mainSpaces(spaces: Space[]) {
-  return live(spaces).filter((s) => s.data.type === "personal" && !s.data.purpose && !s.data.archived);
+  return live(spaces).filter(
+    (s) => s.data.type === "personal" && !s.data.purpose && !s.data.archived,
+  );
 }
 
 export function childSpaces(parentId: string, spaces: Space[]) {
   const primary = mainSpaces(spaces)[0]?.id;
-  return live(spaces).filter((s) => !s.data.archived && (s.data.type === "managed" || s.data.purpose === "reimbursement") && (s.data.parent_space_id === parentId || (!s.data.parent_space_id && s.data.type === "managed" && primary === parentId)));
+  return live(spaces).filter(
+    (s) =>
+      !s.data.archived &&
+      (s.data.type === "managed" || s.data.purpose === "reimbursement") &&
+      (s.data.parent_space_id === parentId ||
+        (!s.data.parent_space_id && s.data.type === "managed" && primary === parentId)),
+  );
 }
 
 /** Home shows only managed children of the selected active Main Space. */

@@ -9,7 +9,8 @@ export const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: "savings", label: "Savings" },
   { value: "other", label: "Other" },
 ];
-export const accountTypeLabel = (t: AccountType) => ACCOUNT_TYPES.find((x) => x.value === t)?.label ?? t;
+export const accountTypeLabel = (t: AccountType) =>
+  ACCOUNT_TYPES.find((x) => x.value === t)?.label ?? t;
 
 export const TX_TYPES: { value: TxType; label: string }[] = [
   { value: "expense", label: "Expense" },
@@ -38,10 +39,14 @@ export function describeTx(t: Tx, s: Snapshot): string {
       return `Lent to ${person()}`;
     case "loan_repayment":
       return `Repayment from ${person()}`;
-    case "reimbursement_claim": return "Reimbursement claim";
-    case "reimbursement_payment": return "Reimbursement received";
-    case "investment_funding": return "Investment contribution";
-    case "investment_withdrawal": return "Investment withdrawal";
+    case "reimbursement_claim":
+      return "Reimbursement claim";
+    case "reimbursement_payment":
+      return "Reimbursement received";
+    case "investment_funding":
+      return "Investment contribution";
+    case "investment_withdrawal":
+      return "Investment withdrawal";
     case "adjustment":
       return t.data.note ?? "Balance adjustment";
   }

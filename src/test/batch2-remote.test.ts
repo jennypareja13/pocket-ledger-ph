@@ -27,6 +27,9 @@ describe("Batch 2 remote error classification", () => {
   });
 
   it("uses explicit HTTP status before the error status", () => {
-    expect(classifyRemoteError({ status: 400, code: "PGRST000", message: "unavailable" }, 503).constructor).toBe(Error);
+    expect(
+      classifyRemoteError({ status: 400, code: "PGRST000", message: "unavailable" }, 503)
+        .constructor,
+    ).toBe(Error);
   });
 });
