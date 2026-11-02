@@ -1,5 +1,13 @@
 import type {
-  Account, Borrower, Budget, Category, Kind, LocalRecord, Loan, Space, Tx,
+  Account,
+  Borrower,
+  Budget,
+  Category,
+  Kind,
+  LocalRecord,
+  Loan,
+  Space,
+  Tx,
 } from "./types";
 
 export interface Persistence {
@@ -42,7 +50,10 @@ export interface QuarantineItem {
   at: string;
   raw: string;
 }
-export interface Quarantine { items: QuarantineItem[]; dropped: number }
+export interface Quarantine {
+  items: QuarantineItem[];
+  dropped: number;
+}
 
 /** In-memory index over durable local storage. Every write is persisted before it resolves. */
 export class LedgerStore {
@@ -73,19 +84,43 @@ export class LedgerStore {
 
   async getQuarantine(): Promise<Quarantine> {
     const saved = await this.getKV("quarantine_v1");
-    return saved ? JSON.parse(saved) as Quarantine : { items: [], dropped: 0 };
+    return saved ? (JSON.parse(saved) as Quarantine) : { items: [], dropped: 0 };
   }
 
-  async quarantine(records: { raw: unknown; source: QuarantineItem["source"]; reason: string }[], check: () => void = () => {}): Promise<void> {
+  async quarantine(
+    records: { raw: unknown; source: QuarantineItem["source"]; reason: string }[],
+    check: () => void = () => {},
+  ): Promise<void> {
     const saved = await this.getQuarantine();
     check();
+    const key = (item: Pick<QuarantineItem, "source" | "id" | "reason" | "raw">) =>
+      JSON.stringify([item.source, item.id, item.reason, item.id === "unknown" ? item.raw : ""]);
+    const seen = new Set(saved.items.map(key));
+    let changed = false;
     for (const entry of records) {
-      if (saved.items.length >= 100) { saved.dropped++; continue; }
       const raw = entry.raw;
-      const object = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
-      saved.items.push({ id: typeof object["id"] === "string" ? object["id"] : "unknown", kind: typeof object["kind"] === "string" ? object["kind"] : "unknown", source: entry.source, reason: entry.reason, at: new Date().toISOString(), raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000) });
+      const object =
+        typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+      const item: QuarantineItem = {
+        id: typeof object["id"] === "string" ? object["id"] : "unknown",
+        kind: typeof object["kind"] === "string" ? object["kind"] : "unknown",
+        source: entry.source,
+        reason: entry.reason,
+        at: new Date().toISOString(),
+        raw: (JSON.stringify(raw) ?? String(raw)).slice(0, 4000),
+      };
+      const itemKey = key(item);
+      if (seen.has(itemKey)) continue;
+      seen.add(itemKey);
+      changed = true;
+      if (saved.items.length >= 100) {
+        saved.dropped++;
+        continue;
+      }
+      saved.items.push(item);
     }
     check();
+    if (!changed) return;
     await this.setKV("quarantine_v1", JSON.stringify(saved));
     check();
     this.emit();
@@ -141,7 +176,9 @@ export class LedgerStore {
   async resolveKeepMine(id: string) {
     const r = this.map.get(id);
     if (!r?._meta.server) return;
-    await this.putRaw([{ ...r, _meta: { sync: "pending", rev: r._meta.server.rev, mutation_id: uuid() } }]);
+    await this.putRaw([
+      { ...r, _meta: { sync: "pending", rev: r._meta.server.rev, mutation_id: uuid() } },
+    ]);
   }
 
   async resolveUseCloud(id: string) {
@@ -149,7 +186,12 @@ export class LedgerStore {
     const s = r?._meta.server;
     if (!r || !s) return;
     await this.putRaw([
-      { ...r, data: s.data, deleted: s.deleted, _meta: { sync: "synced", rev: s.rev, mutation_id: r._meta.mutation_id } },
+      {
+        ...r,
+        data: s.data,
+        deleted: s.deleted,
+        _meta: { sync: "synced", rev: s.rev, mutation_id: r._meta.mutation_id },
+      },
     ]);
   }
 
@@ -161,15 +203,16 @@ export class LedgerStore {
   getSnapshot = (): Snapshot => {
     if (!this.snap) {
       const all = this.all();
-      const k = <T,>(kind: Kind) => all.filter((r) => r.kind === kind && !r.deleted) as T[];
+      const k = <T>(kind: Kind) => all.filter((r) => r.kind === kind && !r.deleted) as T[];
       this.snap = {
         version: this.version,
         all,
         spaces: k<Space>("space"),
         accounts: k<Account>("account"),
         categories: k<Category>("category"),
-        transactions: (k<Tx>("transaction")).sort(
-          (a, b) => b.data.date.localeCompare(a.data.date) || b.created_at.localeCompare(a.created_at),
+        transactions: k<Tx>("transaction").sort(
+          (a, b) =>
+            b.data.date.localeCompare(a.data.date) || b.created_at.localeCompare(a.created_at),
         ),
         budgets: k<Budget>("budget"),
         borrowers: k<Borrower>("borrower"),
