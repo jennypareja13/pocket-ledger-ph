@@ -4,6 +4,7 @@ import { useApp, useSpace } from "@/components/app/AppProvider";
 import { Bar, Empty, PageHeader, Panel, Stat } from "@/components/app/bits";
 import { TxRow } from "@/components/app/TxRow";
 import { SyncBadge } from "@/components/app/SyncBadge";
+import { HomeCharts } from "@/components/app/home-charts";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
 import { currentMonth, formatDate, formatMonth } from "@/lib/dates";
@@ -84,6 +85,8 @@ function Dashboard() {
         <Stat label="Expenses this month" value={t.expense} tone="expense" />
         <Stat label="Net cash flow" value={t.net} tone="net" hint="Excludes transfers & loans" />
       </div>
+
+      <HomeCharts spaceId={spaceId} month={month} txs={snap.transactions} categories={categories} />
 
       {managed.length > 0 && (
         <Panel title="Managed funds - held for others" className="mt-4">
