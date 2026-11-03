@@ -131,3 +131,24 @@ export function spacesPageSpaces(spaceId: string | null, spaces: Space[]): Space
 export function ordinaryLoans(loans: Loan[]): Loan[] {
   return loans.filter((l) => !l.data.module);
 }
+
+/** Home chart: income vs expense for the `count` months ending at `endMonth` (YYYY-MM). */
+export function monthlyTrend(spaceId: string, txs: Tx[], endMonth: string, count = 6) {
+  const out: { month: string; income: number; expense: number }[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const [y = 0, m = 1] = endMonth.split("-").map(Number);
+    const t = y * 12 + (m - 1) - i;
+    const month = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+    const p = periodTotals(spaceId, txs, month);
+    out.push({ month, income: p.income, expense: p.expense });
+  }
+  return out;
+}
+
+/** Home chart: expense totals by category for one month; "uncategorized" kept as its own row. */
+export function expenseBreakdown(spaceId: string, txs: Tx[], month: string) {
+  return [...periodTotals(spaceId, txs, month).byCategory]
+    .filter(([, v]) => v.type === "expense" && v.total > 0)
+    .map(([categoryId, v]) => ({ categoryId, total: v.total }))
+    .sort((a, b) => b.total - a.total);
+}
