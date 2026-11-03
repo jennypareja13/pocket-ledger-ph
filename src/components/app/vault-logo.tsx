@@ -3,7 +3,12 @@ import { APP_NAME } from "@/lib/config";
 /** Vector recreation of the PocketVault "Protected Layers" emblem. */
 export function VaultMark({ className = "size-10 shrink-0" }: { className?: string }) {
   return (
-    <svg viewBox="160 100 960 1000" className={className} role="img" aria-label={`${APP_NAME} logo`}>
+    <svg
+      viewBox="160 100 960 1000"
+      className={className}
+      role="img"
+      aria-label={`${APP_NAME} logo`}
+    >
       <path
         d="M638 165 1045 395V775L638 1030 235 775V395Z"
         fill="var(--brand-deep)"
@@ -23,7 +28,10 @@ export function VaultMark({ className = "size-10 shrink-0" }: { className?: stri
         d="M600 690Q600 640 650 615L920 490Q980 470 1025 550L740 685Q685 715 685 770V990Q660 1030 630 1030Q600 1020 598 980Z"
         fill="var(--brand-ice)"
       />
-      <path d="M685 770Q685 715 740 685L1025 550V740Q1020 800 960 830L685 995Z" fill="var(--brand-teal)" />
+      <path
+        d="M685 770Q685 715 740 685L1025 550V740Q1020 800 960 830L685 995Z"
+        fill="var(--brand-teal)"
+      />
     </svg>
   );
 }

@@ -25,6 +25,14 @@ const SLICE_COLORS = [
   "var(--brand-ice)",
 ];
 
+const DOT_CLASSES = [
+  "bg-[var(--brand-teal)]",
+  "bg-[var(--brand-ocean)]",
+  "bg-[var(--brand-aqua)]",
+  "bg-[var(--brand-deep)]",
+  "bg-[var(--brand-ice)]",
+];
+
 const shortMonth = (m: string) => formatMonth(m).split(" ")[0]?.slice(0, 3) ?? m;
 const tooltipValue = (v: unknown) => (typeof v === "number" ? formatPHP(v) : String(v));
 
@@ -70,8 +78,18 @@ export function HomeCharts(props: {
                   tickFormatter={(v: number) => `₱${Math.round(v / 100000)}k`}
                 />
                 <Tooltip formatter={tooltipValue} />
-                <Bar dataKey="income" name="Income" fill="var(--brand-teal)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Expenses" fill="var(--brand-aqua)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="income"
+                  name="Income"
+                  fill="var(--brand-teal)"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="expense"
+                  name="Expenses"
+                  fill="var(--brand-aqua)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -111,8 +129,7 @@ export function HomeCharts(props: {
                 <li key={s.categoryId} className="flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
                     <span
-                      className="size-2.5 shrink-0 rounded-full border border-border"
-                      style={{ background: SLICE_COLORS[i % SLICE_COLORS.length] }}
+                      className={`size-2.5 shrink-0 rounded-full border border-border ${DOT_CLASSES[i % DOT_CLASSES.length] ?? ""}`}
                     />
                     <span className="truncate">{s.name}</span>
                   </span>
