@@ -17,14 +17,17 @@ export function classifyRemoteError(
     httpStatus === 401 ||
     error.code === "PGRST301" ||
     error.code === "PGRST302" ||
-    /jwt|auth/i.test(error.message)
+    /\bjwt\b|not authenticated|unauthenticated/i.test(error.message)
   )
     return new SyncAbort(error.message, error.code, httpStatus);
-  if (httpStatus !== undefined && (httpStatus >= 500 || httpStatus === 408 || httpStatus === 429))
-    return Object.assign(new Error(error.message), { code: error.code, status: httpStatus });
-  if (error.code && !/^\d+$/.test(error.code))
-    return new RecordRejected(error.message, error.code, httpStatus);
-  return Object.assign(new Error(error.message), { code: error.code, status: httpStatus });
+  const transient = () =>
+    Object.assign(new Error(error.message), { code: error.code, status: httpStatus });
+  // No HTTP status means the request never got a server answer (network failure).
+  if (httpStatus === undefined || httpStatus === 0) return transient();
+  if (httpStatus >= 500 || httpStatus === 408 || httpStatus === 429) return transient();
+  // The server answered with a record-level rejection (incl. SQLSTATE codes like 23514).
+  if (error.code) return new RecordRejected(error.message, error.code, httpStatus);
+  return transient();
 }
 
 async function assertUser(userId: string): Promise<void> {
