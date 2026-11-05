@@ -13,7 +13,7 @@ describe("Batch 1 record validation", () => {
     expect(validateRecord(envelope("transaction", { ...transaction, entries: [{ account_id: "cash", delta: 0.5 }] }), { idPolicy: "uuid" })).toEqual({ ok: false, reason: "entries[0].delta must be a whole number within the money limit" });
   });
   it("accepts legacy module loans with an empty borrower and extra fields", () => {
-    expect(validateRecord(envelope("loan", { borrower_id: "", account_id: "cash", principal: 0, date: "2026-11-01", module: "investment", legacy: true }), { idPolicy: "uuid" }).ok).toBe(true);
+    expect(validateRecord(envelope("loan", { borrower_id: "", account_id: "cash", principal: 0, date: "2026-11-01", module: "reimbursement", legacy: true }), { idPolicy: "uuid" }).ok).toBe(true);
   });
   it("accepts object tombstones without checking their payload", () => {
     expect(validateRecord({ ...envelope("transaction", {}), deleted: true }, { idPolicy: "uuid" }).ok).toBe(true);
@@ -24,7 +24,7 @@ describe("Batch 1 record validation", () => {
     for (const amount of [0, -1, MAX_CENTAVOS + 1, 1.1]) expect(validateRecord(envelope("transaction", { ...transaction, amount }), { idPolicy: "uuid" }).ok).toBe(false);
     expect(validateRecord(envelope("transaction", { ...transaction, type: "adjustment", amount: -100 }), { idPolicy: "uuid" }).ok).toBe(true);
     expect(validateRecord(envelope("transaction", { ...transaction, entries: Array.from({ length: 21 }, () => ({ loan_id: "l", delta: 0 })) }), { idPolicy: "uuid" }).ok).toBe(false);
-    expect(validateRecord(envelope("space", { name: "Space", type: "personal", modules: { investments: "yes" } }), { idPolicy: "uuid" }).ok).toBe(false);
+    expect(validateRecord(envelope("space", { name: "Space", type: "personal", modules: { reimbursements: "yes" } }), { idPolicy: "uuid" }).ok).toBe(false);
   });
   it("invalid restore writes nothing, even when invalid IDs already exist", async () => {
     const store = new LedgerStore(memoryPersistence());

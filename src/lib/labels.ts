@@ -43,10 +43,10 @@ export function describeTx(t: Tx, s: Snapshot): string {
       return "Reimbursement claim";
     case "reimbursement_payment":
       return "Reimbursement received";
-    case "investment_funding":
-      return "Investment contribution";
-    case "investment_withdrawal":
-      return "Investment withdrawal";
+    case "bnpl_purchase":
+      return "BNPL purchase";
+    case "bnpl_payment":
+      return "BNPL payment";
     case "adjustment":
       return t.data.note ?? "Balance adjustment";
   }
