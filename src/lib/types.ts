@@ -1,3 +1,5 @@
+import type { BnplPlanData } from "./bnpl";
+
 export type Kind = "space" | "account" | "category" | "transaction" | "budget" | "borrower" | "loan";
 export type SyncState = "pending" | "synced" | "error" | "conflict";
 
@@ -23,7 +25,7 @@ export interface LocalRecord<D = unknown> {
 }
 
 export type SpaceType = "personal" | "managed";
-export interface SpaceData { name: string; type: SpaceType; archived?: boolean | undefined; note?: string | undefined; parent_space_id?: string | undefined; purpose?: "reimbursement" | undefined; modules?: { reimbursements?: boolean | undefined; investments?: boolean | undefined } | undefined }
+export interface SpaceData { name: string; type: SpaceType; archived?: boolean | undefined; note?: string | undefined; parent_space_id?: string | undefined; purpose?: "reimbursement" | undefined; modules?: { reimbursements?: boolean | undefined; bnpl?: boolean | undefined } | undefined; bnpl_budget?: number | undefined }
 
 export type AccountType = "cash" | "bank" | "ewallet" | "savings" | "other";
 export interface AccountData { name: string; type: AccountType; archived?: boolean | undefined }
@@ -31,7 +33,7 @@ export interface AccountData { name: string; type: AccountType; archived?: boole
 export type CategoryType = "income" | "expense";
 export interface CategoryData { name: string; type: CategoryType; archived?: boolean | undefined; system?: "fee" | undefined }
 
-export type TxType = "income" | "expense" | "transfer" | "lend" | "loan_repayment" | "adjustment" | "reimbursement_claim" | "reimbursement_payment" | "investment_funding" | "investment_withdrawal";
+export type TxType = "income" | "expense" | "transfer" | "lend" | "loan_repayment" | "adjustment" | "reimbursement_claim" | "reimbursement_payment" | "bnpl_purchase" | "bnpl_payment";
 export interface Entry {
   account_id?: string | undefined;
   loan_id?: string | undefined;
@@ -54,6 +56,7 @@ export interface TxData {
   loan_id?: string | undefined;
   note?: string | undefined;
   reimbursable?: number | undefined;
+  installment_id?: string | undefined;
   /** Derived, linked balance movements. Rebuilt on every save. */
   entries: Entry[];
 }
@@ -68,12 +71,11 @@ export interface LoanData {
   due_date?: string | undefined;
   note?: string | undefined;
   settled_at?: string | undefined;
-  module?: "reimbursement" | "investment" | undefined;
+  module?: "reimbursement" | "bnpl" | undefined;
   label?: string | undefined;
-  platform?: string | undefined;
-  max_loss?: number | undefined;
   status?: "unsubmitted" | "submitted" | undefined;
   reference?: string | undefined;
+  bnpl?: BnplPlanData | undefined;
 }
 
 export type Space = LocalRecord<SpaceData>;

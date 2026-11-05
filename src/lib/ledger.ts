@@ -1,6 +1,7 @@
 import type { Entry, LocalRecord, TxData } from "./types";
 import { isValidDate } from "./dates";
 import { MAX_CENTAVOS } from "./money";
+import { bnplPaymentEntries, bnplPurchaseEntries } from "./bnpl";
 
 type TxInput = Omit<TxData, "entries">;
 
@@ -41,10 +42,23 @@ export function buildEntries(tx: TxInput): Entry[] {
       ];
     }
     case "reimbursement_payment":
-    case "investment_withdrawal":
       return [{ account_id: tx.account_id, delta: a }, { loan_id: tx.loan_id, delta: -a }];
-    case "investment_funding":
-      return [{ account_id: tx.account_id, delta: -a }, { loan_id: tx.loan_id, delta: a }];
+    case "bnpl_purchase":
+      return bnplPurchaseEntries({
+        loanId: tx.loan_id ?? "",
+        purchase: a - (tx.fee ?? 0),
+        fees: tx.fee ?? 0,
+        categoryId: tx.category_id,
+        feeCategoryId: tx.fee_category_id,
+      });
+    case "bnpl_payment":
+      return bnplPaymentEntries({
+        loanId: tx.loan_id ?? "",
+        accountId: tx.account_id,
+        scheduled: a,
+        extra: tx.fee,
+        feeCategoryId: tx.fee_category_id,
+      });
   }
 }
 
@@ -52,7 +66,7 @@ export interface ValidationCtx {
   spaceId: string;
   accounts: LocalRecord<{ name: string }>[];
   categories: LocalRecord<{ type: string }>[];
-  loans: LocalRecord<{ principal: number }>[];
+  loans: LocalRecord<{ principal: number; module?: string | undefined }>[];
   /** Outstanding of the referenced loan, excluding the tx being edited. */
   loanOutstanding?: number | undefined;
 }
@@ -66,6 +80,23 @@ export function validateTx(tx: TxInput, ctx: ValidationCtx): string | null {
   } else if (tx.amount <= 0) return "Amount must be greater than zero.";
   if (tx.fee !== undefined && (!isInt(tx.fee) || tx.fee < 0)) return "Fee cannot be negative.";
   const inSpace = (id?: string) => ctx.accounts.some((x) => x.id === id && x.space_id === ctx.spaceId && !x.deleted);
+  if (tx.type === "bnpl_purchase" || tx.type === "bnpl_payment") {
+    const plan = ctx.loans.find(
+      (x) => x.id === tx.loan_id && x.space_id === ctx.spaceId && !x.deleted && x.data.module === "bnpl",
+    );
+    if (!plan) return "Choose a BNPL plan in this space.";
+    const fee = tx.fee ?? 0;
+    const cat = (id?: string) =>
+      ctx.categories.some((x) => x.id === id && x.space_id === ctx.spaceId && x.data.type === "expense");
+    if (tx.type === "bnpl_purchase") {
+      if (fee >= tx.amount) return "Fees must be less than the total.";
+      if (!cat(tx.category_id)) return "Choose an expense category.";
+      if (fee > 0 && !cat(tx.fee_category_id)) return "Choose a fee expense category.";
+      return null;
+    }
+    if (!tx.installment_id) return "Choose an installment.";
+    if (fee > 0 && !cat(tx.fee_category_id)) return "Choose a fee expense category.";
+  }
   if (!inSpace(tx.account_id)) return "Choose an account in this space.";
   if (tx.type === "income" || tx.type === "expense") {
     const c = ctx.categories.find((x) => x.id === tx.category_id && x.space_id === ctx.spaceId);

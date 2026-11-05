@@ -1,6 +1,7 @@
 import { isValidDate } from "./dates";
 import { MAX_CENTAVOS } from "./money";
 import type { LocalRecord } from "./types";
+import { isValidDuration, validateSchedule, type Installment } from "./bnpl";
 
 export type RecordEnvelope = Omit<LocalRecord, "_meta">;
 export type ValidationResult = { ok: true; record: RecordEnvelope } | { ok: false; reason: string };
@@ -8,7 +9,7 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 export const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v) && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
 const kinds = ["space", "account", "category", "transaction", "budget", "borrower", "loan"];
-const txTypes = ["income", "expense", "transfer", "lend", "loan_repayment", "adjustment", "reimbursement_claim", "reimbursement_payment", "investment_funding", "investment_withdrawal"];
+const txTypes = ["income", "expense", "transfer", "lend", "loan_repayment", "adjustment", "reimbursement_claim", "reimbursement_payment", "bnpl_purchase", "bnpl_payment"];
 
 /** Validate individual records only; references and derived accounting are intentionally not checked. */
 export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" }): ValidationResult {
@@ -43,9 +44,10 @@ export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" })
   switch (raw["kind"]) {
     case "space":
       text("name", false, 200, 1); choice("type", ["personal", "managed"]); bool("archived"); text("note", true); text("parent_space_id", true); choice("purpose", ["reimbursement"], true);
+      money("bnpl_budget", 0, true);
       if (d["modules"] !== undefined) {
         if (!isPlainObject(d["modules"])) errors.push("modules must be an object");
-        else for (const key of ["reimbursements", "investments"]) if (d["modules"][key] !== undefined && typeof d["modules"][key] !== "boolean") errors.push(`modules.${key} must be a boolean`);
+        else for (const key of ["reimbursements", "bnpl"]) if (d["modules"][key] !== undefined && typeof d["modules"][key] !== "boolean") errors.push(`modules.${key} must be a boolean`);
       }
       break;
     case "account": text("name", false, 1000, 1); choice("type", ["cash", "bank", "ewallet", "savings", "other"]); bool("archived"); break;
@@ -58,7 +60,30 @@ export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" })
     case "loan":
       text("borrower_id"); text("account_id"); money("principal", 0); date("date");
       for (const key of ["due_date", "settled_at", "note", "label", "platform", "reference"]) text(key, true);
-      choice("module", ["reimbursement", "investment"], true); choice("status", ["unsubmitted", "submitted"], true); money("max_loss", 0, true);
+      choice("module", ["reimbursement", "bnpl"], true); choice("status", ["unsubmitted", "submitted"], true);
+      if (d["module"] === "bnpl") {
+        const plan = d["bnpl"];
+        if (!isPlainObject(plan)) errors.push("bnpl must be an object");
+        else {
+          const schedule = plan["schedule"];
+          const okSchedule =
+            Array.isArray(schedule) &&
+            schedule.every(
+              (i: unknown) =>
+                isPlainObject(i) && typeof i["id"] === "string" && typeof i["due_date"] === "string" && typeof i["amount"] === "number",
+            );
+          if (!okSchedule) errors.push("bnpl.schedule must be a list of installments");
+          else {
+            const reason = validateSchedule(schedule as Installment[]);
+            if (reason) errors.push(`bnpl.schedule: ${reason}`);
+            if (!isValidDuration(plan["months"]) || plan["months"] !== schedule.length)
+              errors.push("bnpl.months must be 1-36 and equal the number of installments");
+          }
+          const provider = plan["provider"];
+          if (typeof provider !== "string" || !provider.trim() || provider.length > 100)
+            errors.push("bnpl.provider must be a string of 1-100 characters");
+        }
+      }
       break;
     case "transaction":
       choice("type", txTypes); date("date"); money("amount", d["type"] === "adjustment" ? -MAX_CENTAVOS : 1);

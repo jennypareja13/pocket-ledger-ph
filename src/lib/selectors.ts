@@ -152,3 +152,23 @@ export function expenseBreakdown(spaceId: string, txs: Tx[], month: string) {
     .map(([categoryId, v]) => ({ categoryId, total: v.total }))
     .sort((a, b) => b.total - a.total);
 }
+
+/** BNPL plans belong only to an active Main Space; any other selection sees none. */
+export function bnplPlans(spaceId: string, spaces: Space[], loans: Loan[]): Loan[] {
+  if (!mainSpaces(spaces).some((s) => s.id === spaceId)) return [];
+  return live(loans).filter((l) => l.space_id === spaceId && l.data.module === "bnpl");
+}
+
+export function bnplPaidIds(txs: Tx[]): Set<string> {
+  const ids = new Set<string>();
+  for (const t of live(txs))
+    if (t.data.type === "bnpl_payment" && t.data.installment_id) ids.add(t.data.installment_id);
+  return ids;
+}
+
+/** Remaining BNPL obligation as a positive number (never -0). */
+export const bnplOwed = (planId: string, txs: Tx[]) => 0 - loanOutstanding(planId, txs);
+
+/** Module transactions are managed on their own pages, not in the generic dialog. */
+export const isModuleTx = (tx: Tx) =>
+  tx.data.type.startsWith("reimbursement_") || tx.data.type.startsWith("bnpl_");

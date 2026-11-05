@@ -81,7 +81,7 @@ describe("Batch 2 ordinary loan visibility", () => {
     };
     const ordinary = await store.save("loan", "main", data);
     const settled = await store.save("loan", "main", { ...data, settled_at: "2026-11-02" });
-    await store.save("loan", "main", { ...data, module: "investment" });
+    await store.save("loan", "main", { ...data, module: "bnpl" });
     await store.save("loan", "main", { ...data, module: "reimbursement" });
     expect(ordinaryLoans(store.getSnapshot().loans).map((l) => l.id)).toEqual([
       ordinary.id,
