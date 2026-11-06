@@ -84,7 +84,26 @@ export class LedgerStore {
 
   async getQuarantine(): Promise<Quarantine> {
     const saved = await this.getKV("quarantine_v1");
-    return saved ? (JSON.parse(saved) as Quarantine) : { items: [], dropped: 0 };
+    if (saved === null) return { items: [], dropped: 0 };
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(saved);
+    } catch {
+      parsed = undefined;
+    }
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      "items" in parsed &&
+      Array.isArray(parsed.items) &&
+      "dropped" in parsed &&
+      typeof parsed.dropped === "number"
+    ) {
+      return parsed as Quarantine;
+    }
+    await this.setKV("quarantine_v1_corrupt_" + new Date().toISOString(), saved);
+    return { items: [], dropped: 0 };
   }
 
   async quarantine(
