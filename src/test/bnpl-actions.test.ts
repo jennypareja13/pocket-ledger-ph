@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  bnplEnabled, createPlan, deletePlan, markInstallmentPaid, setBnplBudget,
-  toggleBnpl, updateInstallmentDueDate, type CreatePlanInput,
+  bnplEnabled,
+  createPlan,
+  deletePlan,
+  markInstallmentPaid,
+  setBnplBudget,
+  toggleBnpl,
+  updateInstallmentDueDate,
+  type CreatePlanInput,
 } from "@/lib/bnpl-actions";
 import { buildSchedule } from "@/lib/bnpl";
 import { createAccount, createSpace } from "@/lib/actions";
@@ -11,8 +17,14 @@ import { buildEntries, validateTx } from "@/lib/ledger";
 import { txTypeLabel } from "@/lib/labels";
 import { restoreBackup } from "@/lib/restore";
 import {
-  accountBalance, bnplOwed, bnplPlans, expenseBreakdown, monthlyTrend,
-  ordinaryLoans, periodTotals, spaceReceivable,
+  accountBalance,
+  bnplOwed,
+  bnplPlans,
+  expenseBreakdown,
+  monthlyTrend,
+  ordinaryLoans,
+  periodTotals,
+  spaceReceivable,
 } from "@/lib/selectors";
 import { LedgerStore, memoryPersistence } from "@/lib/store";
 import { syncOnce, type Remote, type RemoteRow } from "@/lib/sync-engine";
@@ -29,8 +41,12 @@ async function setup() {
   const category = store.getSnapshot().categories.find((c) => c.data.name === "Food");
   if (!category) throw new Error("Missing test category.");
   const input = (amounts = [p(1000), p(1000), p(1000)]): CreatePlanInput => ({
-    description: "Appliance", provider: "Store", purchaseDate: date, categoryId: category.id,
-    schedule: buildSchedule("2026-11-30", amounts, () => crypto.randomUUID()), note: "Reviewed",
+    description: "Appliance",
+    provider: "Store",
+    purchaseDate: date,
+    categoryId: category.id,
+    schedule: buildSchedule("2026-11-30", amounts, () => crypto.randomUUID()),
+    note: "Reviewed",
   });
   const pay = (plan: string, installment: string, actualPaid = p(1000)) =>
     markInstallmentPaid(store, main, plan, installment, { accountId: bank, date, actualPaid });
@@ -52,7 +68,14 @@ describe("BNPL actions", () => {
     expect(purchase.data.account_id).toBe("");
     expect(purchase.data.installment_id).toBeUndefined();
     expect(purchase.data.entries.every((entry) => entry.account_id === undefined)).toBe(true);
-    expect(validateTx(purchase.data, { spaceId: main, accounts: [], categories: snap.categories, loans: snap.loans })).toBeNull();
+    expect(
+      validateTx(purchase.data, {
+        spaceId: main,
+        accounts: [],
+        categories: snap.categories,
+        loans: snap.loans,
+      }),
+    ).toBeNull();
     expect(validateRecord(purchase, { idPolicy: "uuid" }).ok).toBe(true);
     expect(expenseBreakdown(main, snap.transactions, "2026-11")[0]?.total).toBe(p(3000));
     expect(monthlyTrend(main, snap.transactions, "2026-11", 1)[0]?.expense).toBe(p(3000));
@@ -62,22 +85,32 @@ describe("BNPL actions", () => {
     const { store, main, input } = await setup();
     const reviewed = input([p(1000), p(1050), p(950)]);
     const id = await createPlan(store, main, reviewed);
-    expect(store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.schedule).toEqual(reviewed.schedule);
+    expect(store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.schedule).toEqual(
+      reviewed.schedule,
+    );
     reviewed.schedule[0] = { id: "changed", due_date: date, amount: 1 };
-    expect(store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.schedule[0]?.amount).toBe(p(1000));
+    expect(
+      store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.schedule[0]?.amount,
+    ).toBe(p(1000));
   });
 
   it.each([5, 24])("accepts a custom duration of %i", async (months) => {
     const { store, main, input } = await setup();
     const id = await createPlan(store, main, input(Array.from({ length: months }, () => p(1000))));
-    expect(store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.months).toBe(months);
+    expect(store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.months).toBe(
+      months,
+    );
   });
 
   it("rejects 37 installments without any write", async () => {
     const { store, main, input } = await setup();
     const before = structuredClone(store.all());
     const base = input();
-    const schedule = Array.from({ length: 37 }, () => ({ id: crypto.randomUUID(), due_date: date, amount: p(1000) }));
+    const schedule = Array.from({ length: 37 }, () => ({
+      id: crypto.randomUUID(),
+      due_date: date,
+      amount: p(1000),
+    }));
     await expect(createPlan(store, main, { ...base, schedule })).rejects.toThrow("1 to 36");
     expect(store.all()).toEqual(before);
   });
@@ -86,7 +119,9 @@ describe("BNPL actions", () => {
     const { store, main, bank, input, pay } = await setup();
     const reviewed = { ...input([p(1100), p(1100), p(1100)]), purchaseTotal: p(3000) };
     const id = await createPlan(store, main, reviewed);
-    const fee = store.getSnapshot().categories.find((category) => category.data.name === "BNPL fees & interest");
+    const fee = store
+      .getSnapshot()
+      .categories.find((category) => category.data.name === "BNPL fees & interest");
     if (!fee) throw new Error("Missing fee category.");
     const totals = periodTotals(main, store.getSnapshot().transactions, "2026-11");
     expect(totals.byCategory.get(reviewed.categoryId)?.total).toBe(p(3000));
@@ -96,8 +131,13 @@ describe("BNPL actions", () => {
     const snap = store.getSnapshot();
     expect(accountBalance(bank, snap.transactions)).toBe(-p(3300));
     expect(bnplOwed(id, snap.transactions)).toBe(0);
-    expect(periodTotals(main, snap.transactions, "2026-11")).toMatchObject({ expense: p(3300), income: 0 });
-    expect(snap.categories.filter((category) => category.data.name === "BNPL fees & interest")).toHaveLength(1);
+    expect(periodTotals(main, snap.transactions, "2026-11")).toMatchObject({
+      expense: p(3300),
+      income: 0,
+    });
+    expect(
+      snap.categories.filter((category) => category.data.name === "BNPL fees & interest"),
+    ).toHaveLength(1);
   });
 
   it("rejects repeat payments and uses one identity across devices", async () => {
@@ -112,12 +152,18 @@ describe("BNPL actions", () => {
     const before = structuredClone(store.all());
     await expect(pay(plan, first.id)).rejects.toThrow("already paid");
     expect(store.all()).toEqual(before);
-    const otherId = await markInstallmentPaid(other, main, plan, first.id, { accountId: bank, date, actualPaid: p(1000) });
+    const otherId = await markInstallmentPaid(other, main, plan, first.id, {
+      accountId: bank,
+      date,
+      actualPaid: p(1000),
+    });
     expect(otherId).toBe(id);
     const remoteRecord = other.get(otherId);
     if (!remoteRecord) throw new Error("Missing second device payment.");
     await store.putRaw([remoteRecord]);
-    expect(store.getSnapshot().transactions.filter((tx) => tx.data.installment_id === first.id)).toHaveLength(1);
+    expect(
+      store.getSnapshot().transactions.filter((tx) => tx.data.installment_id === first.id),
+    ).toHaveLength(1);
     expect(accountBalance(bank, store.getSnapshot().transactions)).toBe(-p(1000));
   });
 
@@ -136,7 +182,9 @@ describe("BNPL actions", () => {
     expect(accountBalance(bank, snap.transactions)).toBe(-p(1050));
     expect(bnplOwed(id, snap.transactions)).toBe(p(2000));
     const fee = snap.categories.find((category) => category.data.name === "BNPL fees & interest");
-    expect(periodTotals(main, snap.transactions, "2026-11").byCategory.get(fee?.id ?? "")?.total).toBe(p(50));
+    expect(
+      periodTotals(main, snap.transactions, "2026-11").byCategory.get(fee?.id ?? "")?.total,
+    ).toBe(p(50));
   });
 
   it("deletes plan and purchase atomically only before payments", async () => {
@@ -170,28 +218,47 @@ describe("BNPL actions", () => {
     const previous = structuredClone(store.getSnapshot().loans[0]?.data);
     if (!previous?.bnpl) throw new Error("Missing plan.");
     await updateInstallmentDueDate(store, id, first.id, "2026-12-01");
-    expect(store.getSnapshot().loans[0]?.data).toEqual({ ...previous, bnpl: {
-      ...previous.bnpl, schedule: previous.bnpl.schedule.map((item) => item.id === first.id ? { ...item, due_date: "2026-12-01" } : item),
-    } });
+    expect(store.getSnapshot().loans[0]?.data).toEqual({
+      ...previous,
+      bnpl: {
+        ...previous.bnpl,
+        schedule: previous.bnpl.schedule.map((item) =>
+          item.id === first.id ? { ...item, due_date: "2026-12-01" } : item,
+        ),
+      },
+    });
     const payment = await pay(id, first.id);
     const createdAt = store.get(payment)?.created_at;
     const before = structuredClone(store.all());
-    await expect(updateInstallmentDueDate(store, id, first.id, date)).rejects.toThrow("Paid installment");
+    await expect(updateInstallmentDueDate(store, id, first.id, date)).rejects.toThrow(
+      "Paid installment",
+    );
     expect(store.all()).toEqual(before);
     await store.remove([payment]);
     expect(await pay(id, first.id)).toBe(payment);
     expect(store.get(payment)?.deleted).toBe(false);
     expect(store.get(payment)?.created_at).toBe(createdAt);
-    expect(store.getSnapshot().transactions.filter((tx) => tx.data.installment_id === first.id)).toHaveLength(1);
+    expect(
+      store.getSnapshot().transactions.filter((tx) => tx.data.installment_id === first.id),
+    ).toHaveLength(1);
   });
 
   it("preserves Main fields and validates toggles and budgets", async () => {
     const { store, main, input } = await setup();
-    const data: SpaceData = { name: "Main", type: "personal", note: "Keep", modules: { reimbursements: true }, bnpl_budget: p(5000) };
+    const data: SpaceData = {
+      name: "Main",
+      type: "personal",
+      note: "Keep",
+      modules: { reimbursements: true },
+      bnpl_budget: p(5000),
+    };
     await store.save("space", main, data, main);
     expect(bnplEnabled(store.getSnapshot(), main)).toBe(true);
     await toggleBnpl(store, main, false);
-    expect(store.getSnapshot().spaces[0]?.data).toEqual({ ...data, modules: { reimbursements: true, bnpl: false } });
+    expect(store.getSnapshot().spaces[0]?.data).toEqual({
+      ...data,
+      modules: { reimbursements: true, bnpl: false },
+    });
     const before = structuredClone(store.all());
     await expect(createPlan(store, main, input())).rejects.toThrow("Enable BNPL");
     expect(store.all()).toEqual(before);
@@ -216,23 +283,59 @@ describe("BNPL actions", () => {
     await pay(id, first.id);
     const plan = store.getSnapshot().loans.find((loan) => loan.id === id);
     if (!plan?.data.bnpl) throw new Error("Missing plan.");
-    for (const record of store.all()) expect(validateRecord(record, { idPolicy: "uuid" }).ok).toBe(true);
-    for (const patch of [{ months: 4 }, { provider: "" }, { provider: 123 }, { schedule: [{ ...first, amount: -1 }] }]) {
-      expect(validateRecord({ ...plan, data: { ...plan.data, bnpl: { ...plan.data.bnpl, ...patch } } }, { idPolicy: "uuid" }).ok).toBe(false);
+    for (const record of store.all())
+      expect(validateRecord(record, { idPolicy: "uuid" }).ok).toBe(true);
+    for (const patch of [
+      { months: 4 },
+      { provider: "" },
+      { provider: 123 },
+      { schedule: [{ ...first, amount: -1 }] },
+    ]) {
+      expect(
+        validateRecord(
+          { ...plan, data: { ...plan.data, bnpl: { ...plan.data.bnpl, ...patch } } },
+          { idPolicy: "uuid" },
+        ).ok,
+      ).toBe(false);
     }
-    expect(validateRecord({ ...plan, data: { ...plan.data, module: "investment" } }, { idPolicy: "uuid" }).ok).toBe(false);
+    expect(
+      validateRecord(
+        { ...plan, data: { ...plan.data, module: "investment" } },
+        { idPolicy: "uuid" },
+      ).ok,
+    ).toBe(false);
     const payment = store.getSnapshot().transactions.find((tx) => tx.data.type === "bnpl_payment");
     if (!payment) throw new Error("Missing payment.");
-    expect(validateRecord({ ...payment, data: { ...payment.data, type: "investment_fund" } }, { idPolicy: "uuid" }).ok).toBe(false);
+    expect(
+      validateRecord(
+        { ...payment, data: { ...payment.data, type: "investment_fund" } },
+        { idPolicy: "uuid" },
+      ).ok,
+    ).toBe(false);
     const restored = new LedgerStore(memoryPersistence());
     const records = store.all().map(({ _meta: omitted, ...record }) => {
       void omitted;
       return record;
     });
-    expect(await restoreBackup(restored, JSON.parse(JSON.stringify({ version: 1, records })), "uuid", () => true)).toBe(records.length);
+    expect(
+      await restoreBackup(
+        restored,
+        JSON.parse(JSON.stringify({ version: 1, records })),
+        "uuid",
+        () => true,
+      ),
+    ).toBe(records.length);
     expect(bnplOwed(id, restored.getSnapshot().transactions)).toBe(p(2000));
-    const row: RemoteRow = { ...plan, data: { ...plan.data, bnpl: { ...plan.data.bnpl, months: 37 } }, rev: 1, last_mutation_id: crypto.randomUUID() };
-    const remote: Remote = { push: async () => ({ status: "ok", rev: 1 }), pull: async () => [row] };
+    const row: RemoteRow = {
+      ...plan,
+      data: { ...plan.data, bnpl: { ...plan.data.bnpl, months: 37 } },
+      rev: 1,
+      last_mutation_id: crypto.randomUUID(),
+    };
+    const remote: Remote = {
+      push: async () => ({ status: "ok", rev: 1 }),
+      pull: async () => [row],
+    };
     const pulled = new LedgerStore(memoryPersistence());
     expect((await syncOnce(pulled, remote)).pullOk).toBe(true);
     expect(pulled.get(id)).toBeUndefined();
@@ -260,7 +363,12 @@ describe("BNPL actions", () => {
     await createPlan(store, main, input());
     const managed = await createSpace(store, "Managed", "managed", main);
     const purpose = crypto.randomUUID();
-    await store.save("space", purpose, { name: "Work", type: "personal", purpose: "reimbursement" }, purpose);
+    await store.save(
+      "space",
+      purpose,
+      { name: "Work", type: "personal", purpose: "reimbursement" },
+      purpose,
+    );
     const snap = store.getSnapshot();
     expect(bnplPlans(main, snap.spaces, snap.loans)).toHaveLength(1);
     expect(bnplPlans(managed, snap.spaces, snap.loans)).toEqual([]);
@@ -274,16 +382,32 @@ describe("BNPL actions", () => {
     const first = reviewed.schedule[0];
     if (!first) throw new Error("Missing installment.");
     const beforePurchase = structuredClone(store.all());
-    await expect(createPlan(store, main, { ...reviewed, purchaseDate: "2026-02-30" })).rejects.toThrow("purchase date");
+    await expect(
+      createPlan(store, main, { ...reviewed, purchaseDate: "2026-02-30" }),
+    ).rejects.toThrow("purchase date");
     expect(store.all()).toEqual(beforePurchase);
     const id = await createPlan(store, main, reviewed);
     const foreign = await createSpace(store, "Other", "personal");
     const otherBank = await createAccount(store, foreign, "Other bank", "bank", 0);
     const before = structuredClone(store.all());
-    await expect(markInstallmentPaid(store, main, id, first.id, { accountId: bank, date: "2026-04-31", actualPaid: p(1000) })).rejects.toThrow("payment date");
-    await expect(markInstallmentPaid(store, main, id, first.id, { accountId: otherBank, date, actualPaid: p(1000) })).rejects.toThrow("active account");
+    await expect(
+      markInstallmentPaid(store, main, id, first.id, {
+        accountId: bank,
+        date: "2026-04-31",
+        actualPaid: p(1000),
+      }),
+    ).rejects.toThrow("payment date");
+    await expect(
+      markInstallmentPaid(store, main, id, first.id, {
+        accountId: otherBank,
+        date,
+        actualPaid: p(1000),
+      }),
+    ).rejects.toThrow("active account");
     await expect(pay(id, "missing")).rejects.toThrow("not found");
-    await expect(updateInstallmentDueDate(store, id, first.id, "2026-02-31")).rejects.toThrow("valid due date");
+    await expect(updateInstallmentDueDate(store, id, first.id, "2026-02-31")).rejects.toThrow(
+      "valid due date",
+    );
     expect(store.all()).toEqual(before);
     await store.save("account", main, { name: "Bank", type: "bank", archived: true }, bank);
     const archived = structuredClone(store.all());
@@ -293,14 +417,41 @@ describe("BNPL actions", () => {
 });
 
 describe("strict calendar dates", () => {
-  it.each(["2026-02-30", "2026-02-31", "2026-04-31", "2026-13-01", "2026-02-29", "2026-00-01", "2026-01-00", "1900-02-29"])("rejects %s", (value) => {
+  it.each([
+    "2026-02-30",
+    "2026-02-31",
+    "2026-04-31",
+    "2026-13-01",
+    "2026-02-29",
+    "2026-00-01",
+    "2026-01-00",
+    "1900-02-29",
+  ])("rejects %s", (value) => {
     expect(isValidDate(value)).toBe(false);
     const tx = { type: "adjustment" as const, amount: 100, account_id: "bank", date: value };
-    expect(validateTx(tx, { spaceId: "main", accounts: [], categories: [], loans: [] })).toBe("Choose a valid date.");
+    expect(validateTx(tx, { spaceId: "main", accounts: [], categories: [], loans: [] })).toBe(
+      "Choose a valid date.",
+    );
     const at = "2026-11-06T00:00:00Z";
-    expect(validateRecord({ id: crypto.randomUUID(), kind: "transaction", space_id: "main", deleted: false, created_at: at, updated_at: at, data: { ...tx, entries: buildEntries(tx) } }, { idPolicy: "uuid" }).ok).toBe(false);
+    expect(
+      validateRecord(
+        {
+          id: crypto.randomUUID(),
+          kind: "transaction",
+          space_id: "main",
+          deleted: false,
+          created_at: at,
+          updated_at: at,
+          data: { ...tx, entries: buildEntries(tx) },
+        },
+        { idPolicy: "uuid" },
+      ).ok,
+    ).toBe(false);
   });
-  it.each(["2028-02-29", "2026-02-28", "2026-12-31", "2000-02-29", "0099-01-01"])("accepts %s", (value) => {
-    expect(isValidDate(value)).toBe(true);
-  });
+  it.each(["2028-02-29", "2026-02-28", "2026-12-31", "2000-02-29", "0099-01-01"])(
+    "accepts %s",
+    (value) => {
+      expect(isValidDate(value)).toBe(true);
+    },
+  );
 });
