@@ -19,6 +19,8 @@ export const TX_TYPES: { value: TxType; label: string }[] = [
   { value: "lend", label: "Lend money" },
   { value: "loan_repayment", label: "Repayment received" },
   { value: "adjustment", label: "Balance adjustment" },
+  { value: "bnpl_purchase", label: "BNPL purchase" },
+  { value: "bnpl_payment", label: "BNPL payment" },
 ];
 export const txTypeLabel = (t: TxType) => TX_TYPES.find((x) => x.value === t)?.label ?? t;
 
