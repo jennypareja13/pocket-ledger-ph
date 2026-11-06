@@ -29,5 +29,7 @@ export function formatDateTime(iso: string): string {
   }).format(new Date(iso));
 }
 export function isValidDate(d: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d + "T00:00:00Z"));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const date = new Date(d + "T00:00:00Z");
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === d;
 }
