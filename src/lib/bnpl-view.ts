@@ -8,7 +8,7 @@ import {
   type InstallmentStatus,
 } from "./bnpl";
 import { bnplEnabled } from "./bnpl-actions";
-import { bnplPaidIds, bnplPlans } from "./selectors";
+import { bnplPaidIds, bnplPlans, mainSpaces } from "./selectors";
 import type { Snapshot } from "./store";
 import type { Loan } from "./types";
 
@@ -42,7 +42,8 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
   const plans = bnplPlans(spaceId, snap.spaces, snap.loans).filter(
     (p) => p.data.bnpl && !p.data.bnpl.cancelled,
   );
-  const enabled = plans.length > 0 || isMain(snap, spaceId) ? bnplEnabled(snap, spaceId) : false;
+  const isMain = mainSpaces(snap.spaces).some((s) => s.id === spaceId);
+  const enabled = isMain && bnplEnabled(snap, spaceId);
   const empty: BnplView = {
     enabled,
     month,
@@ -53,7 +54,7 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
     upcoming: [],
     plans: [],
   };
-  if (!enabled || !isMain(snap, spaceId)) return { ...empty, enabled: false };
+  if (!enabled) return empty;
   const paid = bnplPaidIds(snap.transactions);
   const like = plans.map((p) => ({ data: { schedule: p.data.bnpl?.schedule ?? [] } }));
   const { committed, count } = monthCommitment(like, month, paid);
@@ -93,19 +94,6 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
     upcoming,
     plans: progress,
   };
-}
-
-function isMain(snap: Snapshot, spaceId: string) {
-  return bnplPlans(spaceId, snap.spaces, []).length === 0 && mainIds(snap).has(spaceId);
-}
-function mainIds(snap: Snapshot) {
-  return new Set(
-    snap.spaces
-      .filter(
-        (s) => !s.deleted && s.data.type === "personal" && !s.data.purpose && !s.data.archived,
-      )
-      .map((s) => s.id),
-  );
 }
 
 /** Split a total into `n` whole-centavo amounts; any leftover centavos go to the first ones. */
