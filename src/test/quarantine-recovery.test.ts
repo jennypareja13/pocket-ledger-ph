@@ -18,7 +18,7 @@ describe("quarantine recovery", () => {
       backup[0].slice("quarantine_v1_corrupt_".length),
     );
     expect(await store.getKV(backup[0])).toBe(raw);
-    expect(await store.getKV("quarantine_v1")).toBe(raw);
+    expect(await store.getKV("quarantine_v1")).toBe(JSON.stringify({ items: [], dropped: 0 }));
   });
 
   it("stores one malformed row after recovery and completes a repeated pull", async () => {
@@ -60,5 +60,31 @@ describe("quarantine recovery", () => {
     expect(await store.getQuarantine()).toEqual(valid);
     expect(await store.getKV("quarantine_v1")).toBe(raw);
     expect(write).not.toHaveBeenCalled();
+  });
+
+  it("writes only one backup while recovering from a corrupt value", async () => {
+    const persistence = memoryPersistence();
+    const store = new LedgerStore(persistence);
+    await store.setKV("quarantine_v1", "{broken");
+    const write = vi.spyOn(persistence, "setKV");
+    await store.getQuarantine();
+    await store.getQuarantine();
+    await store.getQuarantine();
+    const backups = write.mock.calls.filter(([key]) => key.startsWith("quarantine_v1_corrupt_"));
+    expect(backups).toHaveLength(1);
+    expect(await store.getQuarantine()).toEqual({ items: [], dropped: 0 });
+  });
+
+  it("keeps the corrupt text if the backup write fails, and does not overwrite the live value", async () => {
+    const persistence = memoryPersistence();
+    const store = new LedgerStore(persistence);
+    await store.setKV("quarantine_v1", "{broken");
+    const original = persistence.setKV.bind(persistence);
+    vi.spyOn(persistence, "setKV").mockImplementation(async (key, value) => {
+      if (key.startsWith("quarantine_v1_corrupt_")) throw new Error("disk full");
+      return original(key, value);
+    });
+    await expect(store.getQuarantine()).rejects.toThrow("disk full");
+    expect(await store.getKV("quarantine_v1")).toBe("{broken");
   });
 });
