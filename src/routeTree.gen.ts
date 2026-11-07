@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ShellIndexRouteImport } from './routes/_shell.index'
 import { Route as ShellAccountsRouteImport } from './routes/_shell.accounts'
 import { Route as ShellAnalysisRouteImport } from './routes/_shell.analysis'
+import { Route as ShellBnplRouteImport } from './routes/_shell.bnpl'
 import { Route as ShellBudgetsRouteImport } from './routes/_shell.budgets'
 import { Route as ShellLoansRouteImport } from './routes/_shell.loans'
 import { Route as ShellReportsRouteImport } from './routes/_shell.reports'
@@ -43,6 +44,11 @@ const ShellAccountsRoute = ShellAccountsRouteImport.update({
 const ShellAnalysisRoute = ShellAnalysisRouteImport.update({
   id: '/analysis',
   path: '/analysis',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellBnplRoute = ShellBnplRouteImport.update({
+  id: '/bnpl',
+  path: '/bnpl',
   getParentRoute: () => ShellRoute,
 } as any)
 const ShellBudgetsRoute = ShellBudgetsRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/accounts': typeof ShellAccountsRoute
   '/analysis': typeof ShellAnalysisRoute
+  '/bnpl': typeof ShellBnplRoute
   '/budgets': typeof ShellBudgetsRoute
   '/loans': typeof ShellLoansRoute
   '/reports': typeof ShellReportsRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/accounts': typeof ShellAccountsRoute
   '/analysis': typeof ShellAnalysisRoute
+  '/bnpl': typeof ShellBnplRoute
   '/budgets': typeof ShellBudgetsRoute
   '/loans': typeof ShellLoansRoute
   '/reports': typeof ShellReportsRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_shell/accounts': typeof ShellAccountsRoute
   '/_shell/analysis': typeof ShellAnalysisRoute
+  '/_shell/bnpl': typeof ShellBnplRoute
   '/_shell/budgets': typeof ShellBudgetsRoute
   '/_shell/loans': typeof ShellLoansRoute
   '/_shell/reports': typeof ShellReportsRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/accounts'
     | '/analysis'
+    | '/bnpl'
     | '/budgets'
     | '/loans'
     | '/reports'
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/accounts'
     | '/analysis'
+    | '/bnpl'
     | '/budgets'
     | '/loans'
     | '/reports'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_shell/accounts'
     | '/_shell/analysis'
+    | '/_shell/bnpl'
     | '/_shell/budgets'
     | '/_shell/loans'
     | '/_shell/reports'
@@ -196,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellAnalysisRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/bnpl': {
+      id: '/_shell/bnpl'
+      path: '/bnpl'
+      fullPath: '/bnpl'
+      preLoaderRoute: typeof ShellBnplRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/_shell/budgets': {
       id: '/_shell/budgets'
       path: '/budgets'
@@ -244,6 +263,7 @@ declare module '@tanstack/react-router' {
 interface ShellRouteChildren {
   ShellAccountsRoute: typeof ShellAccountsRoute
   ShellAnalysisRoute: typeof ShellAnalysisRoute
+  ShellBnplRoute: typeof ShellBnplRoute
   ShellBudgetsRoute: typeof ShellBudgetsRoute
   ShellLoansRoute: typeof ShellLoansRoute
   ShellReportsRoute: typeof ShellReportsRoute
@@ -256,6 +276,7 @@ interface ShellRouteChildren {
 const ShellRouteChildren: ShellRouteChildren = {
   ShellAccountsRoute: ShellAccountsRoute,
   ShellAnalysisRoute: ShellAnalysisRoute,
+  ShellBnplRoute: ShellBnplRoute,
   ShellBudgetsRoute: ShellBudgetsRoute,
   ShellLoansRoute: ShellLoansRoute,
   ShellReportsRoute: ShellReportsRoute,
