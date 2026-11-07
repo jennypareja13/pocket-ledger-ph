@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import {
   ArrowLeftRight,
   BarChart3,
+  CalendarClock,
   HandCoins,
   Layers,
   LayoutDashboard,
@@ -27,6 +28,7 @@ import { createAccount, createSpace } from "@/lib/actions";
 import { parseAmount } from "@/lib/money";
 import { ACCOUNT_TYPES } from "@/lib/labels";
 import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
+import { bnplEnabled } from "@/lib/bnpl-actions";
 import type { AccountType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell")({
@@ -41,6 +43,7 @@ const NAV = [
   { to: "/budgets", label: "Budgets", icon: PiggyBank },
   { to: "/loans", label: "Loans", icon: HandCoins },
   { to: "/analysis", label: "Analysis", icon: BarChart3 },
+  { to: "/bnpl", label: "BNPL", icon: CalendarClock },
   { to: "/spaces", label: "Spaces & categories", icon: Layers },
   { to: "/settings", label: "Settings & sync", icon: Settings },
 ] as const;
@@ -148,9 +151,13 @@ function SpacePicker({ className }: { className?: string }) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const loc = useLocation();
+  const { snap } = useApp();
+  const { space } = useSpace();
+  const showBnpl =
+    !!space && mainSpaces(snap.spaces).some((s) => s.id === space.id) && bnplEnabled(snap, space.id);
   return (
     <nav className="space-y-0.5" aria-label="Main">
-      {NAV.map(({ to, label, icon: Icon }) => {
+      {NAV.filter((n) => n.to !== "/bnpl" || showBnpl).map(({ to, label, icon: Icon }) => {
         const active = to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(to);
         return (
           <Link
