@@ -103,7 +103,9 @@ export class LedgerStore {
       return parsed as Quarantine;
     }
     await this.setKV("quarantine_v1_corrupt_" + new Date().toISOString(), saved);
-    return { items: [], dropped: 0 };
+    const fresh: Quarantine = { items: [], dropped: 0 };
+    await this.setKV("quarantine_v1", JSON.stringify(fresh));
+    return fresh;
   }
 
   async quarantine(
