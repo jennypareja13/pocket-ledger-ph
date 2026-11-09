@@ -51,7 +51,16 @@ describe("quarantine recovery", () => {
   it("returns a valid saved quarantine unchanged", async () => {
     const store = new LedgerStore(memoryPersistence());
     const valid = {
-      items: [{ id: "old", kind: "space", source: "pull", reason: "bad", at: "2026-11-06T00:00:00Z", raw: "kept" }],
+      items: [
+        {
+          id: "old",
+          kind: "space",
+          source: "pull",
+          reason: "bad",
+          at: "2026-11-06T00:00:00Z",
+          raw: "kept",
+        },
+      ],
       dropped: 2,
     };
     const raw = JSON.stringify(valid);

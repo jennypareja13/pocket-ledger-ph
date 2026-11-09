@@ -17,7 +17,8 @@ export async function idbPersistence(profile: string): Promise<Persistence> {
     db.createObjectStore("kv");
   };
   const db = await req(open);
-  const tx = (store: string, mode: IDBTransactionMode) => db.transaction(store, mode).objectStore(store);
+  const tx = (store: string, mode: IDBTransactionMode) =>
+    db.transaction(store, mode).objectStore(store);
   return {
     loadAll: () => req(tx("records", "readonly").getAll()) as Promise<LocalRecord[]>,
     saveMany: (recs) =>

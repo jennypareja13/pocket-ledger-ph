@@ -1,6 +1,7 @@
 import type { BnplPlanData } from "./bnpl";
 
-export type Kind = "space" | "account" | "category" | "transaction" | "budget" | "borrower" | "loan";
+export type Kind =
+  "space" | "account" | "category" | "transaction" | "budget" | "borrower" | "loan";
 export type SyncState = "pending" | "synced" | "error" | "conflict";
 
 export interface Meta {
@@ -25,15 +26,43 @@ export interface LocalRecord<D = unknown> {
 }
 
 export type SpaceType = "personal" | "managed";
-export interface SpaceData { name: string; type: SpaceType; archived?: boolean | undefined; note?: string | undefined; parent_space_id?: string | undefined; purpose?: "reimbursement" | undefined; modules?: { reimbursements?: boolean | undefined; bnpl?: boolean | undefined } | undefined; bnpl_budget?: number | undefined }
+export interface SpaceData {
+  name: string;
+  type: SpaceType;
+  archived?: boolean | undefined;
+  note?: string | undefined;
+  parent_space_id?: string | undefined;
+  purpose?: "reimbursement" | undefined;
+  modules?: { reimbursements?: boolean | undefined; bnpl?: boolean | undefined } | undefined;
+  bnpl_budget?: number | undefined;
+}
 
 export type AccountType = "cash" | "bank" | "ewallet" | "savings" | "other";
-export interface AccountData { name: string; type: AccountType; archived?: boolean | undefined }
+export interface AccountData {
+  name: string;
+  type: AccountType;
+  archived?: boolean | undefined;
+}
 
 export type CategoryType = "income" | "expense";
-export interface CategoryData { name: string; type: CategoryType; archived?: boolean | undefined; system?: "fee" | undefined }
+export interface CategoryData {
+  name: string;
+  type: CategoryType;
+  archived?: boolean | undefined;
+  system?: "fee" | undefined;
+}
 
-export type TxType = "income" | "expense" | "transfer" | "lend" | "loan_repayment" | "adjustment" | "reimbursement_claim" | "reimbursement_payment" | "bnpl_purchase" | "bnpl_payment";
+export type TxType =
+  | "income"
+  | "expense"
+  | "transfer"
+  | "lend"
+  | "loan_repayment"
+  | "adjustment"
+  | "reimbursement_claim"
+  | "reimbursement_payment"
+  | "bnpl_purchase"
+  | "bnpl_payment";
 export interface Entry {
   account_id?: string | undefined;
   loan_id?: string | undefined;
@@ -61,8 +90,16 @@ export interface TxData {
   entries: Entry[];
 }
 
-export interface BudgetData { category_id: string; month: string; amount: number }
-export interface BorrowerData { name: string; note?: string | undefined; archived?: boolean | undefined }
+export interface BudgetData {
+  category_id: string;
+  month: string;
+  amount: number;
+}
+export interface BorrowerData {
+  name: string;
+  note?: string | undefined;
+  archived?: boolean | undefined;
+}
 export interface LoanData {
   borrower_id: string;
   account_id: string;
