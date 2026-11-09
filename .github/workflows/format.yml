@@ -1,0 +1,25 @@
+name: Format
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Prettier (own source files only)
+        run: bunx prettier --write "src/lib/**/*.ts" "src/routes/**/*.tsx" "src/components/app/**/*.tsx" "src/test/**/*.{ts,tsx}" eslint.config.js
+      - name: Push to a new branch
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then echo "Nothing to format"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "format-cleanup-${{ github.run_number }}"
+          git add -A
+          git commit -m "style: format source files with Prettier"
+          git push origin HEAD
