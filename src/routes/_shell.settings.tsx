@@ -12,6 +12,7 @@ import { todayManila } from "@/lib/dates";
 import { MAX_BACKUP_BYTES, restoreBackup } from "@/lib/restore";
 import type { Quarantine } from "@/lib/store";
 import { Input } from "@/components/ui/input";
+import { useThemePreference } from "@/components/app/ThemeProvider";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({ meta: [
@@ -26,6 +27,7 @@ function Settings() {
   const s = useSyncSummary();
   const nav = useNavigate();
   const { space } = useSpace();
+  const { theme, setTheme } = useThemePreference();
   const [from, setFrom] = useState(todayManila().slice(0, 7) + "-01");
   const [to, setTo] = useState(todayManila());
   const [quarantine, setQuarantine] = useState<Quarantine>({ items: [], dropped: 0 });
@@ -54,6 +56,21 @@ function Settings() {
     <>
       <PageHeader title="Settings & sync" />
       <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Appearance">
+          <label htmlFor="theme-preference" className="mb-2 block text-sm font-medium">Theme</label>
+          <select
+            id="theme-preference"
+            aria-describedby="theme-help"
+            className="field max-w-sm"
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as "light" | "dark" | "system")}
+          >
+            <option value="system">Use device setting</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+          <p id="theme-help" className="mt-2 text-xs text-muted-foreground">Your choice is saved on this device. Device setting follows your operating system appearance.</p>
+        </Panel>
         <Panel title="Account">
           <p className="text-sm">{auth.status === "signed_in" ? `Signed in as ${auth.email}` : "Device-only mode — data is not backed up to the cloud."}</p>
           <div className="mt-3 flex gap-2">
