@@ -168,3 +168,23 @@ At audit time, GitHub reported no completed status checks for the baseline commi
 - No migrations or deployment were performed.
 - No campaign content was published.
 - No production-readiness claim is made.
+
+
+## 8. User-provided visual reference for the design-system phase
+
+The user supplied a visual reference board on 2026-11-09. Treat it as direction for visual language, not as a replacement brand identity.
+
+Direction to adapt to PocketVault's existing Protected Layers identity and supplied brand palette:
+
+- **Illustrated dashboard:** richer, layered financial cards and floating data panels, but preserve legibility and avoid obscuring actual balances or controls.
+- **Light mode:** warm or cool neutral canvas, clean card surfaces, subtle shadows, clear hierarchy, and restrained brand accents.
+- **Dark mode:** deep navy/teal surfaces, layered teal gradients or abstract wave textures, and turquoise accents for primary actions and meaningful financial states. Maintain contrast for text and numeric data.
+- **Financial illustrations:** a coherent 3D illustration family for wallets, cards, coins, savings, and payment concepts. Avoid mixing unrelated illustration styles.
+- **Mobile-first composition:** compact app-like screens, clear bottom navigation, visible primary actions, and readable transaction rows.
+
+Implementation constraints:
+- Do not copy another product's logo, product name, exact screen layout, or proprietary artwork.
+- Preserve PocketVault's chosen brand identity, palette, and Protected Layers concept.
+- Use decorative gradients/illustrations sparingly in data-dense screens; financial data and accessible controls take priority.
+- Build light/dark/system theme tokens and persistent user preference rather than hard-coding colors per component.
+- Validate contrast, focus states, responsive layout, and chart readability in both themes before considering the design-system batch complete.
