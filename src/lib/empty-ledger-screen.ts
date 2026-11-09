@@ -7,7 +7,8 @@ export function decideEmptyLedgerScreen(input: {
   running?: boolean | undefined;
   attempted?: boolean | undefined;
 }): "spinner" | "retry" | "onboarding" {
-  if (input.authStatus === "guest" || input.initialDone || input.initialPullOkFlag) return "onboarding";
+  if (input.authStatus === "guest" || input.initialDone || input.initialPullOkFlag)
+    return "onboarding";
   if (input.running) return "spinner";
   if (!input.online || input.syncError || input.attempted) return "retry";
   return "spinner";

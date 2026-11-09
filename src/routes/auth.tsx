@@ -16,7 +16,10 @@ export const Route = createFileRoute("/auth")({
       { title: `Sign in — ${APP_NAME}` },
       { name: "description", content: "Sign in to sync your private ledger across devices." },
       { property: "og:title", content: `Sign in — ${APP_NAME}` },
-      { property: "og:description", content: "Sign in to sync your private ledger across devices." },
+      {
+        property: "og:description",
+        content: "Sign in to sync your private ledger across devices.",
+      },
     ],
   }),
   component: AuthPage,
@@ -34,37 +37,90 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     setMsg(undefined);
-    const r = mode === "in"
-      ? await supabase.auth.signInWithPassword({ email, password: pw })
-      : await supabase.auth.signUp({ email, password: pw, options: { emailRedirectTo: window.location.origin } });
+    const r =
+      mode === "in"
+        ? await supabase.auth.signInWithPassword({ email, password: pw })
+        : await supabase.auth.signUp({
+            email,
+            password: pw,
+            options: { emailRedirectTo: window.location.origin },
+          });
     setBusy(false);
     if (r.error) return setMsg(r.error.message);
-    if (mode === "up" && !r.data.session) return setMsg("Check your email to confirm your account, then sign in.");
+    if (mode === "up" && !r.data.session)
+      return setMsg("Check your email to confirm your account, then sign in.");
     localStorage.removeItem(GUEST_KEY);
     nav({ to: "/" });
   }
   async function google() {
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    const r = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
     if (r.error) return setMsg(String(r.error));
     if (!r.redirected) nav({ to: "/" });
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border bg-card p-6 shadow-soft">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-sm space-y-4 rounded-2xl border bg-card p-6 shadow-soft"
+      >
         <div>
-          <h1><VaultLogo /></h1>
-          <p className="text-sm text-muted-foreground">{mode === "in" ? "Sign in to sync your ledger." : "Create your private account."} Sign-in needs internet. Saved records stay on this device; opening the website also needs a connection.</p>
+          <h1>
+            <VaultLogo />
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {mode === "in" ? "Sign in to sync your ledger." : "Create your private account."}{" "}
+            Sign-in needs internet. Saved records stay on this device; opening the website also
+            needs a connection.
+          </p>
         </div>
-        <Field label="Email" htmlFor="a-email"><Input id="a-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-        <Field label="Password" htmlFor="a-pw"><Input id="a-pw" type="password" minLength={6} required value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
-        {msg && <p role="alert" className="text-sm text-destructive">{msg}</p>}
-        <Button type="submit" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "in" ? "Sign in" : "Sign up"}</Button>
-        <Button type="button" variant="outline" className="w-full" onClick={google}>Continue with Google</Button>
-        <button type="button" className="w-full text-sm text-primary" onClick={() => setMode(mode === "in" ? "up" : "in")}>
+        <Field label="Email" htmlFor="a-email">
+          <Input
+            id="a-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+        <Field label="Password" htmlFor="a-pw">
+          <Input
+            id="a-pw"
+            type="password"
+            minLength={6}
+            required
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+          />
+        </Field>
+        {msg && (
+          <p role="alert" className="text-sm text-destructive">
+            {msg}
+          </p>
+        )}
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? "Please wait…" : mode === "in" ? "Sign in" : "Sign up"}
+        </Button>
+        <Button type="button" variant="outline" className="w-full" onClick={google}>
+          Continue with Google
+        </Button>
+        <button
+          type="button"
+          className="w-full text-sm text-primary"
+          onClick={() => setMode(mode === "in" ? "up" : "in")}
+        >
           {mode === "in" ? "New here? Create an account" : "Have an account? Sign in"}
         </button>
-        <button type="button" className="w-full text-xs text-muted-foreground underline" onClick={() => { localStorage.setItem(GUEST_KEY, "1"); window.location.href = "/"; }}>
+        <button
+          type="button"
+          className="w-full text-xs text-muted-foreground underline"
+          onClick={() => {
+            localStorage.setItem(GUEST_KEY, "1");
+            window.location.href = "/";
+          }}
+        >
           Use on this device only (no sync)
         </button>
       </form>

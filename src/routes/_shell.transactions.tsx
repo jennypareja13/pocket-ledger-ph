@@ -16,9 +16,15 @@ export const Route = createFileRoute("/_shell/transactions")({
   head: () => ({
     meta: [
       { title: `Transactions — ${APP_NAME}` },
-      { name: "description", content: "Search, filter and edit every income, expense, transfer and loan movement." },
+      {
+        name: "description",
+        content: "Search, filter and edit every income, expense, transfer and loan movement.",
+      },
       { property: "og:title", content: `Transactions — ${APP_NAME}` },
-      { property: "og:description", content: "Search, filter and edit every income, expense, transfer and loan movement." },
+      {
+        property: "og:description",
+        content: "Search, filter and edit every income, expense, transfer and loan movement.",
+      },
     ],
   }),
   component: Transactions,
@@ -59,40 +65,119 @@ function Transactions() {
 
   return (
     <>
-      <PageHeader title="Transactions" subtitle={space?.data.name} actions={!space?.data.purpose && <Button onClick={() => openTx()}><Plus /> Add</Button>} />
-      <div className="mb-5 flex flex-wrap items-end gap-3"><label className="text-sm">From<Input aria-label="CSV from date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label><label className="text-sm">To<Input aria-label="CSV to date" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label><Button variant="outline" onClick={() => { if (!space) return; try { const csv = exportSpaceCsv(snap, space, from, to); downloadFile(csv.filename, csv.body, "text/csv;charset=utf-8"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not export."); } }}><Download />Download CSV</Button></div>
+      <PageHeader
+        title="Transactions"
+        subtitle={space?.data.name}
+        actions={
+          !space?.data.purpose && (
+            <Button onClick={() => openTx()}>
+              <Plus /> Add
+            </Button>
+          )
+        }
+      />
+      <div className="mb-5 flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          From
+          <Input
+            aria-label="CSV from date"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          To
+          <Input
+            aria-label="CSV to date"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (!space) return;
+            try {
+              const csv = exportSpaceCsv(snap, space, from, to);
+              downloadFile(csv.filename, csv.body, "text/csv;charset=utf-8");
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Could not export.");
+            }
+          }}
+        >
+          <Download />
+          Download CSV
+        </Button>
+      </div>
       <Panel className="mb-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="relative sm:col-span-2 lg:col-span-1">
-            <label htmlFor="tx-q" className="sr-only">Search</label>
+            <label htmlFor="tx-q" className="sr-only">
+              Search
+            </label>
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input id="tx-q" placeholder="Search notes, people…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+            <Input
+              id="tx-q"
+              placeholder="Search notes, people…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-9"
+            />
           </div>
           <Select aria-label="Type" value={type} onChange={(e) => setType(e.target.value)}>
             <option value="">All types</option>
-            {TX_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {TX_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
           </Select>
           <Select aria-label="Account" value={acc} onChange={(e) => setAcc(e.target.value)}>
             <option value="">All accounts</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.data.name}</option>)}
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.data.name}
+              </option>
+            ))}
           </Select>
           <Select aria-label="Category" value={cat} onChange={(e) => setCat(e.target.value)}>
             <option value="">All categories</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.data.name} ({c.data.type})</option>)}
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.data.name} ({c.data.type})
+              </option>
+            ))}
           </Select>
-          <Input aria-label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+          <Input
+            aria-label="Month"
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
         </div>
       </Panel>
       {transactions.length === 0 ? (
-        <Empty icon={<Receipt />} title="No transactions in this space" action={<Button onClick={() => openTx()}>Add transaction</Button>} />
+        <Empty
+          icon={<Receipt />}
+          title="No transactions in this space"
+          action={<Button onClick={() => openTx()}>Add transaction</Button>}
+        />
       ) : list.length === 0 ? (
-        <Empty icon={<Search />} title="No matches">Try clearing a filter.</Empty>
+        <Empty icon={<Search />} title="No matches">
+          Try clearing a filter.
+        </Empty>
       ) : (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">{list.length} transaction(s)</p>
           {groups.map(([date, txs]) => (
             <Panel key={date} title={formatDate(date)}>
-              <div className="-mx-2 -my-1">{txs.map((t) => <TxRow key={t.id} tx={t} />)}</div>
+              <div className="-mx-2 -my-1">
+                {txs.map((t) => (
+                  <TxRow key={t.id} tx={t} />
+                ))}
+              </div>
             </Panel>
           ))}
         </div>

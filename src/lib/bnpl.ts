@@ -66,22 +66,29 @@ export const monthOf = (date: string) => date.slice(0, 7);
 /** Monthly due dates only. Amounts are never guessed: the user types each month's exact payment. */
 export function scheduleDates(firstDue: string, months: number): string[] {
   if (!parseDate(firstDue)) throw new Error("Enter a valid first due date.");
-  if (!isValidDuration(months)) throw new Error(`Duration must be a whole number of months from 1 to ${BNPL_MAX_MONTHS}.`);
+  if (!isValidDuration(months))
+    throw new Error(`Duration must be a whole number of months from 1 to ${BNPL_MAX_MONTHS}.`);
   return Array.from({ length: months }, (_, i) => addMonthsClamped(firstDue, i));
 }
 
 /** One installment per entered amount (centavos, exact, per month). Duration = amounts.length. */
-export function buildSchedule(firstDue: string, amounts: readonly number[], newId: () => string): Installment[] {
+export function buildSchedule(
+  firstDue: string,
+  amounts: readonly number[],
+  newId: () => string,
+): Installment[] {
   const dates = scheduleDates(firstDue, amounts.length);
   return dates.map((due_date, i) => {
     const amount = amounts[i];
-    if (!isInt(amount) || amount <= 0) throw new Error(`Enter the exact payment for month ${i + 1}.`);
+    if (!isInt(amount) || amount <= 0)
+      throw new Error(`Enter the exact payment for month ${i + 1}.`);
     return { id: newId(), due_date, amount };
   });
 }
 
 export function validateSchedule(s: Installment[]): string | null {
-  if (!s.length || s.length > BNPL_MAX_MONTHS) return `A plan needs 1 to ${BNPL_MAX_MONTHS} installments.`;
+  if (!s.length || s.length > BNPL_MAX_MONTHS)
+    return `A plan needs 1 to ${BNPL_MAX_MONTHS} installments.`;
   const ids = new Set<string>();
   for (const i of s) {
     if (!i.id || ids.has(i.id)) return "Installment ids must be unique.";
@@ -99,9 +106,12 @@ export const scheduleTotal = (s: Installment[]) => s.reduce((a, i) => a + i.amou
  */
 export function splitObligation(total: number, purchaseTotal?: number) {
   if (purchaseTotal === undefined) return { purchase: total, fees: 0 };
-  if (!isInt(purchaseTotal) || purchaseTotal <= 0) throw new Error("Purchase total must be positive.");
+  if (!isInt(purchaseTotal) || purchaseTotal <= 0)
+    throw new Error("Purchase total must be positive.");
   if (purchaseTotal > total)
-    throw new Error("Purchase total is more than the installments. Record any upfront payment as a normal expense.");
+    throw new Error(
+      "Purchase total is more than the installments. Record any upfront payment as a normal expense.",
+    );
   return { purchase: purchaseTotal, fees: total - purchaseTotal };
 }
 
@@ -113,9 +123,13 @@ export function bnplPurchaseEntries(a: {
   categoryId?: string | undefined;
   feeCategoryId?: string | undefined;
 }): Entry[] {
-  if (!isInt(a.purchase) || a.purchase <= 0 || !isInt(a.fees) || a.fees < 0) throw new Error("Invalid amounts.");
-  const e: Entry[] = [{ loan_id: a.loanId, delta: -a.purchase, report: "expense", category_id: a.categoryId }];
-  if (a.fees > 0) e.push({ loan_id: a.loanId, delta: -a.fees, report: "expense", category_id: a.feeCategoryId });
+  if (!isInt(a.purchase) || a.purchase <= 0 || !isInt(a.fees) || a.fees < 0)
+    throw new Error("Invalid amounts.");
+  const e: Entry[] = [
+    { loan_id: a.loanId, delta: -a.purchase, report: "expense", category_id: a.categoryId },
+  ];
+  if (a.fees > 0)
+    e.push({ loan_id: a.loanId, delta: -a.fees, report: "expense", category_id: a.feeCategoryId });
   return e;
 }
 
@@ -128,12 +142,19 @@ export function bnplPaymentEntries(a: {
   feeCategoryId?: string | undefined;
 }): Entry[] {
   const extra = a.extra ?? 0;
-  if (!isInt(a.scheduled) || a.scheduled <= 0 || !isInt(extra) || extra < 0) throw new Error("Invalid amounts.");
+  if (!isInt(a.scheduled) || a.scheduled <= 0 || !isInt(extra) || extra < 0)
+    throw new Error("Invalid amounts.");
   const e: Entry[] = [
     { account_id: a.accountId, delta: -a.scheduled },
     { loan_id: a.loanId, delta: a.scheduled },
   ];
-  if (extra > 0) e.push({ account_id: a.accountId, delta: -extra, report: "expense", category_id: a.feeCategoryId });
+  if (extra > 0)
+    e.push({
+      account_id: a.accountId,
+      delta: -extra,
+      report: "expense",
+      category_id: a.feeCategoryId,
+    });
   return e;
 }
 
@@ -141,13 +162,17 @@ export function bnplPaymentEntries(a: {
 export function splitPayment(scheduled: number, actualPaid: number) {
   if (!isInt(actualPaid) || actualPaid <= 0) throw new Error("Enter the amount actually paid.");
   if (actualPaid < scheduled)
-    throw new Error("Partial payments are not supported yet. Edit the installment amount before paying.");
+    throw new Error(
+      "Partial payments are not supported yet. Edit the installment amount before paying.",
+    );
   return { scheduled, extra: actualPaid - scheduled };
 }
 
 /** Deterministic UUID-shaped id so two devices marking the same installment paid write the SAME record. */
 export async function deterministicId(namespace: string, key: string): Promise<string> {
-  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${namespace}:${key}`)));
+  const bytes = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${namespace}:${key}`)),
+  );
   const b = bytes.slice(0, 16);
   b[6] = ((b[6] ?? 0) & 0x0f) | 0x50;
   b[8] = ((b[8] ?? 0) & 0x3f) | 0x80;
@@ -157,28 +182,42 @@ export async function deterministicId(namespace: string, key: string): Promise<s
 
 // ---- status, commitments, budget ----
 export type InstallmentStatus = "paid" | "due_today" | "upcoming" | "past_due_unconfirmed";
-export function installmentStatus(i: Installment, paid: ReadonlySet<string>, today: string): InstallmentStatus {
+export function installmentStatus(
+  i: Installment,
+  paid: ReadonlySet<string>,
+  today: string,
+): InstallmentStatus {
   if (paid.has(i.id)) return "paid";
   if (i.due_date === today) return "due_today";
   return i.due_date < today ? "past_due_unconfirmed" : "upcoming";
 }
 
-interface PlanLike { data: Pick<BnplPlanData, "schedule" | "cancelled"> }
+interface PlanLike {
+  data: Pick<BnplPlanData, "schedule" | "cancelled">;
+}
 const activePlans = <P extends PlanLike>(plans: P[]) => plans.filter((p) => !p.data.cancelled);
 
 /** Unpaid installments due in a calendar month, across all plans and providers. */
-export function monthCommitment<P extends PlanLike>(plans: P[], month: string, paid: ReadonlySet<string>) {
+export function monthCommitment<P extends PlanLike>(
+  plans: P[],
+  month: string,
+  paid: ReadonlySet<string>,
+) {
   let committed = 0;
   let count = 0;
   for (const p of activePlans(plans))
     for (const i of p.data.schedule)
-      if (monthOf(i.due_date) === month && !paid.has(i.id)) { committed += i.amount; count++; }
+      if (monthOf(i.due_date) === month && !paid.has(i.id)) {
+        committed += i.amount;
+        count++;
+      }
   return { committed, count };
 }
 /** Future obligation across all months. Separate from the monthly budget. */
 export function outstandingTotal<P extends PlanLike>(plans: P[], paid: ReadonlySet<string>) {
   let t = 0;
-  for (const p of activePlans(plans)) for (const i of p.data.schedule) if (!paid.has(i.id)) t += i.amount;
+  for (const p of activePlans(plans))
+    for (const i of p.data.schedule) if (!paid.has(i.id)) t += i.amount;
   return t;
 }
 export function budgetStatus(limit: number, committed: number) {
@@ -191,10 +230,17 @@ export function budgetStatus(limit: number, committed: number) {
   };
 }
 /** Advisory preview before saving a plan: months that would exceed the budget. Never blocks saving. */
-export function budgetImpact<P extends PlanLike>(existing: P[], newSchedule: Installment[], limit: number, paid: ReadonlySet<string>) {
+export function budgetImpact<P extends PlanLike>(
+  existing: P[],
+  newSchedule: Installment[],
+  limit: number,
+  paid: ReadonlySet<string>,
+) {
   const months = [...new Set(newSchedule.map((i) => monthOf(i.due_date)))].sort();
   return months.map((month) => {
-    const add = newSchedule.filter((i) => monthOf(i.due_date) === month).reduce((a, i) => a + i.amount, 0);
+    const add = newSchedule
+      .filter((i) => monthOf(i.due_date) === month)
+      .reduce((a, i) => a + i.amount, 0);
     const committed = monthCommitment(existing, month, paid).committed + add;
     return { month, ...budgetStatus(limit, committed) };
   });

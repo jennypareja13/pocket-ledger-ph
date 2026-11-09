@@ -15,22 +15,37 @@ export function buildEntries(tx: TxInput): Entry[] {
   const a = tx.amount;
   switch (tx.type) {
     case "income":
-      return [{ account_id: tx.account_id, delta: a, report: "income", category_id: tx.category_id }];
+      return [
+        { account_id: tx.account_id, delta: a, report: "income", category_id: tx.category_id },
+      ];
     case "expense":
-      return [{ account_id: tx.account_id, delta: -a, report: "expense", category_id: tx.category_id }];
+      return [
+        { account_id: tx.account_id, delta: -a, report: "expense", category_id: tx.category_id },
+      ];
     case "transfer": {
       const e: Entry[] = [
         { account_id: tx.account_id, delta: -a },
         { account_id: tx.to_account_id, delta: a },
       ];
       if (tx.fee && tx.fee > 0)
-        e.push({ account_id: tx.account_id, delta: -tx.fee, report: "expense", category_id: tx.fee_category_id });
+        e.push({
+          account_id: tx.account_id,
+          delta: -tx.fee,
+          report: "expense",
+          category_id: tx.fee_category_id,
+        });
       return e;
     }
     case "lend":
-      return [{ account_id: tx.account_id, delta: -a }, { loan_id: tx.loan_id, delta: a }];
+      return [
+        { account_id: tx.account_id, delta: -a },
+        { loan_id: tx.loan_id, delta: a },
+      ];
     case "loan_repayment":
-      return [{ account_id: tx.account_id, delta: a }, { loan_id: tx.loan_id, delta: -a }];
+      return [
+        { account_id: tx.account_id, delta: a },
+        { loan_id: tx.loan_id, delta: -a },
+      ];
     case "adjustment":
       return [{ account_id: tx.account_id, delta: a }];
     case "reimbursement_claim": {
@@ -38,11 +53,23 @@ export function buildEntries(tx: TxInput): Entry[] {
       return [
         { account_id: tx.account_id, delta: -covered },
         { loan_id: tx.loan_id, delta: covered },
-        ...(a > covered ? [{ account_id: tx.account_id, delta: -(a - covered), report: "expense" as const, category_id: tx.category_id }] : []),
+        ...(a > covered
+          ? [
+              {
+                account_id: tx.account_id,
+                delta: -(a - covered),
+                report: "expense" as const,
+                category_id: tx.category_id,
+              },
+            ]
+          : []),
       ];
     }
     case "reimbursement_payment":
-      return [{ account_id: tx.account_id, delta: a }, { loan_id: tx.loan_id, delta: -a }];
+      return [
+        { account_id: tx.account_id, delta: a },
+        { loan_id: tx.loan_id, delta: -a },
+      ];
     case "bnpl_purchase":
       return bnplPurchaseEntries({
         loanId: tx.loan_id ?? "",
@@ -79,15 +106,19 @@ export function validateTx(tx: TxInput, ctx: ValidationCtx): string | null {
     if (tx.amount === 0) return "Adjustment cannot be zero.";
   } else if (tx.amount <= 0) return "Amount must be greater than zero.";
   if (tx.fee !== undefined && (!isInt(tx.fee) || tx.fee < 0)) return "Fee cannot be negative.";
-  const inSpace = (id?: string) => ctx.accounts.some((x) => x.id === id && x.space_id === ctx.spaceId && !x.deleted);
+  const inSpace = (id?: string) =>
+    ctx.accounts.some((x) => x.id === id && x.space_id === ctx.spaceId && !x.deleted);
   if (tx.type === "bnpl_purchase" || tx.type === "bnpl_payment") {
     const plan = ctx.loans.find(
-      (x) => x.id === tx.loan_id && x.space_id === ctx.spaceId && !x.deleted && x.data.module === "bnpl",
+      (x) =>
+        x.id === tx.loan_id && x.space_id === ctx.spaceId && !x.deleted && x.data.module === "bnpl",
     );
     if (!plan) return "Choose a BNPL plan in this space.";
     const fee = tx.fee ?? 0;
     const cat = (id?: string) =>
-      ctx.categories.some((x) => x.id === id && x.space_id === ctx.spaceId && x.data.type === "expense");
+      ctx.categories.some(
+        (x) => x.id === id && x.space_id === ctx.spaceId && x.data.type === "expense",
+      );
     if (tx.type === "bnpl_purchase") {
       if (fee >= tx.amount) return "Fees must be less than the total.";
       if (!cat(tx.category_id)) return "Choose an expense category.";
@@ -106,14 +137,20 @@ export function validateTx(tx: TxInput, ctx: ValidationCtx): string | null {
     if (!inSpace(tx.to_account_id)) return "Choose a destination account in this space.";
     if (tx.to_account_id === tx.account_id) return "Source and destination must differ.";
     if (tx.fee && tx.fee > 0) {
-      const c = ctx.categories.find((x) => x.id === tx.fee_category_id && x.space_id === ctx.spaceId);
+      const c = ctx.categories.find(
+        (x) => x.id === tx.fee_category_id && x.space_id === ctx.spaceId,
+      );
       if (!c || c.data.type !== "expense") return "Choose a fee expense category.";
     }
   }
   if (tx.type === "lend" || tx.type === "loan_repayment") {
     const l = ctx.loans.find((x) => x.id === tx.loan_id && x.space_id === ctx.spaceId);
     if (!l) return "Choose a loan in this space.";
-    if (tx.type === "loan_repayment" && ctx.loanOutstanding !== undefined && tx.amount > ctx.loanOutstanding)
+    if (
+      tx.type === "loan_repayment" &&
+      ctx.loanOutstanding !== undefined &&
+      tx.amount > ctx.loanOutstanding
+    )
       return "Repayment is more than what is still owed.";
   }
   return null;

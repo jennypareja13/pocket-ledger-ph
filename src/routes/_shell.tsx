@@ -154,7 +154,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { snap } = useApp();
   const { space } = useSpace();
   const showBnpl =
-    !!space && mainSpaces(snap.spaces).some((s) => s.id === space.id) && bnplEnabled(snap, space.id);
+    !!space &&
+    mainSpaces(snap.spaces).some((s) => s.id === space.id) &&
+    bnplEnabled(snap, space.id);
   return (
     <nav className="space-y-0.5" aria-label="Main">
       {NAV.filter((n) => n.to !== "/bnpl" || showBnpl).map(({ to, label, icon: Icon }) => {
