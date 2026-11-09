@@ -80,7 +80,10 @@ describe("BNPL reminder schedule", () => {
   it("suppresses paid and cancelled installments", () => {
     expect(
       dueBnplReminders(
-        [item("paid", "2026-11-16", { paid: true }), item("cancelled", "2026-11-16", { cancelled: true })],
+        [
+          item("paid", "2026-11-16", { paid: true }),
+          item("cancelled", "2026-11-16", { cancelled: true }),
+        ],
         "2026-11-09",
       ),
     ).toEqual([]);
