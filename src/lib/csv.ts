@@ -6,7 +6,7 @@ import { isValidDate } from "./dates";
 
 export function csvCell(value: string, kind: "text" | "numeric" | "date" = "text"): string {
   const safe = kind === "text" && /^[\t\r ]*[=+\-@]/.test(value) ? "'" + value : value;
-  return `"${safe.replace(/"/g, '\"\"')}"`;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 export function transactionsCsv(snap: Snapshot, spaceId: string, from: string, to: string) {
