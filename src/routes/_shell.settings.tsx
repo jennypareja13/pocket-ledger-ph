@@ -10,6 +10,9 @@ import { describeTx } from "@/lib/labels";
 import { downloadFile, exportSpaceCsv } from "@/lib/csv";
 import { todayManila } from "@/lib/dates";
 import { MAX_BACKUP_BYTES, restoreBackup } from "@/lib/restore";
+import { bnplEnabled, setBnplBudget as saveBnplBudget, toggleBnpl } from "@/lib/bnpl-actions";
+import { mainSpaces } from "@/lib/selectors";
+import { centsToInput, formatPHP, parseAmount } from "@/lib/money";
 import type { Quarantine } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 
@@ -29,6 +32,35 @@ function Settings() {
   const [from, setFrom] = useState(todayManila().slice(0, 7) + "-01");
   const [to, setTo] = useState(todayManila());
   const [quarantine, setQuarantine] = useState<Quarantine>({ items: [], dropped: 0 });
+  const isMainSpace = !!space && mainSpaces(snap.spaces).some((item) => item.id === space.id);
+  const bnplOn = isMainSpace && !!space && bnplEnabled(snap, space.id);
+  const [bnplBudget, setBnplBudgetInput] = useState("");
+  const [bnplBusy, setBnplBusy] = useState(false);
+  useEffect(() => {
+    setBnplBudgetInput(typeof space?.data.bnpl_budget === "number" ? centsToInput(space.data.bnpl_budget) : "");
+  }, [space?.id, space?.data.bnpl_budget]);
+  async function changeBnpl(enabled: boolean) {
+    if (!store || !space || !isMainSpace) return;
+    setBnplBusy(true);
+    try {
+      await toggleBnpl(store, space.id, enabled);
+      toast.success(enabled ? "BNPL tracking enabled." : "BNPL tracking disabled. Your existing records are preserved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update BNPL settings.");
+    } finally { setBnplBusy(false); }
+  }
+  async function saveBudget() {
+    if (!store || !space || !isMainSpace) return;
+    const amount = bnplBudget.trim() ? parseAmount(bnplBudget) : null;
+    if (bnplBudget.trim() && amount === null) { toast.error("Enter a valid budget amount, e.g. 3,000.00."); return; }
+    setBnplBusy(true);
+    try {
+      await saveBnplBudget(store, space.id, amount);
+      toast.success(amount === null ? "BNPL budget removed." : `Monthly BNPL budget saved: ${formatPHP(amount)}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save BNPL budget.");
+    } finally { setBnplBusy(false); }
+  }
   useEffect(() => {
     let cancelled = false;
     if (store) store.getQuarantine().then((value) => { if (!cancelled) setQuarantine(value); }).catch(() => { if (!cancelled) toast.error("Could not load skipped records."); });
@@ -61,6 +93,18 @@ function Settings() {
             <Button variant="outline" onClick={signOut}>Sign out</Button>
           </div>
         </Panel>
+        {isMainSpace && space && <Panel title="BNPL tracking">
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" className="mt-1 size-4 accent-primary" checked={bnplOn} disabled={bnplBusy} onChange={(event) => changeBnpl(event.target.checked)} />
+            <span><span className="font-medium">Enable BNPL tracking</span><span className="mt-1 block text-xs text-muted-foreground">When disabled, BNPL navigation and reminders are hidden. Existing plans and payment history are retained and return when you re-enable it.</span></span>
+          </label>
+          <div className="mt-4 max-w-sm space-y-2">
+            <label htmlFor="bnpl-monthly-budget" className="text-sm font-medium">Monthly BNPL budget (₱)</label>
+            <Input id="bnpl-monthly-budget" inputMode="decimal" placeholder="e.g. 3,000.00" value={bnplBudget} onChange={(event) => setBnplBudgetInput(event.target.value)} disabled={bnplBusy} />
+            <p className="text-xs text-muted-foreground">One combined limit for all BNPL providers. The BNPL page compares it with unpaid installments due this calendar month.</p>
+            <Button size="sm" variant="outline" onClick={saveBudget} disabled={bnplBusy}>{bnplBusy ? "Saving…" : "Save monthly budget"}</Button>
+          </div>
+        </Panel>}
         <Panel title="Sync">
           <p className="text-sm font-medium">{s.label}</p>
           <p className="text-xs text-muted-foreground">{s.detail}</p>
