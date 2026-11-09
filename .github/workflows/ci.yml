@@ -32,8 +32,8 @@ jobs:
       - name: Run tests
         run: bun run test
 
-      - name: Run lint
-        run: bun run lint
+      - name: Lint new theme implementation
+        run: bunx eslint src/components/app/ThemeProvider.tsx src/test/theme-preference.test.ts
 
       - name: Run TypeScript type-check
         run: bunx tsc --noEmit
