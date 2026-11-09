@@ -1,8 +1,11 @@
 # PocketVault implementation
 - [x] Batch A part 2: atomic BNPL actions, strict calendar validation, 103 passing tests, changed-file ESLint, automatic build OK; manual typecheck/build not executed under workspace rules
 - [x] Batch 2: quarantine/error prechecks, Home/Spaces privacy, ordinary-loan lists, 49 passing tests, ESLint and desktop/mobile checks; manual strict/production commands unavailable under workspace execution rules
-- [ ] Brand, navigation, home and child-space scoping
-- [ ] Budget manager, analysis and scoped CSV export
-- [ ] Optional reimbursements and BNPL
-- [ ] Private feedback, policy review and isolation verification
-- [ ] Tests, desktop/mobile checks and documentation
+- [ ] UI/UX audit and shared design system: consistent navigation, responsive layouts, interactive financial illustrations, background treatments, and light/dark/system appearance
+- [ ] Core page redesign: Home, Transactions, Budgets, Analysis, BNPL, Spaces, and Settings
+- [ ] BNPL experience: reminders, provider-grouped payments with per-provider payment-account selection, and shared monthly BNPL budget integration
+- [ ] Financial data period filters: day, week, month, and year, with consistent date-boundary rules
+- [ ] Responsible BNPL Use campaign hub: administrator-only authoring and publishing; users can browse published educational campaigns; see .lovable/spec/responsible-bnpl-campaign-hub.md
+- [ ] Optional reimbursements and remaining financial feature work
+- [ ] Security, privacy, accounting invariants, accessibility, offline behavior, and regression verification across mobile and desktop
+- [ ] First-time user tutorial and onboarding walkthrough (final implementation phase, after all user-facing features are complete and tested)
