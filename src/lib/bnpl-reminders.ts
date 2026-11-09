@@ -53,13 +53,13 @@ export function bnplReminderSchedule(
   planId: string,
   installment: Installment,
 ): BnplReminderOccurrence[] {
-  if (!planId.trim() || !installment.id.trim()) throw new Error("Reminder identifiers are required.");
+  if (!planId.trim() || !installment.id.trim())
+    throw new Error("Reminder identifiers are required.");
   dayNumber(installment.due_date);
 
   return BNPL_REMINDER_OFFSETS.map((daysBeforeDue) => {
     const reminderDate = addCalendarDays(installment.due_date, -daysBeforeDue);
-    const kind =
-      daysBeforeDue === 7 ? "heads_up" : daysBeforeDue === 0 ? "due_day" : "countdown";
+    const kind = daysBeforeDue === 7 ? "heads_up" : daysBeforeDue === 0 ? "due_day" : "countdown";
     return {
       id: [
         "bnpl-reminder",
