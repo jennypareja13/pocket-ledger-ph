@@ -16,6 +16,7 @@ const makePlan = (
 ): ReminderPlan => ({
   id,
   data: {
+    months: 1,
     provider,
     cancelled,
     schedule: buildSchedule(dueDate, [10_000], () => `inst-${++nextId}`),
