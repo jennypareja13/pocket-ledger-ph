@@ -37,14 +37,7 @@ describe("BNPL reminder schedule", () => {
   it("handles month-end and year-end boundaries using calendar dates", () => {
     expect(
       bnplReminderSchedule("p", installment("feb", "2027-03-01")).map((r) => r.reminderDate),
-    ).toEqual([
-      "2027-02-24",
-      "2027-02-25",
-      "2027-02-26",
-      "2027-02-27",
-      "2027-02-28",
-      "2027-03-01",
-    ]);
+    ).toEqual(["2027-02-24", "2027-02-25", "2027-02-26", "2027-02-27", "2027-02-28", "2027-03-01"]);
     expect(bnplReminderSchedule("p", installment("new-year", "2027-01-01"))[0]?.reminderDate).toBe(
       "2026-12-27",
     );
