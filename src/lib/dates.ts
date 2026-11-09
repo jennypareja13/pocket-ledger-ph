@@ -42,3 +42,20 @@ export function isValidDate(d: string): boolean {
   const date = new Date(d + "T00:00:00Z");
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === d;
 }
+
+
+export type DatePeriod = "day" | "week" | "month" | "year";
+
+/** Calendar date range in Asia/Manila. Weeks start on Monday. */
+export function periodDateRange(period: DatePeriod, anchor: string): { from: string; to: string } {
+  if (!isValidDate(anchor)) throw new Error("Choose a valid date.");
+  if (period === "day") return { from: anchor, to: anchor };
+  if (period === "month") return { from: anchor.slice(0, 7) + "-01", to: anchor.slice(0, 7) + "-" + String(new Date(Date.UTC(Number(anchor.slice(0, 4)), Number(anchor.slice(5, 7)), 0)).getUTCDate()).padStart(2, "0") };
+  if (period === "year") return { from: anchor.slice(0, 4) + "-01-01", to: anchor.slice(0, 4) + "-12-31" };
+  const day = new Date(anchor + "T00:00:00Z");
+  const weekday = (day.getUTCDay() + 6) % 7;
+  day.setUTCDate(day.getUTCDate() - weekday);
+  const from = day.toISOString().slice(0, 10);
+  day.setUTCDate(day.getUTCDate() + 6);
+  return { from, to: day.toISOString().slice(0, 10) };
+}
