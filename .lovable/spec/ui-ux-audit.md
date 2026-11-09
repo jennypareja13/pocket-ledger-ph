@@ -188,3 +188,10 @@ Implementation constraints:
 - Use decorative gradients/illustrations sparingly in data-dense screens; financial data and accessible controls take priority.
 - Build light/dark/system theme tokens and persistent user preference rather than hard-coding colors per component.
 - Validate contrast, focus states, responsive layout, and chart readability in both themes before considering the design-system batch complete.
+
+
+## 9. CI baseline and theme batch verification notes
+
+The first CI attempt could not download Bun because the GitHub release endpoint returned HTTP 504. A retry successfully installed dependencies and ran the tests. The tests passed, but the repository-wide ESLint command failed with 688 Prettier formatting errors (and 12 warnings) across existing files, including unrelated routes and tests. This is pre-existing repository-wide formatting debt; do not apply a mass formatter as part of a focused feature batch.
+
+Until a dedicated formatting-cleanup batch is approved and reviewed, CI lints the newly added theme provider and its theme tests, while the full test suite, TypeScript type-check, and production build remain repository-wide checks. This narrower lint scope is explicit and does not imply the entire repository is lint-clean.
