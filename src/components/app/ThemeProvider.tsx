@@ -14,10 +14,14 @@ export function resolveTheme(preference: ThemePreference, systemDark: boolean): 
   return preference === "system" ? (systemDark ? "dark" : "light") : preference;
 }
 
+export function parseThemePreference(saved: string | null): ThemePreference {
+  return saved === "light" || saved === "dark" || saved === "system" ? saved : "light";
+}
+
 function readPreference(): ThemePreference {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   const saved = window.localStorage.getItem(STORAGE_KEY);
-  return saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+  return parseThemePreference(saved);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
