@@ -35,14 +35,25 @@ const TABS: { value: TxType; label: string }[] = [
   { value: "expense", label: "Expense" },
   { value: "income", label: "Income" },
   { value: "transfer", label: "Transfer" },
-  { value: "lend", label: "Lend" },
-  { value: "loan_repayment", label: "Repayment" },
 ];
+
+type TxTabOptions = {
+  edit?: { data: { type: TxType } } | null | undefined;
+  preset?: { type?: TxType | undefined } | null | undefined;
+};
+
+export function availableTxTabs({ edit, preset }: TxTabOptions): TxType[] {
+  const specialType = edit?.data.type ?? preset?.type;
+  return specialType === "lend" || specialType === "loan_repayment"
+    ? [specialType]
+    : ["expense", "income", "transfer"];
+}
 
 export function TxDialog() {
   const { txDialog, closeTx, store, snap } = useApp();
   const { space, spaceId, accounts, categories, loans } = useSpace();
   const edit = txDialog.edit;
+  const tabs = availableTxTabs({ edit, preset: txDialog.preset });
   const [type, setType] = useState<TxType>("expense");
   const [f, setF] = useState({
     date: todayManila(),
@@ -236,22 +247,30 @@ export function TxDialog() {
         (t) => t.data.loan_id === edit?.data.loan_id && t.data.type === "loan_repayment",
       ).length
     : 0;
+  const title =
+    type === "lend"
+      ? "Lend money"
+      : type === "loan_repayment"
+        ? "Record repayment"
+        : edit
+          ? "Edit transaction"
+          : "New transaction";
 
   return (
     <Dialog open={txDialog.open} onOpenChange={(o) => !o && closeTx()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{edit ? "Edit transaction" : "New transaction"}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             In <strong className="text-foreground">{space?.data.name}</strong>. Saved on this device
             first, then synced.
           </DialogDescription>
         </DialogHeader>
-        {!edit && (
+        {!edit && tabs.length > 1 && (
           <div
             role="tablist"
             aria-label="Transaction type"
-            className="grid grid-cols-5 gap-1 rounded-lg bg-muted p-1"
+            className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1"
           >
             {TABS.map((t) => (
               <button
