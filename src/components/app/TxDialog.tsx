@@ -248,7 +248,13 @@ export function TxDialog() {
       ).length
     : 0;
   const title =
-    type === "lend" ? "Lend money" : type === "loan_repayment" ? "Record repayment" : edit ? "Edit transaction" : "New transaction";
+    type === "lend"
+      ? "Lend money"
+      : type === "loan_repayment"
+        ? "Record repayment"
+        : edit
+          ? "Edit transaction"
+          : "New transaction";
 
   return (
     <Dialog open={txDialog.open} onOpenChange={(o) => !o && closeTx()}>

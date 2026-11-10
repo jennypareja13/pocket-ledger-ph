@@ -41,11 +41,15 @@ function Loans() {
         }
       />
       {visibleLoans.length === 0 ? (
-        <Empty icon={<HandCoins />} title="No loans in this space">
-          <Button onClick={() => openTx({ preset: { type: "lend" } })}>
-            <Plus /> Lend money
-          </Button>
-        </Empty>
+        <Empty
+          icon={<HandCoins />}
+          title="No loans in this space"
+          action={
+            <Button onClick={() => openTx({ preset: { type: "lend" } })}>
+              <Plus /> Lend money
+            </Button>
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {visibleLoans.map((l) => {
