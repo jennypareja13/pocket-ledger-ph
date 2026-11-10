@@ -1,7 +1,7 @@
 import { parseDate, type Installment } from "./bnpl";
 
-/** Reminder days relative to an installment due date. */
-export const BNPL_REMINDER_OFFSETS = [5, 4, 3, 2, 1, 0] as const;
+/** Reminder days relative to an installment due date. D-6 is intentionally omitted. */
+export const BNPL_REMINDER_OFFSETS = [7, 5, 4, 3, 2, 1, 0] as const;
 
 export type BnplReminderOffset = (typeof BNPL_REMINDER_OFFSETS)[number];
 
@@ -13,7 +13,7 @@ export interface BnplReminderOccurrence {
   dueDate: string;
   reminderDate: string;
   daysBeforeDue: BnplReminderOffset;
-  kind: "countdown" | "due_day";
+  kind: "heads_up" | "countdown" | "due_day";
 }
 
 export interface ReminderInstallment {
@@ -59,7 +59,8 @@ export function bnplReminderSchedule(
 
   return BNPL_REMINDER_OFFSETS.map((daysBeforeDue) => {
     const reminderDate = addCalendarDays(installment.due_date, -daysBeforeDue);
-    const kind = daysBeforeDue === 0 ? "due_day" : "countdown";
+    const kind =
+      daysBeforeDue === 7 ? "heads_up" : daysBeforeDue === 0 ? "due_day" : "countdown";
     return {
       id: [
         "bnpl-reminder",
