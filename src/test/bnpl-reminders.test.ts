@@ -70,18 +70,18 @@ describe("BNPL reminder schedule", () => {
       "2027-02-28",
       "2027-03-01",
     ]);
-    expect(
-      bnplReminderSchedule("p", installment("new-year", "2027-01-01"))[0]?.reminderDate,
-    ).toBe("2026-12-25");
+    expect(bnplReminderSchedule("p", installment("new-year", "2027-01-01"))[0]?.reminderDate).toBe(
+      "2026-12-25",
+    );
   });
 
   it("handles leap day correctly", () => {
-    expect(
-      bnplReminderSchedule("p", installment("leap", "2028-03-01"))[0]?.reminderDate,
-    ).toBe("2028-02-23");
-    expect(
-      bnplReminderSchedule("p", installment("leap", "2028-02-29")).at(-1)?.reminderDate,
-    ).toBe("2028-02-29");
+    expect(bnplReminderSchedule("p", installment("leap", "2028-03-01"))[0]?.reminderDate).toBe(
+      "2028-02-23",
+    );
+    expect(bnplReminderSchedule("p", installment("leap", "2028-02-29")).at(-1)?.reminderDate).toBe(
+      "2028-02-29",
+    );
   });
 
   it("changes reminder dates and identifiers when the installment due date changes", () => {
@@ -128,10 +128,7 @@ describe("BNPL reminder schedule", () => {
       planId: "plan-2",
       installment: installment("i-1", "2026-11-15"),
     };
-    const reminders = dueBnplReminders(
-      [item("i-1", "2026-11-15"), secondPlan],
-      "2026-11-08",
-    );
+    const reminders = dueBnplReminders([item("i-1", "2026-11-15"), secondPlan], "2026-11-08");
     expect(reminders).toHaveLength(2);
     expect(reminders[0]?.id).not.toBe(reminders[1]?.id);
   });
