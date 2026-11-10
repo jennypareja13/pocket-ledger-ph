@@ -96,10 +96,10 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
   };
 }
 
-/** Split a total into `n` whole-centavo amounts; any leftover centavos go to the first ones. */
+/** Split a total into `n` whole-centavo amounts; any leftover centavos go to the last installments. */
 export function evenSplit(total: number, n: number): number[] {
-  if (n < 1 || total < 0) return [];
+  if (!Number.isSafeInteger(total) || n < 1 || !Number.isSafeInteger(n) || total < 0) return [];
   const base = Math.floor(total / n);
   const extra = total - base * n;
-  return Array.from({ length: n }, (_, i) => base + (i < extra ? 1 : 0));
+  return Array.from({ length: n }, (_, i) => base + (i >= n - extra ? 1 : 0));
 }
