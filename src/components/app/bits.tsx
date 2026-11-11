@@ -1,4 +1,5 @@
 import type { ReactNode, SelectHTMLAttributes } from "react";
+import { CoinStack } from "@/components/app/illustrations";
 import { AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPHP, formatSignedPHP } from "@/lib/money";
@@ -36,7 +37,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border bg-card p-5 shadow-soft", className)}>
+    <section className={cn("rounded-2xl border border-border/80 bg-card/85 p-5 shadow-soft", className)}>
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-2">
           {title && <h2 className="text-sm font-semibold text-foreground">{title}</h2>}
@@ -53,11 +54,13 @@ export function Stat({
   value,
   hint,
   tone,
+  variant,
 }: {
   label: string;
   value: number;
   hint?: ReactNode;
   tone?: "income" | "expense" | "net" | "managed" | undefined;
+  variant?: "hero";
 }) {
   const color =
     tone === "income"
@@ -72,31 +75,69 @@ export function Stat({
               : "text-income"
             : "text-foreground";
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-soft">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={cn("num mt-2 text-2xl font-semibold", color)}>
-        {tone === "net" ? formatSignedPHP(value) : formatPHP(value)}
-      </p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    <div
+      className={cn(
+        "rounded-2xl border border-border/80 bg-card/85 p-4 shadow-soft",
+        variant === "hero" &&
+          "relative min-h-36 overflow-hidden border-white/20 bg-[image:var(--gradient-hero)] p-5 text-white shadow-[var(--glow)] backdrop-blur-sm",
+      )}
+    >
+      {variant === "hero" && (
+        <div aria-hidden="true" className="pointer-events-none absolute -right-2 -top-3 opacity-30">
+          <CoinStack className="size-28" />
+        </div>
+      )}
+      <div className={cn(variant === "hero" && "relative z-10")}>
+        <p
+          className={cn(
+            "text-xs font-medium uppercase tracking-wide",
+            variant === "hero" ? "text-white/80" : "text-muted-foreground",
+          )}
+        >
+          {label}
+        </p>
+        <p
+          className={cn(
+            "num mt-2 text-2xl font-semibold",
+            color,
+            variant === "hero" && "text-3xl text-white sm:text-4xl",
+          )}
+        >
+          {tone === "net" ? formatSignedPHP(value) : formatPHP(value)}
+        </p>
+        {hint && (
+          <p className={cn("mt-1 text-xs", variant === "hero" ? "text-white/80" : "text-muted-foreground")}>
+            {hint}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
 export function Empty({
   icon,
+  illustration,
   title,
   children,
   action,
 }: {
   icon: ReactNode;
+  illustration?: ReactNode;
   title: string;
   children?: ReactNode;
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed bg-card/60 px-6 py-10 text-center">
-      <div className="mb-3 rounded-full bg-primary-soft p-3 text-primary [&_svg]:size-5">
-        {icon}
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-border/90 bg-card/70 px-6 py-10 text-center shadow-soft">
+      <div
+        aria-hidden="true"
+        className={cn(
+          "mb-3 grid place-items-center rounded-2xl bg-primary-soft/80 p-3 text-primary",
+          illustration ? "[&_svg]:size-14" : "[&_svg]:size-5",
+        )}
+      >
+        {illustration ?? icon}
       </div>
       <p className="font-medium text-foreground">{title}</p>
       {children && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{children}</p>}

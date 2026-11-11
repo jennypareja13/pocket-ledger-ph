@@ -10,6 +10,7 @@ import { APP_NAME } from "@/lib/config";
 import { bnplView, type UpcomingItem } from "@/lib/bnpl-view";
 import { formatDate, formatMonth, todayManila } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
+import { Card, CoinStack, Vault } from "@/components/app/illustrations";
 
 export const Route = createFileRoute("/_shell/bnpl")({
   head: () => ({
@@ -48,7 +49,11 @@ function BnplPage() {
     return (
       <>
         <PageHeader title="Buy now, pay later" />
-        <Empty icon={<CalendarClock />} title="BNPL isn't available here">
+        <Empty
+          icon={<CalendarClock />}
+          illustration={<Vault className="size-14" />}
+          title="BNPL isn't available here"
+        >
           BNPL works only in a Main Space with it turned on. Switch to your Main Space, or turn it
           on in{" "}
           <Link to="/settings" className="underline">
@@ -97,7 +102,11 @@ function BnplPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Upcoming installments">
           {v.upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No unpaid installments.</p>
+            <Empty
+              icon={<CalendarClock />}
+              illustration={<CoinStack className="size-14" />}
+              title="No unpaid installments."
+            />
           ) : (
             <ul className="divide-y">
               {v.upcoming.map((u) => (
@@ -134,9 +143,11 @@ function BnplPage() {
         </Panel>
         <Panel title="Active plans">
           {v.plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No active plans yet. Add one with "New plan".
-            </p>
+            <Empty
+              icon={<CalendarClock />}
+              illustration={<Card className="size-14" />}
+              title={'No active plans yet. Add one with "New plan".'}
+            />
           ) : (
             <ul className="space-y-4">
               {v.plans.map((p) => (

@@ -16,21 +16,22 @@ import { formatMonth } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
 import { expenseBreakdown, monthlyTrend } from "@/lib/selectors";
 import type { Category, Tx } from "@/lib/types";
+import { Card, CoinStack } from "@/components/app/illustrations";
 
 const SLICE_COLORS = [
-  "var(--brand-teal)",
-  "var(--brand-ocean)",
-  "var(--brand-aqua)",
-  "var(--brand-deep)",
-  "var(--brand-ice)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 const DOT_CLASSES = [
-  "bg-[var(--brand-teal)]",
-  "bg-[var(--brand-ocean)]",
-  "bg-[var(--brand-aqua)]",
-  "bg-[var(--brand-deep)]",
-  "bg-[var(--brand-ice)]",
+  "bg-[var(--chart-1)]",
+  "bg-[var(--chart-2)]",
+  "bg-[var(--chart-3)]",
+  "bg-[var(--chart-4)]",
+  "bg-[var(--chart-5)]",
 ];
 
 const shortMonth = (m: string) => formatMonth(m).split(" ")[0]?.slice(0, 3) ?? m;
@@ -61,33 +62,56 @@ export function HomeCharts(props: {
     <div className="mt-4 grid gap-4 lg:grid-cols-2">
       <Panel title="Income vs expenses · last 6 months">
         {!hasTrend ? (
-          <Empty icon={<BarChart3 />} title="No income or expenses yet">
+          <Empty
+            icon={<BarChart3 />}
+            illustration={<CoinStack className="size-14" />}
+            title="No income or expenses yet"
+          >
             Transfers and loan amounts are not counted here.
           </Empty>
         ) : (
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={trend} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
+                <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                  tick={{ fill: "var(--chart-label)" }}
+                />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
                   width={48}
+                  tick={{ fill: "var(--chart-label)" }}
                   tickFormatter={(v: number) => `₱${Math.round(v / 100000)}k`}
                 />
-                <Tooltip formatter={tooltipValue} />
+                <Tooltip
+                  formatter={tooltipValue}
+                  contentStyle={{
+                    backgroundColor: "var(--chart-tooltip)",
+                    borderColor: "var(--border)",
+                    borderRadius: "12px",
+                    color: "var(--foreground)",
+                    boxShadow: "var(--shadow-soft)",
+                  }}
+                  labelStyle={{ color: "var(--foreground)" }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  cursor={{ fill: "var(--chart-hover)" }}
+                />
                 <Bar
                   dataKey="income"
                   name="Income"
-                  fill="var(--brand-teal)"
+                  fill="var(--income)"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="expense"
                   name="Expenses"
-                  fill="var(--brand-aqua)"
+                  fill="var(--expense)"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -98,7 +122,11 @@ export function HomeCharts(props: {
 
       <Panel title={`Spending by category · ${formatMonth(month)}`}>
         {slices.length === 0 ? (
-          <Empty icon={<PieIcon />} title="No expenses this month" />
+          <Empty
+            icon={<PieIcon />}
+            illustration={<Card className="size-14" />}
+            title="No expenses this month"
+          />
         ) : (
           <div className="flex flex-col items-center gap-4 sm:flex-row">
             <div className="relative h-44 w-44 shrink-0">
@@ -116,7 +144,18 @@ export function HomeCharts(props: {
                       <Cell key={s.categoryId} fill={SLICE_COLORS[i % SLICE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={tooltipValue} />
+                  <Tooltip
+                    formatter={tooltipValue}
+                    contentStyle={{
+                      backgroundColor: "var(--chart-tooltip)",
+                      borderColor: "var(--border)",
+                      borderRadius: "12px",
+                      color: "var(--foreground)",
+                      boxShadow: "var(--shadow-soft)",
+                    }}
+                    labelStyle={{ color: "var(--foreground)" }}
+                    itemStyle={{ color: "var(--foreground)" }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">

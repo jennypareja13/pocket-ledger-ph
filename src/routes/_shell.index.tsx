@@ -71,8 +71,8 @@ function Dashboard() {
         <SyncBadge />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <div className="col-span-2 lg:col-span-1">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <div className="col-span-2 lg:col-span-2">
           <Stat
             label={isManaged ? "Fund cash on hand" : "Available balance"}
             value={cash}
