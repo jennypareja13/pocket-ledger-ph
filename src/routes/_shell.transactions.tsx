@@ -69,11 +69,9 @@ function Transactions() {
         title="Transactions"
         subtitle={space?.data.name}
         actions={
-          !space?.data.purpose && (
-            <Button onClick={() => openTx()}>
-              <Plus /> Add
-            </Button>
-          )
+          <Button onClick={() => openTx()}>
+            <Plus /> Add
+          </Button>
         }
       />
       <div className="mb-5 flex flex-wrap items-end gap-3">

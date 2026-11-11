@@ -77,13 +77,6 @@ function Budgets() {
     }
   }
   if (!spaceId) return null;
-  if (space?.data.purpose)
-    return (
-      <PageHeader
-        title="Budgets"
-        subtitle="Budgets belong to a Main Space or managed fund, not reimbursement claims."
-      />
-    );
   const rows = budgetRows(spaceId, month, categories, budgets, transactions);
   return (
     <>

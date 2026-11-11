@@ -32,8 +32,7 @@ export interface SpaceData {
   archived?: boolean | undefined;
   note?: string | undefined;
   parent_space_id?: string | undefined;
-  purpose?: "reimbursement" | undefined;
-  modules?: { reimbursements?: boolean | undefined; bnpl?: boolean | undefined } | undefined;
+  modules?: { bnpl?: boolean | undefined } | undefined;
   bnpl_budget?: number | undefined;
 }
 
@@ -59,8 +58,6 @@ export type TxType =
   | "lend"
   | "loan_repayment"
   | "adjustment"
-  | "reimbursement_claim"
-  | "reimbursement_payment"
   | "bnpl_purchase"
   | "bnpl_payment";
 export interface Entry {
@@ -84,7 +81,6 @@ export interface TxData {
   to_account_id?: string | undefined;
   loan_id?: string | undefined;
   note?: string | undefined;
-  reimbursable?: number | undefined;
   installment_id?: string | undefined;
   /** Derived, linked balance movements. Rebuilt on every save. */
   entries: Entry[];
@@ -108,10 +104,8 @@ export interface LoanData {
   due_date?: string | undefined;
   note?: string | undefined;
   settled_at?: string | undefined;
-  module?: "reimbursement" | "bnpl" | undefined;
+  module?: "bnpl" | undefined;
   label?: string | undefined;
-  status?: "unsubmitted" | "submitted" | undefined;
-  reference?: string | undefined;
   bnpl?: BnplPlanData | undefined;
 }
 

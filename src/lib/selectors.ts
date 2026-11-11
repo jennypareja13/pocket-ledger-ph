@@ -98,9 +98,7 @@ export function budgetRows(
 }
 
 export function mainSpaces(spaces: Space[]) {
-  return live(spaces).filter(
-    (s) => s.data.type === "personal" && !s.data.purpose && !s.data.archived,
-  );
+  return live(spaces).filter((s) => s.data.type === "personal" && !s.data.archived);
 }
 
 export function childSpaces(parentId: string, spaces: Space[]) {
@@ -108,24 +106,21 @@ export function childSpaces(parentId: string, spaces: Space[]) {
   return live(spaces).filter(
     (s) =>
       !s.data.archived &&
-      (s.data.type === "managed" || s.data.purpose === "reimbursement") &&
-      (s.data.parent_space_id === parentId ||
-        (!s.data.parent_space_id && s.data.type === "managed" && primary === parentId)),
+      s.data.type === "managed" &&
+      (s.data.parent_space_id === parentId || (!s.data.parent_space_id && primary === parentId)),
   );
 }
 
 /** Home shows only managed children of the selected active Main Space. */
 export function homeSpaceOverview(spaceId: string, spaces: Space[]): Space[] {
   if (!mainSpaces(spaces).some((s) => s.id === spaceId)) return [];
-  return childSpaces(spaceId, spaces).filter((s) => s.data.type === "managed" && !s.data.purpose);
+  return childSpaces(spaceId, spaces);
 }
 
 /** Managed-space editing must not reveal other spaces. */
 export function spacesPageSpaces(spaceId: string | null, spaces: Space[]): Space[] {
   const selected = spaces.find((s) => s.id === spaceId);
-  return live(spaces).filter((s) =>
-    selected?.data.type === "managed" ? s.id === spaceId : !s.data.purpose,
-  );
+  return live(spaces).filter((s) => (selected?.data.type === "managed" ? s.id === spaceId : true));
 }
 
 export function ordinaryLoans(loans: Loan[]): Loan[] {
@@ -170,5 +165,4 @@ export function bnplPaidIds(txs: Tx[]): Set<string> {
 export const bnplOwed = (planId: string, txs: Tx[]) => 0 - loanOutstanding(planId, txs);
 
 /** Module transactions are managed on their own pages, not in the generic dialog. */
-export const isModuleTx = (tx: Tx) =>
-  tx.data.type.startsWith("reimbursement_") || tx.data.type.startsWith("bnpl_");
+export const isModuleTx = (tx: Tx) => tx.data.type.startsWith("bnpl_");

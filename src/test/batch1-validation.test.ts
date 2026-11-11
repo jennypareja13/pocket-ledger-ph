@@ -38,7 +38,7 @@ describe("Batch 1 record validation", () => {
       reason: "entries[0].delta must be a whole number within the money limit",
     });
   });
-  it("accepts legacy module loans with an empty borrower and extra fields", () => {
+  it("accepts ordinary loans with an empty borrower and extra fields", () => {
     expect(
       validateRecord(
         envelope("loan", {
@@ -46,9 +46,52 @@ describe("Batch 1 record validation", () => {
           account_id: "cash",
           principal: 0,
           date: "2026-11-01",
-          module: "reimbursement",
           legacy: true,
         }),
+        { idPolicy: "uuid" },
+      ).ok,
+    ).toBe(true);
+  });
+  it("rejects removed reimbursement records so they are quarantined instead of applied", () => {
+    const claim = {
+      type: "reimbursement_claim",
+      date: "2026-11-01",
+      amount: 100,
+      account_id: "a",
+      entries: [{ account_id: "a", delta: -100 }],
+    };
+    expect(validateRecord(envelope("transaction", claim), { idPolicy: "uuid" }).ok).toBe(false);
+    expect(
+      validateRecord(
+        envelope("loan", {
+          borrower_id: "",
+          account_id: "a",
+          principal: 0,
+          date: "2026-11-01",
+          module: "reimbursement",
+        }),
+        { idPolicy: "uuid" },
+      ).ok,
+    ).toBe(false);
+    expect(
+      validateRecord(
+        envelope("space", { name: "Work", type: "personal", purpose: "reimbursement" }),
+        { idPolicy: "uuid" },
+      ),
+    ).toEqual({ ok: false, reason: "purpose is no longer supported" });
+  });
+  it("still accepts ordinary spaces, ordinary loans and BNPL loans", () => {
+    expect(
+      validateRecord(
+        envelope("space", { name: "Main", type: "personal", modules: { bnpl: true } }),
+        {
+          idPolicy: "uuid",
+        },
+      ).ok,
+    ).toBe(true);
+    expect(
+      validateRecord(
+        envelope("loan", { borrower_id: "p", account_id: "a", principal: 100, date: "2026-11-01" }),
         { idPolicy: "uuid" },
       ).ok,
     ).toBe(true);
@@ -89,7 +132,7 @@ describe("Batch 1 record validation", () => {
     ).toBe(false);
     expect(
       validateRecord(
-        envelope("space", { name: "Space", type: "personal", modules: { reimbursements: "yes" } }),
+        envelope("space", { name: "Space", type: "personal", modules: { bnpl: "yes" } }),
         { idPolicy: "uuid" },
       ).ok,
     ).toBe(false);

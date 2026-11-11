@@ -16,12 +16,6 @@ async function setup() {
   const { parent_space_id: omittedParent, ...legacyData } = legacyRecord.data;
   void omittedParent;
   await store.save<SpaceData>("space", legacy, legacyData, legacy);
-  const reimbursement = await store.save<SpaceData>("space", null, {
-    name: "Reimbursement only",
-    type: "personal",
-    purpose: "reimbursement",
-    parent_space_id: main,
-  });
   const archived = await createSpace(store, "Archived managed", "managed", main);
   const archivedRecord = store.getSnapshot().spaces.find((s) => s.id === archived);
   if (!archivedRecord) throw new Error("Missing archived fixture");
@@ -34,7 +28,7 @@ async function setup() {
   await createAccount(store, main, "Private bank", "bank", 12345600);
   await createAccount(store, other, "Other bank", "bank", 87654300);
   await createAccount(store, child, "Managed cash", "cash", 50000);
-  return { store, main, other, child, otherChild, legacy, reimbursement: reimbursement.id };
+  return { store, main, other, child, otherChild, legacy };
 }
 
 describe("Batch 2 space privacy", () => {
@@ -54,24 +48,21 @@ describe("Batch 2 space privacy", () => {
     expect(homeSpaceOverview(other, snap.spaces).map((s) => s.id)).toEqual([otherChild]);
     expect(spaceCash(main, snap.accounts, snap.transactions)).toBe(12345600);
   });
-  it("managed and purpose space overviews are empty", async () => {
-    const { store, child, reimbursement } = await setup();
+  it("managed and unknown space overviews are empty", async () => {
+    const { store, child } = await setup();
     expect(homeSpaceOverview(child, store.getSnapshot().spaces)).toEqual([]);
-    expect(homeSpaceOverview(reimbursement, store.getSnapshot().spaces)).toEqual([]);
     expect(homeSpaceOverview("missing", store.getSnapshot().spaces)).toEqual([]);
   });
   it("Spaces shows only the selected managed space while Main keeps current visibility", async () => {
     const { store, main, child } = await setup();
     const spaces = store.getSnapshot().spaces;
     expect(spacesPageSpaces(child, spaces).map((s) => s.data.name)).toEqual(["Own managed child"]);
-    expect(spacesPageSpaces(main, spaces).map((s) => s.id)).toEqual(
-      spaces.filter((s) => !s.data.purpose).map((s) => s.id),
-    );
+    expect(spacesPageSpaces(main, spaces).map((s) => s.id)).toEqual(spaces.map((s) => s.id));
   });
 });
 
 describe("Batch 2 ordinary loan visibility", () => {
-  it("keeps ordinary loans including settled history and excludes both modules", async () => {
+  it("keeps ordinary loans including settled history and excludes the BNPL module", async () => {
     const store = new LedgerStore(memoryPersistence());
     const data: LoanData = {
       borrower_id: "person",
@@ -82,11 +73,10 @@ describe("Batch 2 ordinary loan visibility", () => {
     const ordinary = await store.save("loan", "main", data);
     const settled = await store.save("loan", "main", { ...data, settled_at: "2026-11-02" });
     await store.save("loan", "main", { ...data, module: "bnpl" });
-    await store.save("loan", "main", { ...data, module: "reimbursement" });
     expect(ordinaryLoans(store.getSnapshot().loans).map((l) => l.id)).toEqual([
       ordinary.id,
       settled.id,
     ]);
-    expect(store.getSnapshot().loans).toHaveLength(4);
+    expect(store.getSnapshot().loans).toHaveLength(3);
   });
 });

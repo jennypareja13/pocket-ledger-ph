@@ -51,13 +51,6 @@ function Analysis() {
   const [mode, setMode] = useState<"month" | "year">("month");
   const [month, setMonth] = useState(currentMonth());
   if (!spaceId) return null;
-  if (space?.data.purpose)
-    return (
-      <PageHeader
-        title="Analysis"
-        subtitle="Reimbursement claims and payments are shown in Reimbursements, separate from spending."
-      />
-    );
   const prefix = mode === "month" ? month : month.slice(0, 4);
   const totals = periodTotals(spaceId, transactions, prefix);
   const cats = [...totals.byCategory.entries()]

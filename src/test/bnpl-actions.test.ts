@@ -249,7 +249,6 @@ describe("BNPL actions", () => {
       name: "Main",
       type: "personal",
       note: "Keep",
-      modules: { reimbursements: true },
       bnpl_budget: p(5000),
     };
     await store.save("space", main, data, main);
@@ -257,7 +256,7 @@ describe("BNPL actions", () => {
     await toggleBnpl(store, main, false);
     expect(store.getSnapshot().spaces[0]?.data).toEqual({
       ...data,
-      modules: { reimbursements: true, bnpl: false },
+      modules: { bnpl: false },
     });
     const before = structuredClone(store.all());
     await expect(createPlan(store, main, input())).rejects.toThrow("Enable BNPL");
@@ -358,21 +357,13 @@ describe("BNPL actions", () => {
     expect(txTypeLabel("bnpl_payment")).toBe("BNPL payment");
   });
 
-  it("never lists plans for managed or reimbursement selections", async () => {
+  it("never lists plans for managed selections", async () => {
     const { store, main, input } = await setup();
     await createPlan(store, main, input());
     const managed = await createSpace(store, "Managed", "managed", main);
-    const purpose = crypto.randomUUID();
-    await store.save(
-      "space",
-      purpose,
-      { name: "Work", type: "personal", purpose: "reimbursement" },
-      purpose,
-    );
     const snap = store.getSnapshot();
     expect(bnplPlans(main, snap.spaces, snap.loans)).toHaveLength(1);
     expect(bnplPlans(managed, snap.spaces, snap.loans)).toEqual([]);
-    expect(bnplPlans(purpose, snap.spaces, snap.loans)).toEqual([]);
     await expect(createPlan(store, managed, input())).rejects.toThrow("Main Space");
   });
 

@@ -49,10 +49,7 @@ export async function createSpace(
         ...(type === "managed"
           ? {
               parent_space_id:
-                parentId ??
-                store
-                  .getSnapshot()
-                  .spaces.find((s) => s.data.type === "personal" && !s.data.purpose)?.id,
+                parentId ?? store.getSnapshot().spaces.find((s) => s.data.type === "personal")?.id,
             }
           : {}),
       } satisfies SpaceData,

@@ -25,8 +25,6 @@ export function transactionsCsv(snap: Snapshot, spaceId: string, from: string, t
       "person",
       "note",
       "sync",
-      "reimbursable_php",
-      "personal_expense_php",
     ],
   ];
   for (const t of snap.transactions.filter(
@@ -47,13 +45,9 @@ export function transactionsCsv(snap: Snapshot, spaceId: string, from: string, t
       personForTx(t, snap),
       d.note ?? "",
       t._meta.sync,
-      centsToInput(d.reimbursable ?? 0),
-      centsToInput(
-        d.entries.filter((e) => e.report === "expense").reduce((s, e) => s + Math.abs(e.delta), 0),
-      ),
     ]);
   }
-  const numeric = new Set([3, 4, 11, 12]);
+  const numeric = new Set([3, 4]);
   return rows
     .map((r, index) =>
       r
