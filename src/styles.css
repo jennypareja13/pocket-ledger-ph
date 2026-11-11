@@ -213,7 +213,6 @@ body::before {
 .button-primary {
   background-image: var(--gradient-primary);
   box-shadow: var(--shadow-button);
-  transition: transform 160ms ease;
 }
 
 .button-primary:hover {
@@ -290,9 +289,21 @@ body::before {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  body::before { animation: gradient-drift 52s ease-in-out infinite alternate; }
+  .button-primary {
+    transition: transform 160ms ease;
+  }
+
+  body::before {
+    animation: gradient-drift 52s ease-in-out infinite alternate;
+  }
+
   @keyframes gradient-drift {
-    from { transform: translate3d(-1.2%, 0.8%, 0); }
-    to { transform: translate3d(1.2%, -0.8%, 0); }
+    from {
+      transform: translate3d(-1.2%, 0.8%, 0);
+    }
+
+    to {
+      transform: translate3d(1.2%, -0.8%, 0);
+    }
   }
 }
