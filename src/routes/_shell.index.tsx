@@ -20,7 +20,7 @@ import {
   spaceReceivable,
 } from "@/lib/selectors";
 import { accountTypeLabel } from "@/lib/labels";
-import { Card, CoinStack, Vault, Wallet } from "@/components/app/illustrations";
+import { Card, CoinStack, Vault, Wallet as WalletIllustration } from "@/components/app/illustrations";
 
 export const Route = createFileRoute("/_shell/")({
   head: () => ({
@@ -149,7 +149,7 @@ function Dashboard() {
             {accounts.filter((a) => !a.data.archived).length === 0 ? (
               <Empty
                 icon={<Wallet />}
-                illustration={<Wallet className="size-14" />}
+                illustration={<WalletIllustration className="size-14" />}
                 title="No accounts in this space"
                 action={
                   <Button asChild size="sm">
