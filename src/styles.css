@@ -184,6 +184,32 @@ body::before {
   }
 }
 
+.stat-hero::before,
+.stat-hero::after {
+  position: absolute;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 9999px;
+  content: "";
+  pointer-events: none;
+}
+
+.stat-hero::before {
+  top: -6rem;
+  right: -3.5rem;
+  width: 13rem;
+  height: 13rem;
+  border-width: 1.25rem;
+  opacity: 0.28;
+}
+
+.stat-hero::after {
+  top: -4rem;
+  right: -1.5rem;
+  width: 9rem;
+  height: 9rem;
+  opacity: 0.35;
+}
+
 .button-primary {
   background-image: var(--gradient-primary);
   box-shadow: var(--shadow-button);

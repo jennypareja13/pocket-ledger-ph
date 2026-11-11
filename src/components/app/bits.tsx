@@ -81,7 +81,7 @@ export function Stat({
       className={cn(
         "rounded-2xl border border-border/80 bg-card/85 p-4 shadow-soft",
         variant === "hero" &&
-          "relative min-h-36 overflow-hidden border-white/20 bg-[image:var(--gradient-hero)] p-5 text-white shadow-[var(--glow)] backdrop-blur-sm",
+          "stat-hero relative min-h-36 overflow-hidden border-white/20 bg-[image:var(--gradient-hero)] p-5 text-white shadow-[var(--glow)] backdrop-blur-sm",
       )}
     >
       {variant === "hero" && (
