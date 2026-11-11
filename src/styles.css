@@ -78,7 +78,7 @@
   --muted-foreground: #42666c;
   --accent: #e3f7fa;
   --accent-foreground: #003942;
-  --destructive: #a23f3a;
+  --destructive: #8e2935;
   --destructive-foreground: #ffffff;
   --income: #176975;
   --expense: #a23f3a;
@@ -242,7 +242,7 @@ body::before {
   --muted-foreground: #aac2c6;
   --accent: #1c363c;
   --accent-foreground: #e8f7f8;
-  --destructive: #ff9a91;
+  --destructive: #ff647c;
   --destructive-foreground: #30100e;
   --income: #78ddb7;
   --expense: #ff9a91;
