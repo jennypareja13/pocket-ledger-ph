@@ -4,6 +4,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -102,6 +103,7 @@ export function HomeCharts(props: {
                   itemStyle={{ color: "var(--foreground)" }}
                   cursor={{ fill: "var(--chart-hover)" }}
                 />
+                <Legend wrapperStyle={{ color: "var(--chart-label)", fontSize: 12 }} />
                 <Bar dataKey="income" name="Income" fill="var(--income)" radius={[4, 4, 0, 0]} />
                 <Bar
                   dataKey="expense"
