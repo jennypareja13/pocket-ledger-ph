@@ -20,6 +20,7 @@ import {
   spaceReceivable,
 } from "@/lib/selectors";
 import { accountTypeLabel } from "@/lib/labels";
+import { Card, CoinStack, Vault, Wallet } from "@/components/app/illustrations";
 
 export const Route = createFileRoute("/_shell/")({
   head: () => ({
@@ -78,6 +79,7 @@ function Dashboard() {
             value={cash}
             hint={`${accounts.filter((a) => !a.data.archived).length} account(s)`}
             tone={isManaged ? "managed" : undefined}
+            variant="hero"
           />
         </div>
         <Stat label="Owed to this space" value={recv} hint="Receivable, not cash" />
@@ -116,6 +118,7 @@ function Dashboard() {
           {transactions.length === 0 ? (
             <Empty
               icon={<Receipt />}
+              illustration={<CoinStack className="size-14" />}
               title="No transactions yet"
               action={
                 <Button size="sm" onClick={() => openTx()}>
@@ -146,6 +149,7 @@ function Dashboard() {
             {accounts.filter((a) => !a.data.archived).length === 0 ? (
               <Empty
                 icon={<Wallet />}
+                illustration={<Wallet className="size-14" />}
                 title="No accounts in this space"
                 action={
                   <Button asChild size="sm">
@@ -185,6 +189,7 @@ function Dashboard() {
             {budget.length === 0 ? (
               <Empty
                 icon={<PiggyBank />}
+                illustration={<Card className="size-14" />}
                 title="No budgets set"
                 action={
                   <Button asChild size="sm" variant="outline">
@@ -222,7 +227,11 @@ function Dashboard() {
             }
           >
             {openLoans.length === 0 ? (
-              <Empty icon={<HandCoins />} title="Nobody owes this space money" />
+              <Empty
+                icon={<HandCoins />}
+                illustration={<Vault className="size-14" />}
+                title="Nobody owes this space money"
+              />
             ) : (
               <ul className="space-y-2">
                 {openLoans.slice(0, 5).map(({ l, out, who }) => (
