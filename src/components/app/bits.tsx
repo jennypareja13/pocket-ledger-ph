@@ -37,7 +37,9 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-border/80 bg-card/85 p-5 shadow-soft", className)}>
+    <section
+      className={cn("rounded-2xl border border-border/80 bg-card/85 p-5 shadow-soft", className)}
+    >
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-2">
           {title && <h2 className="text-sm font-semibold text-foreground">{title}</h2>}
@@ -106,7 +108,12 @@ export function Stat({
           {tone === "net" ? formatSignedPHP(value) : formatPHP(value)}
         </p>
         {hint && (
-          <p className={cn("mt-1 text-xs", variant === "hero" ? "text-white/80" : "text-muted-foreground")}>
+          <p
+            className={cn(
+              "mt-1 text-xs",
+              variant === "hero" ? "text-white/80" : "text-muted-foreground",
+            )}
+          >
             {hint}
           </p>
         )}

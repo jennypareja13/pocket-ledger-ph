@@ -241,7 +241,10 @@ function Layout() {
             <Menu className="size-5" />
             More
           </SheetTrigger>
-          <SheetContent side="bottom" className="border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
+          <SheetContent
+            side="bottom"
+            className="border-sidebar-border bg-sidebar/95 backdrop-blur-xl"
+          >
             <SheetHeader>
               <SheetTitle>{APP_NAME}</SheetTitle>
             </SheetHeader>

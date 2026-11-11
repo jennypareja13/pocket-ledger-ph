@@ -20,7 +20,12 @@ import {
   spaceReceivable,
 } from "@/lib/selectors";
 import { accountTypeLabel } from "@/lib/labels";
-import { Card, CoinStack, Vault, Wallet as WalletIllustration } from "@/components/app/illustrations";
+import {
+  Card,
+  CoinStack,
+  Vault,
+  Wallet as WalletIllustration,
+} from "@/components/app/illustrations";
 
 export const Route = createFileRoute("/_shell/")({
   head: () => ({

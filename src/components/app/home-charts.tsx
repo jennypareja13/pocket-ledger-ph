@@ -102,12 +102,7 @@ export function HomeCharts(props: {
                   itemStyle={{ color: "var(--foreground)" }}
                   cursor={{ fill: "var(--chart-hover)" }}
                 />
-                <Bar
-                  dataKey="income"
-                  name="Income"
-                  fill="var(--income)"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="income" name="Income" fill="var(--income)" radius={[4, 4, 0, 0]} />
                 <Bar
                   dataKey="expense"
                   name="Expenses"

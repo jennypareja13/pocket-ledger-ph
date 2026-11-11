@@ -117,10 +117,14 @@
   --shadow-button: 0 8px 18px rgb(0 57 66 / 18%);
 }
 
-html { background: var(--background); }
+html {
+  background: var(--background);
+}
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
   body {
     position: relative;
     isolation: isolate;
@@ -175,7 +179,9 @@ body::before {
     outline-offset: 2px;
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ring) 16%, transparent);
   }
-  &:disabled { opacity: 0.6; }
+  &:disabled {
+    opacity: 0.6;
+  }
 }
 
 .button-primary {
@@ -183,10 +189,12 @@ body::before {
   box-shadow: var(--shadow-button);
   transition: transform 160ms ease;
 }
+
 .button-primary:hover {
   filter: brightness(1.06);
   box-shadow: var(--glow);
 }
+
 .button-primary:active {
   filter: brightness(0.96);
   transform: translateY(1px);
