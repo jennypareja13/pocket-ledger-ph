@@ -16,8 +16,6 @@ const ICONS = {
   lend: HandCoins,
   loan_repayment: Undo2,
   adjustment: Scale,
-  reimbursement_claim: HandCoins,
-  reimbursement_payment: Undo2,
   bnpl_purchase: ArrowUpRight,
   bnpl_payment: Undo2,
 };

@@ -19,8 +19,6 @@ const txTypes = [
   "lend",
   "loan_repayment",
   "adjustment",
-  "reimbursement_claim",
-  "reimbursement_payment",
   "bnpl_purchase",
   "bnpl_payment",
 ];
@@ -86,12 +84,12 @@ export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" })
       bool("archived");
       text("note", true);
       text("parent_space_id", true);
-      choice("purpose", ["reimbursement"], true);
+      if (d["purpose"] !== undefined) errors.push("purpose is no longer supported");
       money("bnpl_budget", 0, true);
       if (d["modules"] !== undefined) {
         if (!isPlainObject(d["modules"])) errors.push("modules must be an object");
         else
-          for (const key of ["reimbursements", "bnpl"])
+          for (const key of ["bnpl"])
             if (d["modules"][key] !== undefined && typeof d["modules"][key] !== "boolean")
               errors.push(`modules.${key} must be a boolean`);
       }
@@ -123,10 +121,8 @@ export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" })
       text("account_id");
       money("principal", 0);
       date("date");
-      for (const key of ["due_date", "settled_at", "note", "label", "platform", "reference"])
-        text(key, true);
-      choice("module", ["reimbursement", "bnpl"], true);
-      choice("status", ["unsubmitted", "submitted"], true);
+      for (const key of ["due_date", "settled_at", "note", "label", "platform"]) text(key, true);
+      choice("module", ["bnpl"], true);
       if (d["module"] === "bnpl") {
         const plan = d["bnpl"];
         if (!isPlainObject(plan)) errors.push("bnpl must be an object");
@@ -161,7 +157,6 @@ export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" })
       if (d["amount"] === 0) errors.push("amount must not be zero");
       text("account_id");
       money("fee", 0, true);
-      money("reimbursable", 0, true);
       for (const key of ["category_id", "fee_category_id", "to_account_id", "loan_id", "note"])
         text(key, true);
       if (!Array.isArray(d["entries"]) || d["entries"].length < 1 || d["entries"].length > 20)

@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { VaultLogo } from "@/components/app/vault-logo";
-import { mainSpaces, childSpaces } from "@/lib/selectors";
+import { mainSpaces } from "@/lib/selectors";
 import { APP_NAME } from "@/lib/config";
 import { createAccount, createSpace } from "@/lib/actions";
 import { parseAmount } from "@/lib/money";
@@ -125,25 +125,6 @@ function SpacePicker({ className }: { className?: string }) {
               </option>
             ))}
         </optgroup>
-        {mainSpaces(spaces).some((s) => s.data.modules?.reimbursements) && (
-          <optgroup label="Reimbursement spaces">
-            {spaces
-              .filter(
-                (s) =>
-                  s.data.purpose === "reimbursement" &&
-                  mainSpaces(spaces).some(
-                    (p) =>
-                      p.data.modules?.reimbursements &&
-                      childSpaces(p.id, spaces).some((c) => c.id === s.id),
-                  ),
-              )
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.data.name}
-                </option>
-              ))}
-          </optgroup>
-        )}
       </Select>
     </div>
   );
@@ -195,7 +176,7 @@ function Layout() {
         <SpacePicker className="mb-4" />
         <NavLinks />
         <div className="mt-auto space-y-3">
-          <Button className="w-full" disabled={!!space?.data.purpose} onClick={() => openTx()}>
+          <Button className="w-full" onClick={() => openTx()}>
             <Plus /> Add transaction
           </Button>
           <SyncBadge className="w-full justify-center" />
@@ -220,16 +201,14 @@ function Layout() {
         </main>
       </div>
 
-      {!space?.data.purpose && (
-        <Button
-          type="button"
-          aria-label="Add transaction"
-          onClick={() => openTx()}
-          className="fixed bottom-20 right-4 z-30 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-soft md:hidden"
-        >
-          <Plus className="size-6" />
-        </Button>
-      )}
+      <Button
+        type="button"
+        aria-label="Add transaction"
+        onClick={() => openTx()}
+        className="fixed bottom-20 right-4 z-30 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-soft md:hidden"
+      >
+        <Plus className="size-6" />
+      </Button>
       <nav
         aria-label="Mobile"
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
