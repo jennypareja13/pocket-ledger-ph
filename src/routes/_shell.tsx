@@ -211,7 +211,7 @@ function Layout() {
       </Button>
       <nav
         aria-label="Mobile"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgb(0_57_66_/_8%)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgb(0_57_66_/_8%)] md:hidden"
       >
         {MOBILE.flatMap((to) => NAV.filter((n) => n.to === to)).map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(to);
@@ -243,7 +243,7 @@ function Layout() {
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="border-sidebar-border bg-sidebar/95 backdrop-blur-xl"
+            className="border-sidebar-border bg-sidebar/95"
           >
             <SheetHeader>
               <SheetTitle>{APP_NAME}</SheetTitle>
