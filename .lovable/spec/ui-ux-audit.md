@@ -193,3 +193,34 @@ Implementation constraints:
 The first CI attempt could not download Bun because the GitHub release endpoint returned HTTP 504. A retry successfully installed dependencies and ran the tests. The tests passed, but the repository-wide ESLint command failed with 688 Prettier formatting errors (and 12 warnings) across existing files, including unrelated routes and tests. This is pre-existing repository-wide formatting debt; do not apply a mass formatter as part of a focused feature batch.
 
 After the dedicated formatting-cleanup batch was merged, CI runs repository-wide ESLint via `bun run lint`. This expands the lint check to the full repository; it does not itself establish that the full lint check passes.
+
+
+---
+
+## 10. Status update — 2026-11-11
+
+This update supplements the historical source audit above. The original audit baseline and observations are preserved as of 2026-11-09; statements in earlier sections are not claims about the current main branch.
+
+Verified current main: `e9deee599c1710b6caed5ab9eea253056c7ce6bf`.
+
+### Changes since the audit baseline
+
+- BNPL reminder-schedule logic and its unit tests have been merged (PR #8). The merged change is a pure reminder engine; this does not establish that reminder UI, browser notification delivery, push notifications, or service-worker delivery are implemented.
+- Even-split remainder handling was changed so leftover centavos go to the final installment(s) (PR #9).
+- Light is the default theme (PR #10). This does not complete the full visual redesign or prove every page, chart, dialog, and illustration has passed theme QA.
+- Lend and repayment dialog flow was updated (PR #12).
+- Reimbursement functionality was removed (PR #13). Reimbursement-specific transaction fields and UI were removed; validation rejects legacy reimbursement transaction records and unsupported space-purpose values. Earlier references in this audit to reimbursement labels, reimbursement spaces, or reimbursement claims are historical and no longer describe the supported product.
+- PR #13 changed 16 files (+82/-289). Its PR-head CI run `42931164232` succeeded. The push-triggered CI run for current main, `42931298319`, also succeeded. The workflow job was "Test, lint, type-check, and build".
+
+### Current gaps and items not to treat as complete
+
+- Provider-grouped BNPL payments are not confirmed implemented on main.
+- The reminder engine is merged, but integrated in-app reminder presentation and delivery remain to be completed/verified.
+- Day/week/month/year shared filters are not confirmed merged. PR #4 contains date-range foundation work but remains open and is based on an older main commit.
+- The campaign hub specification is on a separate branch and is not merged or implemented. Database, RLS, and trusted administrator-role work still require explicit approval.
+- The full design-system and page redesign, visual QA, accessibility, performance, and security verification remain outstanding.
+- The first-time user tutorial remains last.
+
+### Review limitations
+
+The successful GitHub Actions result is evidence for the configured CI job on the cited commits. It is not evidence of live browser testing, mobile-device testing, real two-user isolation testing, production deployment, or production readiness. Those checks must be reported separately if performed.

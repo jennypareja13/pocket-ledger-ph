@@ -1,4 +1,4 @@
-# PocketLedger
+# PocketVault
 
 Private, offline-first personal finance ledger in Philippine pesos (PHP, Asia/Manila dates). The product name lives in `src/lib/config.ts`.
 
@@ -19,6 +19,7 @@ bun run build
 - Amounts are integer centavos. Every transaction stores derived `entries` (balance movements).
 - Only entries flagged `report` count in income/expense. Transfer principal, lending and loan repayments never do; a transfer fee is a separate expense entry on the source account.
 - Spaces (personal / managed, e.g. a sinking fund) are fully separate: accounts, categories, budgets, loans and totals are scoped to one space.
+- BNPL plans and installment payments are tracked separately from ordinary income and expense totals. Installments are marked paid only through the user's explicit payment action.
 
 ## Cloud schema and access rules
 One table, `ledger_records` (id, owner_id, kind, space_id, data jsonb, deleted, rev, last_mutation_id, timestamps).

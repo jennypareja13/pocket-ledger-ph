@@ -1,5 +1,7 @@
 # BNPL UI phase 1 — plan
 
+> **Historical plan — status reconciled 2026-11-11.** This document records the original phase-1 proposal; it is not the current implementation checklist or authorization to build. The BNPL page, plan dialog, and single-installment payment dialog are present in the implementation. The even-split remainder correction is merged in PR #9. The pure reminder engine is merged in PR #8, but this does not mean reminder UI or notification delivery is integrated. The Settings toggle/budget and date-range foundation are part of still-open PR #4 and must not be treated as merged. Provider-grouped payments remain outstanding. See the current status in `.lovable/plan.md` and `roadmap.md`.
+
 ## 1. Branch safety (read this first)
 
 What I checked:
