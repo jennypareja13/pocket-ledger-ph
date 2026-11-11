@@ -1,61 +1,50 @@
-# PocketVault — staged plan from the current state
+# PocketVault — current implementation status and next phases
 
-## 0. Git state I can see (checked, read-only)
-- HEAD SHA: `39003caed7e39120de5270dd495465b8e304139f` ("Implemented BNPL UI phase-1"). This matches what the project metadata says, which is **main**.
-- My local branch name is an internal edit branch (`edit/edt-...`). It does not show which GitHub branch the project syncs to. I cannot see the Git connection, `add-responsible-bnpl-campaign-spec` or PR #3.
-- So: I can't confirm the connected branch from here. Because the SHA matches main, assume **every write goes to main** until the owner confirms otherwise. Note that the BNPL phase-1 UI is already on main.
+Last reconciled: 2026-11-11  
+Verified main commit: `e9deee599c1710b6caed5ab9eea253056c7ce6bf`
 
-## 1. Current-state audit
-| Area | State |
-|---|---|
-| Pages | Home, Accounts, Transactions, Budgets, Loans, Spaces, Analysis, BNPL, Settings, Auth. `_shell.reports.tsx` is still there (probably a redirect; needs checking) |
-| BNPL logic | `bnpl.ts`, `bnpl-actions.ts` (toggle, budget, createPlan, markInstallmentPaid for **one installment**, updateDueDate, deletePlan), `bnpl-view.ts`. Already on by default (`modules.bnpl !== false`) |
-| BNPL UI | Dashboard, create-plan dialog and single-installment pay dialog are done. **Missing:** Settings on/off switch and budget field, paying several installments from one provider at once, UI tests |
-| Budgets | Custom category budgets in the Budgets page; the BNPL monthly budget is stored per Main Space |
-| Date filters | Analysis has Month/Year only. **Missing:** 1 day and 1 week, plus the same filters on Transactions |
-| Notifications | None: no service worker, no reminders |
-| Theme | Palette, Manrope and dark-mode CSS exist. **Missing:** a persisted light/dark/system switch (needs checking) |
-| Offline/PWA | Manifest and icons exist; no service worker (SSR/edge compatibility not shown to be safe); no APK |
-| Auth/RLS | `ledger_records` is limited to each owner; `feedback` allows admin reading through server-set `app_metadata.role`. No campaign tables yet |
-| Tests | Vitest with 12 test files; scripts `test`, `lint`, `build` |
+The owner's `POCKETVAULT_MASTER_BRIEF_FOR_CHATGPT.md` is the authoritative product specification. This plan replaces the earlier staged plan's stale branch assumptions and blocking questions. It reports what is merged to `main`; open PRs and feature branches are not treated as completed work.
 
-## 2. Batches (each one small and checked before the next)
-**Batch 1: finish BNPL settings and fixes (no migration)**
-- Settings: BNPL on/off switch and one monthly budget (`_shell.settings.tsx`, reusing `toggleBnpl`/`setBnplBudget`).
-- Review PR #3's even-split remainder fix and bring it in instead of duplicating it.
-- Tests: turning BNPL off hides the menu item but keeps all records; new spaces default to on; budget is stored in centavos.
+## 1. Verified Git and CI state
 
-**Batch 2: paying several installments from one provider (no migration)**
-- New `payInstallmentsBatch(store, mainId, {provider, accountId, date, items:[{installmentId, amount}]})` in `bnpl-actions.ts`. It checks every item first, then makes one write; each installment keeps its own payment record with its own fixed ID.
-- Rejects mixed providers, already-paid or deleted installments, installments from other spaces, and duplicates. Then the pay dialog gets multi-select by provider.
-- Tests: no second purchase expense; cash and amount owed go down by the exact total; retrying doesn't create duplicates; mixing providers is rejected; Managed Spaces are rejected.
+- `main` is at `e9deee599c1710b6caed5ab9eea253056c7ce6bf`.
+- Task 4 (remove reimbursements) was merged in [PR #13](https://github.com/jennypareja13/pocket-ledger-ph/pull/13). Its resulting tree matched the expected tree SHA `0f4c9d0d530f50ef28c8a71c84a18badc89f1ba2`.
+- PR #13's PR-head CI run `42931164232` succeeded. The push-triggered CI run for the resulting main commit, `42931298319`, also succeeded. Both ran the workflow job "Test, lint, type-check, and build".
+- The pre-Task-4 backup branch `backup/pre-task4-2026-11-10` remains at `c3d42729084486033b33ec78f6083ca8ee85fac8`.
+- PR #3 (even-split remainder) and PR #4 (BNPL settings/date-range foundation) are still open. PR #3 duplicates work already delivered by merged PR #9. PR #4 is based on an older main commit and must be reviewed/reconciled separately.
 
-**Batch 3: shared date filter**
-- One shared period helper (`dates.ts`/`selectors.ts`) for day, week, month and year in Manila time, used by Analysis, Transactions and the CSV export.
-- Tests: start and end of each period, week starting Monday (assumption), changing the filter never changes records.
+## 2. Completed implementation batches on main
 
-**Batch 4: theme switch**
-- Light/dark/system choice saved locally on the device, applied without a flash on first load (`__root.tsx`, Settings).
+- BNPL reminder engine and unit tests (PR #8). This is pure reminder logic; do not assume the reminder UI, browser notification delivery, push delivery, or service-worker integration is complete.
+- Even-split remainder placement, with extra centavos assigned to the final installment(s) (PR #9).
+- Light as the default theme (PR #10). Full visual redesign and all-page light/dark/system QA remain separate work.
+- Lend and repayment dialog flow (PR #12).
+- Reimbursement feature removal (PR #13): reimbursement transaction fields and UI were removed; validation rejects legacy reimbursement transaction records and unsupported space-purpose values. The old reimbursement feature must not be reintroduced without a new explicit product decision.
 
-**Batch 5: BNPL reminders (BLOCKED until the timing is confirmed)**
-- Planned: in-app reminders worked out from unpaid due dates (no push messages, no service worker). Turning BNPL off hides them.
+## 3. Remaining work, in approved order
 
-**Batch 6: campaign hub (needs a migration and your separate approval)**
-- New `campaigns` table: everyone signed in can read published rows; only admins can create, edit, publish or archive, enforced on the server (server-set role, checked with server functions and database rules). No submissions or comments.
-- Tests: a regular user can't write or read drafts; an admin can.
+1. **UI/UX audit and design preparation:** source-level audit exists. Complete visual/browser, mobile, keyboard, screen-reader, contrast, and accessibility verification as part of the later design and QA work.
+2. **Design system, illustrations, backgrounds, and dark mode:** visual redesign remains a separate Lovable phase, but no Lovable build is authorized by this status document. Wait for the owner's explicit phase approval and preserve the Protected Layers identity and approved palette.
+3. **Navigation and core page redesign:** propose the information architecture first; do not implement before approval.
+4. **BNPL grouped payments and reminders:** reminder engine exists and is tested. Still assess/build provider-grouped payments and connect reminders to the approved in-app experience. Do not add OS/push notifications or a service worker without separate approval.
+5. **Financial data filters:** day, Monday–Sunday week, month, and year filters shared by Home, Activity, Analysis, and CSV export are not yet verified as merged to main. PR #4 contains date-range foundation work but is open.
+6. **Responsible BNPL campaign hub:** specification exists on `add-responsible-bnpl-campaign-spec`, not on main. Any campaign tables, RLS, trusted admin role, storage, or migration require explicit approval before implementation or application.
+7. **Testing, accessibility, performance, and security:** CI is running successfully on the latest main commit. Remaining manual and end-to-end checks must be performed and reported separately; CI success alone does not establish production readiness.
+8. **First-time tutorial:** last, only after all other phases and the campaign hub have been implemented and tested.
 
-**Batch 7: first-time tutorial (last)**, only after Batches 1–6 are checked.
+## 4. Working constraints
 
-## 3. Dependencies and risks
-- No new libraries needed. Only Batch 6 needs a migration (adding new tables only; existing records untouched).
-- Risks: writing to main by mistake; PR #3 clashing with Batch 1; a service worker on the edge host (avoided).
+- GitHub-first. Do not trigger Lovable builds for code or documentation work. Reserve Lovable credits for the separately approved visual/UI phase.
+- One branch and one PR per task. Never commit directly to main or merge without the owner's explicit authorization.
+- Verify exact existing content before edits. Keep diffs within the requested scope and list every changed file.
+- Never weaken strict TypeScript flags. Money remains integer centavos; dates remain Asia/Manila calendar dates.
+- Preserve Main Space / managed-space privacy and never automatically mark BNPL installments paid.
+- No migrations, RLS/auth changes, new dependencies, IndexedDB version changes, destructive data changes, publishing, or deployment without explicit approval.
+- Report checks as executed-and-passed, executed-and-failed, or not executed based on observed GitHub Actions results.
 
-## 4. Safe Git workflow
-1. The owner opens Project settings → Git, creates or selects a feature branch (e.g. `bnpl-phase-2`), and confirms the branch name in chat.
-2. At the start of each batch I report HEAD; you compare it with the latest commit on that branch on GitHub.
-3. No merging, publishing or deploying without your explicit approval.
+## 5. Open pull requests
 
-## 5. Blocking questions
-1. Reminder timing: does "5 days before, then consecutively 2 days after that" mean 5, 3 and 1 days before plus the due date, or something else?
-2. Should the week start on Monday?
-3. Bring PR #3 in first, or leave it to you?
+- [PR #3 — Fix BNPL even-split remainder placement](https://github.com/jennypareja13/pocket-ledger-ph/pull/3): still open, but the corresponding change is already in merged PR #9. Review as stale/duplicate; do not merge blindly.
+- [PR #4 — BNPL settings and date-range foundation](https://github.com/jennypareja13/pocket-ledger-ph/pull/4): still open, based on an older main commit. Review its diff and reconcile against current main before merging or closing.
+- `add-responsible-bnpl-campaign-spec`: campaign specification branch only; not merged.
+
