@@ -4,13 +4,7 @@ type IllustrationProps = {
 
 export function Coin({ className }: IllustrationProps) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      viewBox="0 0 64 64"
-      fill="none"
-      focusable="false"
-    >
+    <svg aria-hidden="true" className={className} viewBox="0 0 64 64" fill="none" focusable="false">
       <circle
         cx="32"
         cy="32"
@@ -90,13 +84,7 @@ export function CoinStack({ className }: IllustrationProps) {
 
 export function Card({ className }: IllustrationProps) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      viewBox="0 0 80 64"
-      fill="none"
-      focusable="false"
-    >
+    <svg aria-hidden="true" className={className} viewBox="0 0 80 64" fill="none" focusable="false">
       <rect
         x="7"
         y="10"
@@ -121,13 +109,7 @@ export function Card({ className }: IllustrationProps) {
 
 export function Vault({ className }: IllustrationProps) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      viewBox="0 0 72 72"
-      fill="none"
-      focusable="false"
-    >
+    <svg aria-hidden="true" className={className} viewBox="0 0 72 72" fill="none" focusable="false">
       <rect
         x="8"
         y="8"
@@ -166,13 +148,7 @@ export function Vault({ className }: IllustrationProps) {
 
 export function Wallet({ className }: IllustrationProps) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      viewBox="0 0 80 64"
-      fill="none"
-      focusable="false"
-    >
+    <svg aria-hidden="true" className={className} viewBox="0 0 80 64" fill="none" focusable="false">
       <path
         d="M12 15h48a8 8 0 0 1 8 8v28a6 6 0 0 1-6 6H14a7 7 0 0 1-7-7V22a7 7 0 0 1 5-7Z"
         fill="var(--brand-ice)"
