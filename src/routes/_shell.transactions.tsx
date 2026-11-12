@@ -11,6 +11,7 @@ import { describeTx, personForTx, TX_TYPES } from "@/lib/labels";
 import { toast } from "sonner";
 import { downloadFile, exportSpaceCsv } from "@/lib/csv";
 import { formatDate, todayManila } from "@/lib/dates";
+import { Card } from "@/components/app/illustrations";
 
 export const Route = createFileRoute("/_shell/transactions")({
   head: () => ({
@@ -159,11 +160,12 @@ function Transactions() {
       {transactions.length === 0 ? (
         <Empty
           icon={<Receipt />}
+          illustration={<Card className="size-14" />}
           title="No transactions in this space"
           action={<Button onClick={() => openTx()}>Add transaction</Button>}
         />
       ) : list.length === 0 ? (
-        <Empty icon={<Search />} title="No matches">
+        <Empty icon={<Search />} illustration={<Card className="size-14" />} title="No matches">
           Try clearing a filter.
         </Empty>
       ) : (

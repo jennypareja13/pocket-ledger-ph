@@ -148,9 +148,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             to={to}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
               active
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                ? "bg-[image:var(--gradient-active)] text-sidebar-accent-foreground shadow-sm ring-1 ring-inset ring-sidebar-border"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60",
             )}
           >
@@ -169,7 +169,7 @@ function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
   return (
     <div className="min-h-screen md:grid md:grid-cols-[248px_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col border-r bg-sidebar p-4 md:flex">
+      <aside className="sticky top-0 hidden h-screen flex-col border-r border-sidebar-border bg-sidebar/90 p-4 shadow-soft backdrop-blur-xl md:flex">
         <Link to="/" className="mb-6 flex items-center gap-2 px-2">
           <VaultLogo />
         </Link>
@@ -184,7 +184,7 @@ function Layout() {
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-background/90 px-4 py-3 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border/80 bg-card/85 px-4 py-3 shadow-soft backdrop-blur-xl md:hidden">
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <VaultLogo />
             <SyncBadge />
@@ -205,13 +205,13 @@ function Layout() {
         type="button"
         aria-label="Add transaction"
         onClick={() => openTx()}
-        className="fixed bottom-20 right-4 z-30 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-soft md:hidden"
+        className="button-primary fixed bottom-20 right-4 z-30 grid size-14 place-items-center rounded-full bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--glow)] hover:scale-[1.03] md:hidden"
       >
         <Plus className="size-6" />
       </Button>
       <nav
         aria-label="Mobile"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgb(0_57_66_/_8%)] md:hidden"
       >
         {MOBILE.flatMap((to) => NAV.filter((n) => n.to === to)).map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(to);
@@ -220,21 +220,28 @@ function Layout() {
               key={to}
               to={to}
               className={cn(
-                "flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
+                "flex min-h-16 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >
-              <Icon className="size-5" />
+              <span
+                className={cn(
+                  "grid size-8 place-items-center rounded-xl",
+                  active && "bg-[image:var(--gradient-active)] shadow-sm",
+                )}
+              >
+                <Icon className="size-5" />
+              </span>
               {label}
             </Link>
           );
         })}
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-          <SheetTrigger className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground">
+          <SheetTrigger className="flex min-h-16 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Menu className="size-5" />
             More
           </SheetTrigger>
-          <SheetContent side="bottom" className="bg-sidebar">
+          <SheetContent side="bottom" className="border-sidebar-border bg-sidebar/95">
             <SheetHeader>
               <SheetTitle>{APP_NAME}</SheetTitle>
             </SheetHeader>

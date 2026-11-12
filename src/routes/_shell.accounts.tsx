@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { Wallet as WalletIcon } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
-import { Field, PageHeader, Panel, Select } from "@/components/app/bits";
+import { Empty, Field, PageHeader, Panel, Select } from "@/components/app/bits";
+import { Wallet } from "@/components/app/illustrations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { APP_NAME } from "@/lib/config";
@@ -79,7 +81,13 @@ function Accounts() {
           <AccountCard key={a.id} id={a.id} />
         ))}
       </div>
-      {accounts.length === 0 && <p className="text-sm text-muted-foreground">No accounts yet.</p>}
+      {accounts.length === 0 && (
+        <Empty
+          icon={<WalletIcon />}
+          illustration={<Wallet className="size-14" />}
+          title="No accounts yet."
+        />
+      )}
       <span className="hidden">{snap.version}</span>
     </>
   );
