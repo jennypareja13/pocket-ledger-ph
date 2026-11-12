@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { APP_NAME } from "@/lib/config";
 import { addMonths, currentMonth, formatMonth } from "@/lib/dates";
 import { centsToInput, formatPHP, parseAmount } from "@/lib/money";
-import { budgetRows } from "@/lib/selectors";
+import { bnplEnabled } from "@/lib/bnpl-actions";
+import { budgetRows, mainSpaces } from "@/lib/selectors";
 import { saveCustomBudget } from "@/lib/module-actions";
+import { setBnplBudget } from "@/lib/bnpl-actions";
 import type { Budget } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell/budgets")({
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/_shell/budgets")({
   component: Budgets,
 });
 function Budgets() {
-  const { store } = useApp();
+  const { store, snap } = useApp();
   const { spaceId, space, categories, budgets, transactions } = useSpace();
   const [month, setMonth] = useState(currentMonth());
   const [open, setOpen] = useState(false);
@@ -39,6 +41,54 @@ function Budgets() {
   const [budgetMonth, setBudgetMonth] = useState(month);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [bnplDraft, setBnplDraft] = useState<{ spaceId: string; value: string }>({
+    spaceId: "",
+    value: "",
+  });
+  const [bnplBusy, setBnplBusy] = useState(false);
+  const isMainSpace = !!space && mainSpaces(snap.spaces).some((item) => item.id === space.id);
+  const bnplBudget = space?.data.bnpl_budget;
+  const bnplAmount =
+    bnplDraft.spaceId === space?.id
+      ? bnplDraft.value
+      : typeof bnplBudget === "number"
+        ? centsToInput(bnplBudget)
+        : "";
+
+  async function submitBnplBudget(e: FormEvent) {
+    e.preventDefault();
+    if (!store || !space || !isMainSpace) return;
+    const value = parseAmount(bnplAmount);
+    if (value === null) {
+      toast.error("Enter a valid BNPL budget amount.");
+      return;
+    }
+    setBnplBusy(true);
+    try {
+      await setBnplBudget(store, space.id, value);
+      setBnplDraft({ spaceId: space.id, value: centsToInput(value) });
+      toast.success("BNPL budget saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the BNPL budget.");
+    } finally {
+      setBnplBusy(false);
+    }
+  }
+
+  async function removeBnplBudget() {
+    if (!store || !space || !isMainSpace) return;
+    setBnplBusy(true);
+    try {
+      await setBnplBudget(store, space.id, null);
+      setBnplDraft({ spaceId: space.id, value: "" });
+      toast.success("BNPL budget removed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove the BNPL budget.");
+    } finally {
+      setBnplBusy(false);
+    }
+  }
+
   const start = (b?: Budget) => {
     setEditId(b?.id);
     setCategory(b?.data.category_id ?? "");
@@ -90,6 +140,45 @@ function Budgets() {
           </Button>
         }
       />
+      {isMainSpace && space && (
+        <Panel title="BNPL monthly budget" className="mb-6">
+          <p className="text-sm text-muted-foreground">
+            Set one monthly limit shared by all BNPL providers. This budget is separate from
+            category budgets.
+            {!bnplEnabled(snap, space.id) &&
+              " BNPL tracking is currently off in Settings; this limit is retained until it is enabled again."}
+          </p>
+          <form onSubmit={submitBnplBudget} className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <Field label="Monthly limit (₱)" htmlFor="bnpl-budget-amount">
+                <Input
+                  id="bnpl-budget-amount"
+                  inputMode="decimal"
+                  value={bnplAmount}
+                  onChange={(event) =>
+                    setBnplDraft({ spaceId: space.id, value: event.target.value })
+                  }
+                  placeholder="e.g. 5000"
+                  required
+                />
+              </Field>
+            </div>
+            <Button type="submit" disabled={bnplBusy}>
+              {bnplBusy ? "Saving…" : "Save BNPL budget"}
+            </Button>
+            {typeof bnplBudget === "number" && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={bnplBusy}
+                onClick={removeBnplBudget}
+              >
+                Remove budget
+              </Button>
+            )}
+          </form>
+        </Panel>
+      )}
       <div className="mb-6 flex items-center gap-3">
         <Button
           variant="outline"

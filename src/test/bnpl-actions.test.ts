@@ -273,6 +273,14 @@ describe("BNPL actions", () => {
     expect(store.getSnapshot().spaces[0]?.data.note).toBe("Keep");
   });
 
+  it("does not allow managed spaces to store a BNPL budget", async () => {
+    const { store, main } = await setup();
+    const managed = await createSpace(store, "Managed", "managed", main);
+    const before = structuredClone(store.all());
+    await expect(setBnplBudget(store, managed, p(5000))).rejects.toThrow("Main Space");
+    expect(store.all()).toEqual(before);
+  });
+
   it("validates BNPL backups, rejects malformed plans and quarantines malformed pulls", async () => {
     const { store, main, input, pay } = await setup();
     const reviewed = input();
