@@ -13,6 +13,8 @@ import { MAX_BACKUP_BYTES, restoreBackup } from "@/lib/restore";
 import type { Quarantine } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { useThemePreference } from "@/components/app/ThemeProvider";
+import { bnplEnabled, toggleBnpl } from "@/lib/bnpl-actions";
+import { mainSpaces } from "@/lib/selectors";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({
@@ -35,6 +37,27 @@ function Settings() {
   const [from, setFrom] = useState(todayManila().slice(0, 7) + "-01");
   const [to, setTo] = useState(todayManila());
   const [quarantine, setQuarantine] = useState<Quarantine>({ items: [], dropped: 0 });
+  const isMainSpace = !!space && mainSpaces(snap.spaces).some((item) => item.id === space.id);
+  const bnplOn = isMainSpace && !!space && bnplEnabled(snap, space.id);
+  const [bnplBusy, setBnplBusy] = useState(false);
+
+  async function changeBnpl(enabled: boolean) {
+    if (!store || !space || !isMainSpace) return;
+    setBnplBusy(true);
+    try {
+      await toggleBnpl(store, space.id, enabled);
+      toast.success(
+        enabled
+          ? "BNPL tracking enabled."
+          : "BNPL tracking disabled. Your existing records are preserved.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update BNPL settings.");
+    } finally {
+      setBnplBusy(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     if (store)
@@ -132,6 +155,27 @@ function Settings() {
             </Button>
           </div>
         </Panel>
+        {isMainSpace && space && (
+          <Panel title="BNPL tracking">
+            <label htmlFor="bnpl-tracking-enabled" className="flex items-start gap-3 text-sm">
+              <input
+                id="bnpl-tracking-enabled"
+                type="checkbox"
+                className="mt-1 size-4 accent-primary"
+                checked={bnplOn}
+                disabled={bnplBusy}
+                onChange={(event) => changeBnpl(event.target.checked)}
+              />
+              <span>
+                <span className="font-medium">Enable BNPL tracking</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  When disabled, BNPL navigation and reminders are hidden. Existing plans and
+                  payment history are retained and return when you re-enable it.
+                </span>
+              </span>
+            </label>
+          </Panel>
+        )}
         <Panel title="Sync">
           <p className="text-sm font-medium">{s.label}</p>
           <p className="text-xs text-muted-foreground">{s.detail}</p>
