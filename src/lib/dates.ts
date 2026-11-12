@@ -42,3 +42,47 @@ export function isValidDate(d: string): boolean {
   const date = new Date(d + "T00:00:00Z");
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === d;
 }
+
+
+export type DatePeriod = "day" | "week" | "month" | "year";
+
+function calendarDate(year: number, month: number, day: number): Date {
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date;
+}
+
+function dateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Inclusive calendar date range in Asia/Manila. Weeks start on Monday. */
+export function periodDateRange(
+  period: DatePeriod,
+  anchor: string,
+): { from: string; to: string } {
+  if (!isValidDate(anchor)) throw new Error("Choose a valid date.");
+
+  const [year = 0, month = 1, day = 1] = anchor.split("-").map(Number);
+  if (period === "day") return { from: anchor, to: anchor };
+  if (period === "month") {
+    return {
+      from: dateKey(calendarDate(year, month, 1)),
+      to: dateKey(calendarDate(year, month + 1, 0)),
+    };
+  }
+  if (period === "year") {
+    return {
+      from: dateKey(calendarDate(year, 1, 1)),
+      to: dateKey(calendarDate(year, 12, 31)),
+    };
+  }
+
+  const start = calendarDate(year, month, day);
+  const daysSinceMonday = (start.getUTCDay() + 6) % 7;
+  start.setUTCDate(start.getUTCDate() - daysSinceMonday);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  return { from: dateKey(start), to: dateKey(end) };
+}
