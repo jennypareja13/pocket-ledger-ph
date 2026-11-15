@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { HandCoins, Plus } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
+import { PlanTabs } from "@/components/app/PlanTabs";
 import { Bar, Empty, PageHeader, Panel } from "@/components/app/bits";
 import { TxRow } from "@/components/app/TxRow";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ function Loans() {
   const visibleLoans = ordinaryLoans(loans);
   return (
     <>
+      <PlanTabs />
       <PageHeader
         title="Owed to me"
         subtitle="Lending and repayments move money, they are never income or expense."

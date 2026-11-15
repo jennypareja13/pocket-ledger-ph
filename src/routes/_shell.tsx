@@ -1,18 +1,6 @@
 import { createFileRoute, Link, Navigate, Outlet, useLocation } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import {
-  ArrowLeftRight,
-  BarChart3,
-  CalendarClock,
-  HandCoins,
-  Layers,
-  LayoutDashboard,
-  Menu,
-  PiggyBank,
-  Plus,
-  Settings,
-  Wallet,
-} from "lucide-react";
+import { ArrowLeftRight, BarChart3, LayoutDashboard, Menu, PiggyBank, Plus } from "lucide-react";
 import { AppProvider, useApp, useSpace } from "@/components/app/AppProvider";
 import { TxDialog } from "@/components/app/TxDialog";
 import { SyncBadge } from "@/components/app/SyncBadge";
@@ -28,7 +16,6 @@ import { createAccount, createSpace } from "@/lib/actions";
 import { parseAmount } from "@/lib/money";
 import { ACCOUNT_TYPES } from "@/lib/labels";
 import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
-import { bnplEnabled } from "@/lib/bnpl-actions";
 import type { AccountType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell")({
@@ -39,15 +26,15 @@ export const Route = createFileRoute("/_shell")({
 const NAV = [
   { to: "/", label: "Home", icon: LayoutDashboard },
   { to: "/transactions", label: "Activity", icon: ArrowLeftRight },
-  { to: "/accounts", label: "Accounts", icon: Wallet },
-  { to: "/budgets", label: "Budgets", icon: PiggyBank },
-  { to: "/loans", label: "Loans", icon: HandCoins },
+  { to: "/budgets", label: "Plan", icon: PiggyBank },
   { to: "/analysis", label: "Analysis", icon: BarChart3 },
-  { to: "/bnpl", label: "BNPL", icon: CalendarClock },
-  { to: "/spaces", label: "Spaces & categories", icon: Layers },
-  { to: "/settings", label: "Settings & sync", icon: Settings },
 ] as const;
-const MOBILE = ["/transactions", "/budgets", "/", "/analysis"];
+const MOBILE = ["/", "/transactions", "/budgets", "/analysis"];
+const MORE_NAV = [
+  { to: "/accounts", label: "Accounts" },
+  { to: "/spaces", label: "Spaces & categories" },
+  { to: "/settings", label: "Settings & sync" },
+];
 
 function ShellRoute() {
   return (
@@ -132,16 +119,13 @@ function SpacePicker({ className }: { className?: string }) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const loc = useLocation();
-  const { snap } = useApp();
-  const { space } = useSpace();
-  const showBnpl =
-    !!space &&
-    mainSpaces(snap.spaces).some((s) => s.id === space.id) &&
-    bnplEnabled(snap, space.id);
   return (
     <nav className="space-y-0.5" aria-label="Main">
-      {NAV.filter((n) => n.to !== "/bnpl" || showBnpl).map(({ to, label, icon: Icon }) => {
-        const active = to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(to);
+      {NAV.map(({ to, label, icon: Icon }) => {
+        const active =
+          to === "/" ? loc.pathname === "/" : to === "/budgets"
+            ? ["/budgets", "/bnpl", "/loans"].includes(loc.pathname)
+            : loc.pathname.startsWith(to);
         return (
           <Link
             key={to}
@@ -162,6 +146,29 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function MoreLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const loc = useLocation();
+  return (
+    <nav className="space-y-0.5" aria-label="More pages">
+      {MORE_NAV.map(({ to, label }) => (
+        <Link
+          key={to}
+          to={to}
+          onClick={onNavigate}
+          className={cn(
+            "flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+            loc.pathname.startsWith(to)
+              ? "bg-[image:var(--gradient-active)] text-sidebar-accent-foreground shadow-sm ring-1 ring-inset ring-sidebar-border"
+              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60",
+          )}
+        >
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 function Layout() {
   const { openTx } = useApp();
   const { space } = useSpace();
@@ -175,6 +182,21 @@ function Layout() {
         </Link>
         <SpacePicker className="mb-4" />
         <NavLinks />
+        <div className="mt-3 border-t border-sidebar-border pt-3">
+          <Sheet>
+            <SheetTrigger className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60">
+              <Menu className="size-4" /> More
+            </SheetTrigger>
+            <SheetContent side="left" className="border-sidebar-border bg-sidebar/95">
+              <SheetHeader>
+                <SheetTitle>{APP_NAME}</SheetTitle>
+              </SheetHeader>
+              <div className="px-2 pb-6">
+                <MoreLinks />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
         <div className="mt-auto space-y-3">
           <Button className="w-full" onClick={() => openTx()}>
             <Plus /> Add transaction
@@ -237,7 +259,14 @@ function Layout() {
           );
         })}
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-          <SheetTrigger className="flex min-h-16 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <SheetTrigger
+            className={cn(
+              "flex min-h-16 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              MORE_NAV.some((item) => loc.pathname.startsWith(item.to))
+                ? "text-primary"
+                : "text-muted-foreground",
+            )}
+          >
             <Menu className="size-5" />
             More
           </SheetTrigger>
@@ -246,7 +275,7 @@ function Layout() {
               <SheetTitle>{APP_NAME}</SheetTitle>
             </SheetHeader>
             <div className="px-2 pb-6">
-              <NavLinks onNavigate={() => setMoreOpen(false)} />
+              <MoreLinks onNavigate={() => setMoreOpen(false)} />
             </div>
           </SheetContent>
         </Sheet>
