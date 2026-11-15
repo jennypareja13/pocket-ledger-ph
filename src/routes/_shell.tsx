@@ -36,6 +36,12 @@ const MORE_NAV = [
   { to: "/settings", label: "Settings & sync" },
 ];
 
+function isActiveNavItem(to: string, pathname: string) {
+  if (to === "/") return pathname === "/";
+  if (to === "/budgets") return ["/budgets", "/bnpl", "/loans"].includes(pathname);
+  return pathname.startsWith(to);
+}
+
 function ShellRoute() {
   return (
     <AppProvider>
@@ -122,10 +128,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="space-y-0.5" aria-label="Main">
       {NAV.map(({ to, label, icon: Icon }) => {
-        const active =
-          to === "/" ? loc.pathname === "/" : to === "/budgets"
-            ? ["/budgets", "/bnpl", "/loans"].includes(loc.pathname)
-            : loc.pathname.startsWith(to);
+        const active = isActiveNavItem(to, loc.pathname);
         return (
           <Link
             key={to}
