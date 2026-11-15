@@ -43,6 +43,7 @@ export function TxRow({ tx }: { tx: Tx }) {
   const tone =
     d.type === "income" ? "text-income" : d.type === "expense" ? "text-expense" : "text-foreground";
   return (
+    <>
     <button
       type="button"
       onClick={() => {
@@ -94,5 +95,6 @@ export function TxRow({ tx }: { tx: Tx }) {
         onClose={() => setEditingPayment(false)}
       />
     )}
+    </>
   );
 }
