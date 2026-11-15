@@ -38,10 +38,7 @@ describe("periodDateRange", () => {
     });
   });
 
-  it.each(["2026-02-30", "2026-13-01", "not-a-date"])(
-    "rejects invalid anchor %s",
-    (anchor) => {
-      expect(() => periodDateRange("week", anchor)).toThrow("valid date");
-    },
-  );
+  it.each(["2026-02-30", "2026-13-01", "not-a-date"])("rejects invalid anchor %s", (anchor) => {
+    expect(() => periodDateRange("week", anchor)).toThrow("valid date");
+  });
 });

@@ -13,7 +13,7 @@ export function currentMonth(): string {
 export function addMonths(key: string, n: number): string {
   const [y = 0, m = 1] = key.split("-").map(Number);
   const t = y * 12 + (m - 1) + n;
-  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+  return \`\${Math.floor(t / 12)}-\${String((t % 12) + 1).padStart(2, "0")}\`;
 }
 const dFmt = new Intl.DateTimeFormat("en-PH", {
   day: "numeric",
@@ -43,7 +43,6 @@ export function isValidDate(d: string): boolean {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === d;
 }
 
-
 export type DatePeriod = "day" | "week" | "month" | "year";
 
 function calendarDate(year: number, month: number, day: number): Date {
@@ -58,10 +57,7 @@ function dateKey(date: Date): string {
 }
 
 /** Inclusive calendar date range in Asia/Manila. Weeks start on Monday. */
-export function periodDateRange(
-  period: DatePeriod,
-  anchor: string,
-): { from: string; to: string } {
+export function periodDateRange(period: DatePeriod, anchor: string): { from: string; to: string } {
   if (!isValidDate(anchor)) throw new Error("Choose a valid date.");
 
   const [year = 0, month = 1, day = 1] = anchor.split("-").map(Number);
