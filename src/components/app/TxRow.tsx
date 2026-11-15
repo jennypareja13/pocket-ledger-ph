@@ -44,57 +44,57 @@ export function TxRow({ tx }: { tx: Tx }) {
     d.type === "income" ? "text-income" : d.type === "expense" ? "text-expense" : "text-foreground";
   return (
     <>
-    <button
-      type="button"
-      onClick={() => {
-        if (d.type === "bnpl_purchase") setEditingPlan(true);
-        else if (d.type === "bnpl_payment") setEditingPayment(true);
-        else if (isModuleTx(tx)) toast.info("Manage this on its own page.");
-        else openTx({ edit: tx });
-      }}
-      className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring"
-    >
-      <span
-        className={cn(
-          "grid size-9 shrink-0 place-items-center rounded-full bg-muted [&_svg]:size-4",
-          tone,
-        )}
+      <button
+        type="button"
+        onClick={() => {
+          if (d.type === "bnpl_purchase") setEditingPlan(true);
+          else if (d.type === "bnpl_payment") setEditingPayment(true);
+          else if (isModuleTx(tx)) toast.info("Manage this on its own page.");
+          else openTx({ edit: tx });
+        }}
+        className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <Icon />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-foreground">
-          {describeTx(tx, snap)}
+        <span
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-full bg-muted [&_svg]:size-4",
+            tone,
+          )}
+        >
+          <Icon />
         </span>
-        <span className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-          {formatDate(d.date)}
-          {d.type !== "transfer" && acc ? ` · ${acc}` : ""}
-          {d.note && d.type !== "adjustment" ? ` · ${d.note}` : ""}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground">
+            {describeTx(tx, snap)}
+          </span>
+          <span className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+            {formatDate(d.date)}
+            {d.type !== "transfer" && acc ? ` · ${acc}` : ""}
+            {d.note && d.type !== "adjustment" ? ` · ${d.note}` : ""}
+          </span>
         </span>
-      </span>
-      <span className="text-right">
-        <span className={cn("num block text-sm font-semibold", tone)}>
-          {sign}
-          {formatPHP(Math.abs(d.amount))}
+        <span className="text-right">
+          <span className={cn("num block text-sm font-semibold", tone)}>
+            {sign}
+            {formatPHP(Math.abs(d.amount))}
+          </span>
+          <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+            {d.fee ? <span className="num text-expense">fee {formatPHP(d.fee)}</span> : null}
+            <SyncDot state={tx._meta.sync} />
+          </span>
         </span>
-        <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-          {d.fee ? <span className="num text-expense">fee {formatPHP(d.fee)}</span> : null}
-          <SyncDot state={tx._meta.sync} />
-        </span>
-      </span>
-    </button>
-    {d.type === "bnpl_purchase" && (
-      <BnplPlanEditDialog
-        plan={editingPlan ? snap.loans.find((loan) => loan.id === d.loan_id) ?? null : null}
-        onClose={() => setEditingPlan(false)}
-      />
-    )}
-    {d.type === "bnpl_payment" && (
-      <BnplPaymentEditDialog
-        payment={editingPayment ? tx : null}
-        onClose={() => setEditingPayment(false)}
-      />
-    )}
+      </button>
+      {d.type === "bnpl_purchase" && (
+        <BnplPlanEditDialog
+          plan={editingPlan ? (snap.loans.find((loan) => loan.id === d.loan_id) ?? null) : null}
+          onClose={() => setEditingPlan(false)}
+        />
+      )}
+      {d.type === "bnpl_payment" && (
+        <BnplPaymentEditDialog
+          payment={editingPayment ? tx : null}
+          onClose={() => setEditingPayment(false)}
+        />
+      )}
     </>
   );
 }

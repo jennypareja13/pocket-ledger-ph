@@ -43,9 +43,7 @@ describe("deleteEmptyManagedSpace", () => {
     await createSpace(store, "Child", "managed", parent);
     const before = structuredClone(store.all());
 
-    await expect(deleteEmptyManagedSpace(store, main)).rejects.toThrow(
-      "Only a managed space",
-    );
+    await expect(deleteEmptyManagedSpace(store, main)).rejects.toThrow("Only a managed space");
     await expect(deleteEmptyManagedSpace(store, parent)).rejects.toThrow("child spaces");
     expect(store.all()).toEqual(before);
   });

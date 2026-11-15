@@ -213,7 +213,13 @@ export async function markInstallmentPaid(
 export async function updatePlanDetails(
   store: LedgerStore,
   planId: string,
-  input: { description: string; provider: string; purchaseDate: string; categoryId: string; note?: string },
+  input: {
+    description: string;
+    provider: string;
+    purchaseDate: string;
+    categoryId: string;
+    note?: string;
+  },
 ) {
   const snap = store.getSnapshot();
   const { plan, bnpl, mainId } = requirePlan(snap, planId);
@@ -221,12 +227,16 @@ export async function updatePlanDetails(
   if (!input.provider.trim() || input.provider.trim().length > 100)
     throw new Error("Enter a provider name of 1 to 100 characters.");
   if (!isValidDate(input.purchaseDate)) throw new Error("Enter a valid purchase date.");
-  if (!snap.categories.some((category) =>
-    category.id === input.categoryId &&
-    category.space_id === mainId &&
-    category.data.type === "expense" &&
-    !category.data.archived
-  )) throw new Error("Choose an active expense category in the Main Space.");
+  if (
+    !snap.categories.some(
+      (category) =>
+        category.id === input.categoryId &&
+        category.space_id === mainId &&
+        category.data.type === "expense" &&
+        !category.data.archived,
+    )
+  )
+    throw new Error("Choose an active expense category in the Main Space.");
   const purchase = snap.transactions.find(
     (tx) => tx.data.type === "bnpl_purchase" && tx.data.loan_id === planId,
   );
@@ -246,7 +256,12 @@ export async function updatePlanDetails(
   };
   await applyValidated(store, [
     { kind: "loan", id: plan.id, space_id: mainId, data: loanData },
-    { kind: "transaction", id: purchase.id, space_id: mainId, data: { ...tx, entries: buildEntries(tx) } },
+    {
+      kind: "transaction",
+      id: purchase.id,
+      space_id: mainId,
+      data: { ...tx, entries: buildEntries(tx) },
+    },
   ]);
 }
 
@@ -257,15 +272,21 @@ export async function updateInstallmentPayment(
   input: { accountId: string; date: string; actualPaid: number },
 ) {
   const snap = store.getSnapshot();
-  const payment = snap.transactions.find((tx) => tx.id === paymentId && tx.data.type === "bnpl_payment");
+  const payment = snap.transactions.find(
+    (tx) => tx.id === paymentId && tx.data.type === "bnpl_payment",
+  );
   if (!payment?.data.loan_id || !payment.data.installment_id)
     throw new Error("BNPL payment not found.");
   const { bnpl, mainId } = requirePlan(snap, payment.data.loan_id);
   const installment = bnpl.schedule.find((item) => item.id === payment.data.installment_id);
   if (!installment) throw new Error("Installment not found in this plan.");
-  if (!snap.accounts.some((account) =>
-    account.id === input.accountId && account.space_id === mainId && !account.data.archived
-  )) throw new Error("Choose an active account in this Main Space.");
+  if (
+    !snap.accounts.some(
+      (account) =>
+        account.id === input.accountId && account.space_id === mainId && !account.data.archived,
+    )
+  )
+    throw new Error("Choose an active account in this Main Space.");
   if (!isValidDate(input.date)) throw new Error("Enter a valid payment date.");
   if (!validMoney(input.actualPaid)) throw new Error("Enter a valid amount actually paid.");
   const { scheduled, extra } = splitPayment(installment.amount, input.actualPaid);
@@ -293,19 +314,23 @@ export async function updateInstallmentPayment(
 /** Removing a payment reopens only that installment; the plan and other payments remain intact. */
 export async function deleteInstallmentPayment(store: LedgerStore, paymentId: string) {
   const snap = store.getSnapshot();
-  const payment = snap.transactions.find((tx) => tx.id === paymentId && tx.data.type === "bnpl_payment");
+  const payment = snap.transactions.find(
+    (tx) => tx.id === paymentId && tx.data.type === "bnpl_payment",
+  );
   if (!payment?.data.loan_id || !payment.data.installment_id)
     throw new Error("BNPL payment not found.");
   const { bnpl, mainId } = requirePlan(snap, payment.data.loan_id);
   if (!bnpl.schedule.some((item) => item.id === payment.data.installment_id))
     throw new Error("Installment not found in this plan.");
-  await applyValidated(store, [{
-    kind: "transaction",
-    id: payment.id,
-    space_id: mainId,
-    data: payment.data,
-    deleted: true,
-  }]);
+  await applyValidated(store, [
+    {
+      kind: "transaction",
+      id: payment.id,
+      space_id: mainId,
+      data: payment.data,
+      deleted: true,
+    },
+  ]);
 }
 
 export async function updateInstallmentDueDate(
