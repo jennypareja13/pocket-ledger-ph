@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { HandCoins, PiggyBank, Receipt, Wallet } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
 import { Bar, Empty, PageHeader, Panel, Stat } from "@/components/app/bits";
@@ -7,15 +6,8 @@ import { TxRow } from "@/components/app/TxRow";
 import { SyncBadge } from "@/components/app/SyncBadge";
 import { HomeCharts } from "@/components/app/home-charts";
 import { Button } from "@/components/ui/button";
-import { PeriodFilter } from "@/components/app/PeriodFilter";
 import { APP_NAME } from "@/lib/config";
-import {
-  formatDate,
-  formatPeriodLabel,
-  periodDateRange,
-  todayManila,
-  type DatePeriod,
-} from "@/lib/dates";
+import { currentMonth, formatDate, formatMonth } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
 import {
   accountBalance,
@@ -23,10 +15,10 @@ import {
   homeSpaceOverview,
   loanOutstanding,
   ordinaryLoans,
+  periodTotals,
   spaceCash,
   spaceReceivable,
 } from "@/lib/selectors";
-import { periodTotalsBetween } from "@/lib/period-totals";
 import { accountTypeLabel } from "@/lib/labels";
 import {
   Card,
@@ -56,13 +48,9 @@ export const Route = createFileRoute("/_shell/")({
 function Dashboard() {
   const { snap, openTx } = useApp();
   const { space, spaceId, accounts, categories, transactions, budgets, loans } = useSpace();
-  const [period, setPeriod] = useState<DatePeriod>("month");
-  const [anchor, setAnchor] = useState(todayManila());
   if (!space || !spaceId) return null;
-  const range = periodDateRange(period, anchor);
-  const month = anchor.slice(0, 7);
-  const periodLabel = formatPeriodLabel(period, anchor);
-  const t = periodTotalsBetween(spaceId, snap.transactions, range.from, range.to);
+  const month = currentMonth();
+  const t = periodTotals(spaceId, snap.transactions, month);
   const cash = spaceCash(spaceId, snap.accounts, snap.transactions);
   const recv = spaceReceivable(spaceId, snap.loans, snap.transactions);
   const budget = budgetRows(spaceId, month, categories, budgets, transactions).filter(
@@ -82,15 +70,8 @@ function Dashboard() {
     <>
       <PageHeader
         title={space.data.name}
-        subtitle={`${isManaged ? "Managed fund" : "Personal"} · ${periodLabel}`}
-        actions={
-          <PeriodFilter
-            period={period}
-            anchor={anchor}
-            onPeriodChange={setPeriod}
-            onAnchorChange={setAnchor}
-          />
-        }
+        subtitle={`${isManaged ? "Managed fund" : "Personal"} · ${formatMonth(month)}`}
+        actions={<span className="md:hidden" />}
       />
       <div className="mb-4 hidden md:block">
         <SyncBadge />
@@ -107,8 +88,8 @@ function Dashboard() {
           />
         </div>
         <Stat label="Owed to this space" value={recv} hint="Receivable, not cash" />
-        <Stat label="Income" value={t.income} tone="income" hint={periodLabel} />
-        <Stat label="Expenses" value={t.expense} tone="expense" hint={periodLabel} />
+        <Stat label="Income this month" value={t.income} tone="income" />
+        <Stat label="Expenses this month" value={t.expense} tone="expense" />
         <Stat label="Net cash flow" value={t.net} tone="net" hint="Excludes transfers & loans" />
       </div>
 

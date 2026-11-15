@@ -8,6 +8,9 @@ import { formatPHP } from "@/lib/money";
 import type { Tx } from "@/lib/types";
 import { isModuleTx } from "@/lib/selectors";
 import { toast } from "sonner";
+import { useState } from "react";
+import { BnplPlanEditDialog } from "@/components/app/BnplEditDialogs";
+import { BnplPaymentEditDialog } from "@/components/app/BnplPaymentEditDialog";
 
 const ICONS = {
   income: ArrowDownLeft,
@@ -22,6 +25,8 @@ const ICONS = {
 
 export function TxRow({ tx }: { tx: Tx }) {
   const { snap, openTx } = useApp();
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(false);
   const d = tx.data;
   const Icon = ICONS[d.type];
   const acc = snap.accounts.find((a) => a.id === d.account_id)?.data.name;
@@ -41,7 +46,9 @@ export function TxRow({ tx }: { tx: Tx }) {
     <button
       type="button"
       onClick={() => {
-        if (isModuleTx(tx)) toast.info("Manage this on its own page.");
+        if (d.type === "bnpl_purchase") setEditingPlan(true);
+        else if (d.type === "bnpl_payment") setEditingPayment(true);
+        else if (isModuleTx(tx)) toast.info("Manage this on its own page.");
         else openTx({ edit: tx });
       }}
       className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring"
@@ -75,5 +82,17 @@ export function TxRow({ tx }: { tx: Tx }) {
         </span>
       </span>
     </button>
+    {d.type === "bnpl_purchase" && (
+      <BnplPlanEditDialog
+        plan={editingPlan ? snap.loans.find((loan) => loan.id === d.loan_id) ?? null : null}
+        onClose={() => setEditingPlan(false)}
+      />
+    )}
+    {d.type === "bnpl_payment" && (
+      <BnplPaymentEditDialog
+        payment={editingPayment ? tx : null}
+        onClose={() => setEditingPayment(false)}
+      />
+    )}
   );
 }

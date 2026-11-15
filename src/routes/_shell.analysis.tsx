@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { PeriodFilter } from "@/components/app/PeriodFilter";
 import {
   BarChart,
   Bar as ChartBar,
@@ -15,19 +14,12 @@ import {
 } from "recharts";
 import { ChartNoAxesCombined } from "lucide-react";
 import { useSpace } from "@/components/app/AppProvider";
-import { Empty, PageHeader, Panel, Stat, Bar } from "@/components/app/bits";
+import { Empty, PageHeader, Panel, Select, Stat, Bar } from "@/components/app/bits";
 import { APP_NAME } from "@/lib/config";
-import {
-  addMonths,
-  formatMonth,
-  formatPeriodLabel,
-  periodDateRange,
-  todayManila,
-  type DatePeriod,
-} from "@/lib/dates";
+import { addMonths, currentMonth, formatMonth } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
 import { periodTotals } from "@/lib/selectors";
-import { periodTotalsBetween } from "@/lib/period-totals";
+import { Input } from "@/components/ui/input";
 const COLORS = [
   "var(--chart-1)",
   "var(--chart-2)",
@@ -56,14 +48,11 @@ export const Route = createFileRoute("/_shell/analysis")({
 });
 function Analysis() {
   const { spaceId, space, categories, transactions } = useSpace();
-  const [period, setPeriod] = useState<DatePeriod>("month");
-  const [anchor, setAnchor] = useState(todayManila());
+  const [mode, setMode] = useState<"month" | "year">("month");
+  const [month, setMonth] = useState(currentMonth());
   if (!spaceId) return null;
-  const range = periodDateRange(period, anchor);
-  const month = anchor.slice(0, 7);
-  const prefix = period === "year" ? anchor.slice(0, 4) : month;
-  const periodLabel = formatPeriodLabel(period, anchor);
-  const totals = periodTotalsBetween(spaceId, transactions, range.from, range.to);
+  const prefix = mode === "month" ? month : month.slice(0, 4);
+  const totals = periodTotals(spaceId, transactions, prefix);
   const cats = [...totals.byCategory.entries()]
     .filter(([, c]) => c.type === "expense")
     .sort((a, b) => b[1].total - a[1].total)
@@ -72,7 +61,7 @@ function Analysis() {
       value: c.total,
     }));
   const months =
-    period === "year"
+    mode === "year"
       ? Array.from(
           { length: 12 },
           (_, i) => `${month.slice(0, 4)}-${String(i + 1).padStart(2, "0")}`,
@@ -86,14 +75,26 @@ function Analysis() {
     <>
       <PageHeader
         title="Analysis"
-        subtitle={`${space?.data.name} · ${periodLabel}`}
+        subtitle={`${space?.data.name} · ${mode === "year" ? prefix : formatMonth(month)}`}
         actions={
-          <PeriodFilter
-            period={period}
-            anchor={anchor}
-            onPeriodChange={setPeriod}
-            onAnchorChange={setAnchor}
-          />
+          <>
+            <Select
+              aria-label="Analysis period"
+              className="w-28"
+              value={mode}
+              onChange={(e) => setMode(e.target.value as "month" | "year")}
+            >
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </Select>
+            <Input
+              aria-label="Analysis month"
+              type="month"
+              className="w-40"
+              value={month}
+              onChange={(e) => e.target.value && setMonth(e.target.value)}
+            />
+          </>
         }
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -157,7 +158,7 @@ function Analysis() {
           </Panel>
           <Panel
             title={
-              period === "year"
+              mode === "year"
                 ? `Monthly trend · ${prefix}`
                 : `Six-month trend ending ${formatMonth(month)}`
             }
