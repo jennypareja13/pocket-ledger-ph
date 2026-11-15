@@ -50,7 +50,7 @@ function BnplPage() {
     return (
       <>
         <PlanTabs />
-        <PageHeader title="Buy now, pay later"
+        <PageHeader title="Buy now, pay later" />
         <Empty
           icon={<CalendarClock />}
           illustration={<Vault className="size-14" />}
