@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, PiggyBank } from "lucide-react";
 import { toast } from "sonner";
 import { useApp, useSpace } from "@/components/app/AppProvider";
+import { PlanTabs } from "@/components/app/PlanTabs";
 import { Bar, Empty, Field, PageHeader, Panel, Select } from "@/components/app/bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,6 +131,7 @@ function Budgets() {
   const rows = budgetRows(spaceId, month, categories, budgets, transactions);
   return (
     <>
+      <PlanTabs />
       <PageHeader
         title="Budgets"
         subtitle={space?.data.name}

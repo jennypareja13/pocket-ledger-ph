@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { CalendarClock, Plus } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
+import { PlanTabs } from "@/components/app/PlanTabs";
 import { Bar, Empty, PageHeader, Panel, Stat } from "@/components/app/bits";
 import { BnplPayDialog } from "@/components/app/bnpl-pay-dialog";
 import { BnplPlanDialog } from "@/components/app/bnpl-plan-dialog";
@@ -48,6 +49,7 @@ function BnplPage() {
   if (!v.enabled)
     return (
       <>
+        <PlanTabs />
         <PageHeader title="Buy now, pay later" />
         <Empty
           icon={<CalendarClock />}
@@ -66,6 +68,7 @@ function BnplPage() {
 
   return (
     <>
+      <PlanTabs />
       <PageHeader
         title="Buy now, pay later"
         subtitle={`Payments are only marked paid when you confirm them. ${formatMonth(v.month)}.`}
