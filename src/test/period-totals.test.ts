@@ -52,6 +52,8 @@ describe("periodTotalsBetween", () => {
         true,
       ),
       transaction("transfer", "main", "2026-11-10", [{ delta: -300 }]),
+      transaction("loan-principal", "main", "2026-11-11", [{ delta: -2500, loan_id: "loan" }]),
+      transaction("bnpl-payment", "main", "2026-11-12", [{ delta: -4000, loan_id: "bnpl" }]),
     ];
 
     const totals = periodTotalsBetween("main", txs, "2026-11-01", "2026-11-30");
@@ -62,6 +64,15 @@ describe("periodTotalsBetween", () => {
       ["salary", { type: "income", total: 5000 }],
       ["food", { type: "expense", total: 1200 }],
     ]);
+  });
+
+  it("returns zero totals for an empty period", () => {
+    expect(periodTotalsBetween("main", [], "2026-11-01", "2026-11-30")).toEqual({
+      income: 0,
+      expense: 0,
+      net: 0,
+      byCategory: new Map(),
+    });
   });
 
   it("rejects invalid and reversed ranges", () => {
