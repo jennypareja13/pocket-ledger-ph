@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Download, Plus, Receipt, Search } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
 import { Empty, PageHeader, Panel, Select, Stat } from "@/components/app/bits";
@@ -50,14 +50,6 @@ function Transactions() {
   const [anchor, setAnchor] = useState(todayManila());
   const range = periodDateRange(period, anchor);
   const periodLabel = formatPeriodLabel(period, anchor);
-  const [from, setFrom] = useState(range.from);
-  const [to, setTo] = useState(range.to);
-
-  useEffect(() => {
-    setFrom(range.from);
-    setTo(range.to);
-  }, [range.from, range.to]);
-
   const insights = periodTotalsBetween(space?.id ?? "", transactions, range.from, range.to);
 
   const list = useMemo(() => {
@@ -111,31 +103,16 @@ function Transactions() {
           hint="Reportable entries only"
         />
       </div>
-      <div className="mb-5 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          From
-          <Input
-            aria-label="CSV from date"
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </label>
-        <label className="text-sm">
-          To
-          <Input
-            aria-label="CSV to date"
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </label>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          CSV export uses the selected period: {periodLabel}
+        </p>
         <Button
           variant="outline"
           onClick={() => {
             if (!space) return;
             try {
-              const csv = exportSpaceCsv(snap, space, from, to);
+              const csv = exportSpaceCsv(snap, space, range.from, range.to);
               downloadFile(csv.filename, csv.body, "text/csv;charset=utf-8");
             } catch (e) {
               toast.error(e instanceof Error ? e.message : "Could not export.");
