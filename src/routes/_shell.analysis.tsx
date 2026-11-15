@@ -157,7 +157,7 @@ function Analysis() {
           </Panel>
           <Panel
             title={
-              mode === "year"
+              period === "year"
                 ? `Monthly trend · ${prefix}`
                 : `Six-month trend ending ${formatMonth(month)}`
             }
