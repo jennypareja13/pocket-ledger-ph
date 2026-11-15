@@ -61,6 +61,34 @@ export async function createSpace(
   return id;
 }
 
+/**
+ * Permanently remove only an unused managed space. Financial or user-entered
+ * records must be preserved; spaces with activity should be archived instead.
+ * Default categories are the only related records removed with the space.
+ */
+export async function deleteEmptyManagedSpace(store: LedgerStore, spaceId: string) {
+  const snap = store.getSnapshot();
+  const space = snap.spaces.find((item) => item.id === spaceId);
+  if (!space || space.data.type !== "managed")
+    throw new Error("Only a managed space can be deleted.");
+  const hasRecords =
+    snap.accounts.some((item) => item.space_id === spaceId) ||
+    snap.transactions.some((item) => item.space_id === spaceId) ||
+    snap.budgets.some((item) => item.space_id === spaceId) ||
+    snap.borrowers.some((item) => item.space_id === spaceId) ||
+    snap.loans.some((item) => item.space_id === spaceId);
+  if (hasRecords)
+    throw new Error("This space contains financial records. Archive it to preserve its history.");
+  const hasChildren = snap.spaces.some(
+    (item) => item.id !== spaceId && item.data.parent_space_id === spaceId,
+  );
+  if (hasChildren) throw new Error("Move or delete its child spaces before deleting this space.");
+  const categoryIds = snap.categories
+    .filter((item) => item.space_id === spaceId)
+    .map((item) => item.id);
+  await store.remove([spaceId, ...categoryIds]);
+}
+
 export async function createAccount(
   store: LedgerStore,
   spaceId: string,

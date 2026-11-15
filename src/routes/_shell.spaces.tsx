@@ -1,12 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useApp, useSpace } from "@/components/app/AppProvider";
 import { Field, PageHeader, Panel, Select } from "@/components/app/bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { APP_NAME } from "@/lib/config";
-import { createSpace } from "@/lib/actions";
+import { createSpace, deleteEmptyManagedSpace } from "@/lib/actions";
 import { formatPHP } from "@/lib/money";
 import { mainSpaces, spaceCash, spacesPageSpaces } from "@/lib/selectors";
 import type { CategoryData, CategoryType, SpaceData, SpaceType } from "@/lib/types";
@@ -46,6 +57,24 @@ function Spaces() {
     setCName("");
   }
   const activeCount = snap.spaces.filter((s) => !s.data.archived).length;
+  const canDeleteSpace = (id: string) =>
+    !snap.accounts.some((item) => item.space_id === id) &&
+    !snap.transactions.some((item) => item.space_id === id) &&
+    !snap.budgets.some((item) => item.space_id === id) &&
+    !snap.borrowers.some((item) => item.space_id === id) &&
+    !snap.loans.some((item) => item.space_id === id) &&
+    !snap.spaces.some((item) => item.id !== id && item.data.parent_space_id === id);
+  async function removeSpace(id: string, parentId?: string) {
+    if (!store) return;
+    try {
+      await deleteEmptyManagedSpace(store, id);
+      const fallback = parentId ?? mainSpaces(snap.spaces).find((item) => item.id !== id)?.id;
+      if (spaceId === id && fallback) setSpaceId(fallback);
+      toast.success("Empty managed space deleted.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete this space.");
+    }
+  }
   return (
     <>
       <PageHeader title="Spaces & categories" />
@@ -116,21 +145,48 @@ function Spaces() {
                 {formatPHP(spaceCash(s.id, snap.accounts, snap.transactions))}
               </span>
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={!s.data.archived && activeCount <= 1}
-              onClick={() =>
-                store?.save<SpaceData>(
-                  "space",
-                  s.id,
-                  { ...s.data, archived: !s.data.archived },
-                  s.id,
-                )
-              }
-            >
-              {s.data.archived ? "Unarchive" : "Archive"}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={!s.data.archived && activeCount <= 1}
+                onClick={() =>
+                  store?.save<SpaceData>(
+                    "space",
+                    s.id,
+                    { ...s.data, archived: !s.data.archived },
+                    s.id,
+                  )
+                }
+              >
+                {s.data.archived ? "Unarchive" : "Archive"}
+              </Button>
+              {s.data.type === "managed" && canDeleteSpace(s.id) && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="text-destructive">
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this empty managed space?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the space and its default/custom categories. It
+                        cannot be undone. Spaces with accounts, transactions, budgets, loans,
+                        borrowers, or child spaces must be archived instead.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => removeSpace(s.id, s.data.parent_space_id)}>
+                        Delete space
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
         ))}
       </Panel>
