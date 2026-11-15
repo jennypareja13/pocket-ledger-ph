@@ -250,7 +250,9 @@ describe("BNPL actions", () => {
     const { store, main, input } = await setup();
     const id = await createPlan(store, main, input());
     const before = store.getSnapshot();
-    const schedule = structuredClone(before.loans.find((loan) => loan.id === id)?.data.bnpl?.schedule);
+    const schedule = structuredClone(
+      before.loans.find((loan) => loan.id === id)?.data.bnpl?.schedule,
+    );
     const category = before.categories.find((item) => item.data.name === "Shopping");
     if (!category) throw new Error("Missing category.");
     await updatePlanDetails(store, id, {
@@ -279,7 +281,9 @@ describe("BNPL actions", () => {
     const second = schedule?.[1];
     if (!first || !second) throw new Error("Missing installments.");
     await pay(id, first.id);
-    const payment = store.getSnapshot().transactions.find((tx) => tx.data.installment_id === first.id);
+    const payment = store
+      .getSnapshot()
+      .transactions.find((tx) => tx.data.installment_id === first.id);
     if (!payment) throw new Error("Missing payment.");
     await updateInstallmentPayment(store, payment.id, {
       accountId: bank,
@@ -294,7 +298,9 @@ describe("BNPL actions", () => {
     await deleteInstallmentPayment(store, payment.id);
     expect(store.get(payment.id)?.deleted).toBe(true);
     expect(bnplOwed(id, store.getSnapshot().transactions)).toBe(p(3000));
-    expect(store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.schedule?.[1]).toEqual(second);
+    expect(
+      store.getSnapshot().loans.find((loan) => loan.id === id)?.data.bnpl?.schedule?.[1],
+    ).toEqual(second);
   });
 
   it("does not delete a BNPL plan after payment history exists", async () => {
