@@ -82,3 +82,27 @@ export function periodDateRange(period: DatePeriod, anchor: string): { from: str
   end.setUTCDate(end.getUTCDate() + 6);
   return { from: dateKey(start), to: dateKey(end) };
 }
+
+/** Move an anchor into the adjacent period without browser-time-zone arithmetic. */
+export function shiftPeriodAnchor(period: DatePeriod, anchor: string, amount: number): string {
+  if (!isValidDate(anchor)) throw new Error("Choose a valid date.");
+  if (!Number.isInteger(amount)) throw new Error("Choose a whole number of periods.");
+
+  const [year = 0, month = 1, day = 1] = anchor.split("-").map(Number);
+  if (period === "day" || period === "week") {
+    const next = calendarDate(year, month, day);
+    next.setUTCDate(next.getUTCDate() + amount * (period === "week" ? 7 : 1));
+    return dateKey(next);
+  }
+  if (period === "month") return dateKey(calendarDate(year, month + amount, 1));
+  return dateKey(calendarDate(year + amount, 1, 1));
+}
+
+/** Human-readable label for the selected calendar period. */
+export function formatPeriodLabel(period: DatePeriod, anchor: string): string {
+  const range = periodDateRange(period, anchor);
+  if (period === "day") return formatDate(anchor);
+  if (period === "week") return `${formatDate(range.from)} – ${formatDate(range.to)}`;
+  if (period === "month") return formatMonth(anchor.slice(0, 7));
+  return anchor.slice(0, 4);
+}
