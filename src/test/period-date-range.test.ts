@@ -52,5 +52,4 @@ describe("periodDateRange", () => {
     expect(shiftPeriodAnchor("month", "2028-02-29", 1)).toBe("2028-03-01");
     expect(shiftPeriodAnchor("year", "2026-12-31", 1)).toBe("2027-01-01");
   });
-
 });

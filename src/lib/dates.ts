@@ -83,7 +83,6 @@ export function periodDateRange(period: DatePeriod, anchor: string): { from: str
   return { from: dateKey(start), to: dateKey(end) };
 }
 
-
 /** Move an anchor into the adjacent period without browser-time-zone arithmetic. */
 export function shiftPeriodAnchor(period: DatePeriod, anchor: string, amount: number): string {
   if (!isValidDate(anchor)) throw new Error("Choose a valid date.");
