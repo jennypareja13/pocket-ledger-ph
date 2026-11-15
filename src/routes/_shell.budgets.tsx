@@ -48,6 +48,7 @@ function Budgets() {
   });
   const [bnplBusy, setBnplBusy] = useState(false);
   const isMainSpace = !!space && mainSpaces(snap.spaces).some((item) => item.id === space.id);
+  const bnplOn = isMainSpace && !!space && bnplEnabled(snap, space.id);
   const bnplBudget = space?.data.bnpl_budget;
   const bnplAmount =
     bnplDraft.spaceId === space?.id
@@ -58,7 +59,7 @@ function Budgets() {
 
   async function submitBnplBudget(e: FormEvent) {
     e.preventDefault();
-    if (!store || !space || !isMainSpace) return;
+    if (!store || !space || !bnplOn) return;
     const value = parseAmount(bnplAmount);
     if (value === null) {
       toast.error("Enter a valid BNPL budget amount.");
@@ -77,7 +78,7 @@ function Budgets() {
   }
 
   async function removeBnplBudget() {
-    if (!store || !space || !isMainSpace) return;
+    if (!store || !space || !bnplOn) return;
     setBnplBusy(true);
     try {
       await setBnplBudget(store, space.id, null);
@@ -142,13 +143,11 @@ function Budgets() {
           </Button>
         }
       />
-      {isMainSpace && space && (
+      {bnplOn && space && (
         <Panel title="BNPL monthly budget" className="mb-6">
           <p className="text-sm text-muted-foreground">
             Set one monthly limit shared by all BNPL providers. This budget is separate from
             category budgets.
-            {!bnplEnabled(snap, space.id) &&
-              " BNPL tracking is currently off in Settings; this limit is retained until it is enabled again."}
           </p>
           <form onSubmit={submitBnplBudget} className="mt-4 flex flex-wrap items-end gap-3">
             <div className="min-w-0 flex-1">

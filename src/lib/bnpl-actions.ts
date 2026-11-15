@@ -55,7 +55,9 @@ export async function toggleBnpl(store: LedgerStore, mainId: string, enabled: bo
 }
 
 export async function setBnplBudget(store: LedgerStore, mainId: string, centavos: number | null) {
-  const main = requireMain(store.getSnapshot(), mainId);
+  const snap = store.getSnapshot();
+  const main = requireMain(snap, mainId);
+  if (!bnplEnabled(snap, mainId)) throw new Error("Enable BNPL before changing its budget.");
   if (centavos !== null && !validMoney(centavos))
     throw new Error("BNPL budget must be a non-negative amount in whole centavos.");
   const data = { ...main.data };
