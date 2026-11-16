@@ -329,10 +329,14 @@ describe("BNPL actions", () => {
       ...data,
       modules: { bnpl: false },
     });
+    expect(bnplEnabled(store.getSnapshot(), main)).toBe(false);
+    expect(store.getSnapshot().spaces[0]?.data.bnpl_budget).toBe(p(5000));
     const before = structuredClone(store.all());
     await expect(createPlan(store, main, input())).rejects.toThrow("Enable BNPL");
+    await expect(setBnplBudget(store, main, p(6000))).rejects.toThrow("Enable BNPL");
     expect(store.all()).toEqual(before);
     await toggleBnpl(store, main, true);
+    expect(store.getSnapshot().spaces[0]?.data.bnpl_budget).toBe(p(5000));
     await setBnplBudget(store, main, 0);
     expect(store.getSnapshot().spaces[0]?.data.bnpl_budget).toBe(0);
     const saved = structuredClone(store.all());
