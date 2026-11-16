@@ -1,6 +1,5 @@
 import {
   budgetStatus,
-  installmentStatus,
   monthOf,
   type Installment,
   type InstallmentStatus,
@@ -86,7 +85,12 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
         committed += remaining;
         dueCount++;
       }
-      const status = installmentStatus({ ...installment, amount: remaining }, new Set(), today);
+      const status: Exclude<InstallmentStatus, "paid"> =
+        installment.due_date === today
+          ? "due_today"
+          : installment.due_date < today
+            ? "past_due_unconfirmed"
+            : "upcoming";
       upcoming.push({
         planId: plan.id,
         label: plan.data.label ?? "BNPL plan",
