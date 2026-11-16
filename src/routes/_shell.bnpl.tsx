@@ -108,14 +108,19 @@ function BnplPage() {
           ) : (
             <ul className="divide-y">
               {v.platformGroups.map((group) => (
-                <li key={group.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <li
+                  key={group.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
                   <div className="min-w-0">
                     <p className="font-medium">{group.provider}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatMonth(group.month)} · {group.items.length} item(s) ·{" "}
                       {group.items.map((item) => item.label).join(", ")}
                     </p>
-                    <p className="num mt-1 text-sm font-semibold">{formatPHP(group.total)} remaining</p>
+                    <p className="num mt-1 text-sm font-semibold">
+                      {formatPHP(group.total)} remaining
+                    </p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setPaying(group)}>
                     Review platform payment

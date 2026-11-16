@@ -235,7 +235,11 @@ export async function recordPlatformPayment(
   if (!isValidDate(input.date)) throw new Error("Enter a valid payment date.");
   if (!validMoney(input.actualTotal) || input.actualTotal <= 0)
     throw new Error("Enter a valid amount actually paid.");
-  if (!snap.accounts.some((a) => a.id === input.accountId && a.space_id === mainId && !a.data.archived))
+  if (
+    !snap.accounts.some(
+      (a) => a.id === input.accountId && a.space_id === mainId && !a.data.archived,
+    )
+  )
     throw new Error("Choose an active account in the Main Space.");
   if (!input.allocations.length) throw new Error("Select at least one installment.");
   const paid = bnplPaidAmounts(snap.transactions);
@@ -253,16 +257,26 @@ export async function recordPlatformPayment(
     if (!installment) throw new Error("Installment not found in its plan.");
     const provider = bnpl.provider.trim().toLocaleLowerCase();
     const dueMonth = installment.due_date.slice(0, 7);
-    if (paymentProvider !== undefined && (paymentProvider !== provider || paymentMonth !== dueMonth))
+    if (
+      paymentProvider !== undefined &&
+      (paymentProvider !== provider || paymentMonth !== dueMonth)
+    )
       throw new Error("A platform payment can only include one provider and one due month.");
     paymentProvider = provider;
     paymentMonth = dueMonth;
     const remaining = installment.amount - (paid.get(installment.id) ?? 0);
     if (!validMoney(item.principal) || item.principal <= 0 || item.principal > remaining)
-      throw new Error("Each item allocation must be positive and no more than its remaining installment.");
+      throw new Error(
+        "Each item allocation must be positive and no more than its remaining installment.",
+      );
     if (!validMoney(item.fee)) throw new Error("Enter a valid fee allocation.");
     allocated += item.principal + item.fee;
-    rows.push({ planId: item.planId, installmentId: item.installmentId, principal: item.principal, fee: item.fee });
+    rows.push({
+      planId: item.planId,
+      installmentId: item.installmentId,
+      principal: item.principal,
+      fee: item.fee,
+    });
   }
   if (allocated !== input.actualTotal)
     throw new Error("Item allocations must add up exactly to the actual amount paid.");

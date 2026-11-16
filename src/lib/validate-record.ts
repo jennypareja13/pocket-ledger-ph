@@ -157,7 +157,15 @@ export function validateRecord(raw: unknown, opts: { idPolicy: "uuid" | "any" })
       if (d["amount"] === 0) errors.push("amount must not be zero");
       text("account_id");
       money("fee", 0, true);
-      for (const key of ["category_id", "fee_category_id", "to_account_id", "loan_id", "note", "installment_id", "payment_group_id"])
+      for (const key of [
+        "category_id",
+        "fee_category_id",
+        "to_account_id",
+        "loan_id",
+        "note",
+        "installment_id",
+        "payment_group_id",
+      ])
         text(key, true);
       if (!Array.isArray(d["entries"]) || d["entries"].length < 1 || d["entries"].length > 20)
         errors.push("entries must be an array of 1-20 items");

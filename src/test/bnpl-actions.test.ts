@@ -194,9 +194,14 @@ describe("BNPL actions", () => {
   it("records a provider payment across items with editable partial allocation and outstanding balances", async () => {
     const { store, main, bank, input } = await setup();
     const planA = await createPlan(store, main, input([p(1000)]));
-    const planB = await createPlan(store, main, { ...input([p(1000)]), description: "Microphone" });
+    const planB = await createPlan(store, main, {
+      ...input([p(1000)]),
+      description: "Microphone",
+    });
     const a = store.getSnapshot().loans.find((loan) => loan.id === planA)?.data.bnpl?.schedule[0];
-    const b = store.getSnapshot().loans.find((loan) => loan.id === planB)?.data.bnpl?.schedule[0];
+    const b = store
+      .getSnapshot()
+      .loans.find((loan) => loan.id === planB)?.data.bnpl?.schedule[0];
     if (!a || !b) throw new Error("Missing installments.");
     const groupId = await recordPlatformPayment(store, main, {
       accountId: bank,
@@ -220,14 +225,26 @@ describe("BNPL actions", () => {
     const installment = store.getSnapshot().loans.find((loan) => loan.id === plan)?.data.bnpl?.schedule[0];
     if (!installment) throw new Error("Missing installment.");
     const before = structuredClone(store.all());
-    await expect(recordPlatformPayment(store, main, {
-      accountId: bank, date, actualTotal: p(900),
-      allocations: [{ planId: plan, installmentId: installment.id, principal: p(800), fee: 0 }],
-    })).rejects.toThrow("add up exactly");
-    await expect(recordPlatformPayment(store, main, {
-      accountId: bank, date, actualTotal: p(1100),
-      allocations: [{ planId: plan, installmentId: installment.id, principal: p(1000), fee: p(100) }],
-    })).resolves.toBeTruthy();
+    await expect(
+      recordPlatformPayment(store, main, {
+        accountId: bank,
+        date,
+        actualTotal: p(900),
+        allocations: [
+          { planId: plan, installmentId: installment.id, principal: p(800), fee: 0 },
+        ],
+      }),
+    ).rejects.toThrow("add up exactly");
+    await expect(
+      recordPlatformPayment(store, main, {
+        accountId: bank,
+        date,
+        actualTotal: p(1100),
+        allocations: [
+          { planId: plan, installmentId: installment.id, principal: p(1000), fee: p(100) },
+        ],
+      }),
+    ).resolves.toBeTruthy();
     expect(store.all().length).toBeGreaterThan(before.length);
   });
 

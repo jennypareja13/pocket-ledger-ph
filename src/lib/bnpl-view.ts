@@ -1,4 +1,10 @@
-import { budgetStatus, installmentStatus, monthOf, type Installment, type InstallmentStatus } from "./bnpl";
+import {
+  budgetStatus,
+  installmentStatus,
+  monthOf,
+  type Installment,
+  type InstallmentStatus,
+} from "./bnpl";
 import { bnplEnabled } from "./bnpl-actions";
 import { bnplOwed, bnplPaidAmounts, bnplPlans, mainSpaces } from "./selectors";
 import type { Snapshot } from "./store";
@@ -46,8 +52,15 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
   const isMain = mainSpaces(snap.spaces).some((s) => s.id === spaceId);
   const enabled = isMain && bnplEnabled(snap, spaceId);
   const empty: BnplView = {
-    enabled, month, budget: null, committed: 0, dueCount: 0, outstanding: 0,
-    upcoming: [], platformGroups: [], plans: [],
+    enabled,
+    month,
+    budget: null,
+    committed: 0,
+    dueCount: 0,
+    outstanding: 0,
+    upcoming: [],
+    platformGroups: [],
+    plans: [],
   };
   if (!enabled) return empty;
 
@@ -73,11 +86,7 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
         committed += remaining;
         dueCount++;
       }
-      const status = installmentStatus(
-        { ...installment, amount: remaining },
-        new Set(),
-        today,
-      );
+      const status = installmentStatus({ ...installment, amount: remaining }, new Set(), today);
       upcoming.push({
         planId: plan.id,
         label: plan.data.label ?? "BNPL plan",
@@ -88,7 +97,12 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
       });
     }
     if (paidCount < schedule.length)
-      progress.push({ plan, paidCount, total: schedule.length, owed: bnplOwed(plan.id, snap.transactions) });
+      progress.push({
+        plan,
+        paidCount,
+        total: schedule.length,
+        owed: bnplOwed(plan.id, snap.transactions),
+      });
   }
 
   upcoming.sort((a, b) => a.installment.due_date.localeCompare(b.installment.due_date));
@@ -96,7 +110,11 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
   for (const item of upcoming) {
     const key = item.provider.trim().toLocaleLowerCase() + "|" + monthOf(item.installment.due_date);
     const group = grouped.get(key) ?? {
-      id: key, provider: item.provider, month: monthOf(item.installment.due_date), items: [], total: 0,
+      id: key,
+      provider: item.provider,
+      month: monthOf(item.installment.due_date),
+      items: [],
+      total: 0,
     };
     group.items.push(item);
     group.total += item.installment.amount;
@@ -111,7 +129,9 @@ export function bnplView(snap: Snapshot, spaceId: string, today: string): BnplVi
     dueCount,
     outstanding,
     upcoming,
-    platformGroups: [...grouped.values()].sort((a, b) => a.month.localeCompare(b.month) || a.provider.localeCompare(b.provider)),
+    platformGroups: [...grouped.values()].sort(
+      (a, b) => a.month.localeCompare(b.month) || a.provider.localeCompare(b.provider),
+    ),
     plans: progress,
   };
 }
