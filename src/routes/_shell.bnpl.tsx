@@ -4,11 +4,11 @@ import { CalendarClock, Plus } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
 import { PlanTabs } from "@/components/app/PlanTabs";
 import { Bar, Empty, PageHeader, Panel, Stat } from "@/components/app/bits";
-import { BnplPayDialog } from "@/components/app/bnpl-pay-dialog";
+import { BnplPlatformPayDialog } from "@/components/app/bnpl-platform-pay-dialog";
 import { BnplPlanDialog } from "@/components/app/bnpl-plan-dialog";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
-import { bnplView, type UpcomingItem } from "@/lib/bnpl-view";
+import { bnplView, type PlatformDueGroup } from "@/lib/bnpl-view";
 import { formatDate, formatMonth, todayManila } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
 import { Card, CoinStack, Vault } from "@/components/app/illustrations";
@@ -43,7 +43,7 @@ function BnplPage() {
   const { snap } = useApp();
   const { spaceId } = useSpace();
   const [creating, setCreating] = useState(false);
-  const [paying, setPaying] = useState<UpcomingItem | null>(null);
+  const [paying, setPaying] = useState<PlatformDueGroup | null>(null);
   const v = bnplView(snap, spaceId ?? "", todayManila());
 
   if (!v.enabled)
@@ -103,8 +103,8 @@ function BnplPage() {
         </Panel>
       )}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Upcoming installments">
-          {v.upcoming.length === 0 ? (
+        <Panel title="Platform payments">
+          {v.platformGroups.length === 0 ? (
             <Empty
               icon={<CalendarClock />}
               illustration={<CoinStack className="size-14" />}
@@ -112,33 +112,19 @@ function BnplPage() {
             />
           ) : (
             <ul className="divide-y">
-              {v.upcoming.map((u) => (
-                <li
-                  key={u.installment.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
-                >
+              {v.platformGroups.map((group) => (
+                <li key={group.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {u.label} · {u.provider}
+                    <p className="font-medium">{group.provider}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatMonth(group.month)} · {group.items.length} item(s) ·{" "}
+                      {group.items.map((item) => item.label).join(", ")}
                     </p>
-                    <p
-                      className={
-                        u.status === "past_due_unconfirmed"
-                          ? "text-xs text-expense"
-                          : "text-xs text-muted-foreground"
-                      }
-                    >
-                      {formatDate(u.installment.due_date)} · {STATUS[u.status]}
-                    </p>
+                    <p className="num mt-1 text-sm font-semibold">{formatPHP(group.total)} remaining</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="num text-sm font-semibold">
-                      {formatPHP(u.installment.amount)}
-                    </span>
-                    <Button size="sm" variant="outline" onClick={() => setPaying(u)}>
-                      Mark as paid
-                    </Button>
-                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setPaying(group)}>
+                    Review platform payment
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -172,7 +158,7 @@ function BnplPage() {
         </Panel>
       </div>
       <BnplPlanDialog open={creating} onOpenChange={setCreating} />
-      <BnplPayDialog item={paying} onClose={() => setPaying(null)} />
+      <BnplPlatformPayDialog group={paying} onClose={() => setPaying(null)} />
     </>
   );
 }

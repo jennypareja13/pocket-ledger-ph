@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bnplEnabled,
+  recordPlatformPayment,
   createPlan,
   deletePlan,
   markInstallmentPaid,
@@ -188,6 +189,46 @@ describe("BNPL actions", () => {
     expect(
       periodTotals(main, snap.transactions, "2026-11").byCategory.get(fee?.id ?? "")?.total,
     ).toBe(p(50));
+  });
+
+  it("records a provider payment across items with editable partial allocation and outstanding balances", async () => {
+    const { store, main, bank, input } = await setup();
+    const planA = await createPlan(store, main, input([p(1000)]));
+    const planB = await createPlan(store, main, { ...input([p(1000)]), description: "Microphone" });
+    const a = store.getSnapshot().loans.find((loan) => loan.id === planA)?.data.bnpl?.schedule[0];
+    const b = store.getSnapshot().loans.find((loan) => loan.id === planB)?.data.bnpl?.schedule[0];
+    if (!a || !b) throw new Error("Missing installments.");
+    const groupId = await recordPlatformPayment(store, main, {
+      accountId: bank,
+      date,
+      actualTotal: p(1900),
+      allocations: [
+        { planId: planA, installmentId: a.id, principal: p(1000), fee: 0 },
+        { planId: planB, installmentId: b.id, principal: p(900), fee: 0 },
+      ],
+    });
+    const snap = store.getSnapshot();
+    expect(snap.transactions.filter((tx) => tx.data.payment_group_id === groupId)).toHaveLength(2);
+    expect(bnplOwed(planA, snap.transactions)).toBe(0);
+    expect(bnplOwed(planB, snap.transactions)).toBe(p(100));
+    expect(accountBalance(bank, snap.transactions)).toBe(-p(1900));
+  });
+
+  it("rejects platform allocations that do not equal actual paid or exceed item balances", async () => {
+    const { store, main, bank, input } = await setup();
+    const plan = await createPlan(store, main, input([p(1000)]));
+    const installment = store.getSnapshot().loans.find((loan) => loan.id === plan)?.data.bnpl?.schedule[0];
+    if (!installment) throw new Error("Missing installment.");
+    const before = structuredClone(store.all());
+    await expect(recordPlatformPayment(store, main, {
+      accountId: bank, date, actualTotal: p(900),
+      allocations: [{ planId: plan, installmentId: installment.id, principal: p(800), fee: 0 }],
+    })).rejects.toThrow("add up exactly");
+    await expect(recordPlatformPayment(store, main, {
+      accountId: bank, date, actualTotal: p(1100),
+      allocations: [{ planId: plan, installmentId: installment.id, principal: p(1000), fee: p(100) }],
+    })).resolves.toBeTruthy();
+    expect(store.all().length).toBeGreaterThan(before.length);
   });
 
   it("deletes plan and purchase atomically only before payments", async () => {

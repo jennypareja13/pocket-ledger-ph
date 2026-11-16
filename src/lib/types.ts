@@ -82,6 +82,8 @@ export interface TxData {
   loan_id?: string | undefined;
   note?: string | undefined;
   installment_id?: string | undefined;
+  /** Shared identity for installment rows recorded from one platform payment confirmation. */
+  payment_group_id?: string | undefined;
   /** Derived, linked balance movements. Rebuilt on every save. */
   entries: Entry[];
 }

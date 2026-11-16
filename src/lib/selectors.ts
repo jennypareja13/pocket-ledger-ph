@@ -154,6 +154,14 @@ export function bnplPlans(spaceId: string, spaces: Space[], loans: Loan[]): Loan
   return live(loans).filter((l) => l.space_id === spaceId && l.data.module === "bnpl");
 }
 
+export function bnplPaidAmounts(txs: Tx[]): Map<string, number> {
+  const amounts = new Map<string, number>();
+  for (const t of live(txs))
+    if (t.data.type === "bnpl_payment" && t.data.installment_id)
+      amounts.set(t.data.installment_id, (amounts.get(t.data.installment_id) ?? 0) + t.data.amount);
+  return amounts;
+}
+
 export function bnplPaidIds(txs: Tx[]): Set<string> {
   const ids = new Set<string>();
   for (const t of live(txs))

@@ -9,7 +9,7 @@ import {
 import { isValidDate } from "./dates";
 import { buildEntries } from "./ledger";
 import { MAX_CENTAVOS } from "./money";
-import { bnplPaidIds, mainSpaces } from "./selectors";
+import { bnplPaidAmounts, bnplPaidIds, mainSpaces } from "./selectors";
 import type { Change, LedgerStore, Snapshot } from "./store";
 import type { LoanData, TxData } from "./types";
 import { validateRecord } from "./validate-record";
@@ -209,6 +209,80 @@ export async function markInstallmentPaid(
   });
   await applyValidated(store, changes);
   return id;
+}
+
+export interface PlatformPaymentAllocation {
+  planId: string;
+  installmentId: string;
+  principal: number;
+  fee: number;
+}
+
+/** Record one provider payment as separate item-level ledger rows in a single atomic write. */
+export async function recordPlatformPayment(
+  store: LedgerStore,
+  mainId: string,
+  input: {
+    accountId: string;
+    date: string;
+    allocations: PlatformPaymentAllocation[];
+    actualTotal: number;
+  },
+) {
+  const snap = store.getSnapshot();
+  requireMain(snap, mainId);
+  if (!bnplEnabled(snap, mainId)) throw new Error("Enable BNPL before recording payments.");
+  if (!isValidDate(input.date)) throw new Error("Enter a valid payment date.");
+  if (!validMoney(input.actualTotal) || input.actualTotal <= 0)
+    throw new Error("Enter a valid amount actually paid.");
+  if (!snap.accounts.some((a) => a.id === input.accountId && a.space_id === mainId && !a.data.archived))
+    throw new Error("Choose an active account in the Main Space.");
+  if (!input.allocations.length) throw new Error("Select at least one installment.");
+  const paid = bnplPaidAmounts(snap.transactions);
+  const seen = new Set<string>();
+  let allocated = 0;
+  const rows: { planId: string; installmentId: string; principal: number; fee: number }[] = [];
+  for (const item of input.allocations) {
+    if (seen.has(item.installmentId)) throw new Error("An installment can only be selected once.");
+    seen.add(item.installmentId);
+    const { bnpl, mainId: ownerId } = requirePlan(snap, item.planId);
+    if (ownerId !== mainId) throw new Error("Choose BNPL plans in this Main Space.");
+    const installment = bnpl.schedule.find((i) => i.id === item.installmentId);
+    if (!installment) throw new Error("Installment not found in its plan.");
+    const remaining = installment.amount - (paid.get(installment.id) ?? 0);
+    if (!validMoney(item.principal) || item.principal <= 0 || item.principal > remaining)
+      throw new Error("Each item allocation must be positive and no more than its remaining installment.");
+    if (!validMoney(item.fee)) throw new Error("Enter a valid fee allocation.");
+    allocated += item.principal + item.fee;
+    rows.push({ planId: item.planId, installmentId: item.installmentId, principal: item.principal, fee: item.fee });
+  }
+  if (allocated !== input.actualTotal)
+    throw new Error("Item allocations must add up exactly to the actual amount paid.");
+  const groupId = crypto.randomUUID();
+  const changes: Change[] = [];
+  const feeId = rows.some((r) => r.fee > 0) ? feeCategory(snap, mainId, changes) : undefined;
+  for (const row of rows) {
+    const id = await deterministicId("bnpl-platform-payment", groupId + ":" + row.installmentId);
+    const tx: Omit<TxData, "entries"> = {
+      type: "bnpl_payment",
+      account_id: input.accountId,
+      date: input.date,
+      amount: row.principal,
+      fee: row.fee || undefined,
+      fee_category_id: row.fee > 0 ? feeId : undefined,
+      installment_id: row.installmentId,
+      payment_group_id: groupId,
+      loan_id: row.planId,
+    };
+    changes.push({
+      kind: "transaction",
+      id,
+      space_id: mainId,
+      data: { ...tx, entries: buildEntries(tx) },
+    });
+  }
+  await applyValidated(store, changes);
+  return groupId;
 }
 
 /** Edit the descriptive fields of a BNPL purchase without changing its installment ledger. */
