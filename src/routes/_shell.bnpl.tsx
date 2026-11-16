@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalendarClock, Plus } from "lucide-react";
 import { useApp, useSpace } from "@/components/app/AppProvider";
 import { PlanTabs } from "@/components/app/PlanTabs";
@@ -9,7 +9,7 @@ import { BnplPlanDialog } from "@/components/app/bnpl-plan-dialog";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
 import { bnplView, type PlatformDueGroup } from "@/lib/bnpl-view";
-import { formatDate, formatMonth, todayManila } from "@/lib/dates";
+import { formatMonth, todayManila } from "@/lib/dates";
 import { formatPHP } from "@/lib/money";
 import { Card, CoinStack, Vault } from "@/components/app/illustrations";
 
@@ -33,18 +33,13 @@ export const Route = createFileRoute("/_shell/bnpl")({
   component: BnplPage,
 });
 
-const STATUS: Record<UpcomingItem["status"], string> = {
-  due_today: "Due today",
-  upcoming: "Upcoming",
-  past_due_unconfirmed: "Past due — not marked paid",
-};
-
 function BnplPage() {
   const { snap } = useApp();
   const { spaceId } = useSpace();
   const [creating, setCreating] = useState(false);
   const [paying, setPaying] = useState<PlatformDueGroup | null>(null);
-  const v = bnplView(snap, spaceId ?? "", todayManila());
+  const today = todayManila();
+  const v = useMemo(() => bnplView(snap, spaceId ?? "", today), [snap, spaceId, today]);
 
   if (!v.enabled)
     return (

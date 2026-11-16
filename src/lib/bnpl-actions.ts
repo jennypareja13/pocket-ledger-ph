@@ -241,6 +241,8 @@ export async function recordPlatformPayment(
   const paid = bnplPaidAmounts(snap.transactions);
   const seen = new Set<string>();
   let allocated = 0;
+  let paymentProvider: string | undefined;
+  let paymentMonth: string | undefined;
   const rows: { planId: string; installmentId: string; principal: number; fee: number }[] = [];
   for (const item of input.allocations) {
     if (seen.has(item.installmentId)) throw new Error("An installment can only be selected once.");
@@ -249,6 +251,12 @@ export async function recordPlatformPayment(
     if (ownerId !== mainId) throw new Error("Choose BNPL plans in this Main Space.");
     const installment = bnpl.schedule.find((i) => i.id === item.installmentId);
     if (!installment) throw new Error("Installment not found in its plan.");
+    const provider = bnpl.provider.trim().toLocaleLowerCase();
+    const dueMonth = installment.due_date.slice(0, 7);
+    if (paymentProvider !== undefined && (paymentProvider !== provider || paymentMonth !== dueMonth))
+      throw new Error("A platform payment can only include one provider and one due month.");
+    paymentProvider = provider;
+    paymentMonth = dueMonth;
     const remaining = installment.amount - (paid.get(installment.id) ?? 0);
     if (!validMoney(item.principal) || item.principal <= 0 || item.principal > remaining)
       throw new Error("Each item allocation must be positive and no more than its remaining installment.");
