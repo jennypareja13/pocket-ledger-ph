@@ -170,8 +170,8 @@ function Settings() {
                 <span className="font-medium">Enable BNPL tracking</span>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   When disabled, the BNPL tab and BNPL budget are hidden. Your existing plans,
-                  payment history, and saved budget are kept and restored when you turn
-                  tracking on again.
+                  payment history, and saved budget are kept and restored when you turn tracking on
+                  again.
                 </span>
               </span>
             </label>
