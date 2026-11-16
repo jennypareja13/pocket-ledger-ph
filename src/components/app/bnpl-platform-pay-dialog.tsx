@@ -86,7 +86,7 @@ export function BnplPlatformPayDialog({
     const first = selectedItems[0];
     if (first && extraFee > 0) {
       next[first.installment.id] = {
-        ...next[first.installment.id],
+        principal: next[first.installment.id]?.principal ?? "0.00",
         fee: centsToInput(extraFee),
       };
     }
