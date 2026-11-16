@@ -177,7 +177,7 @@ export function BnplPlatformPayDialog({
             </div>
             {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             <Button type="submit" className="w-full" disabled={busy || allocated !== actualCents}>
-              {busy ? "Saving…" : "Confirm platform payment"}
+              {busy ? "Saving…" : actualCents !== null && actualCents < scheduled ? "Yes, this is a partial payment" : actualCents !== null && actualCents > scheduled ? "Yes, amount includes extra fees" : "Confirm platform payment"}
             </Button>
           </form>
         )}
