@@ -42,9 +42,7 @@ export function BnplPlatformPayDialog({
   const actualCents = parseAmount(actual);
   const allocated = items.reduce((sum, item) => {
     const row = allocations[item.installment.id];
-    return (
-      sum + (parseAmount(row?.principal ?? "") ?? 0) + (parseAmount(row?.fee ?? "") ?? 0)
-    );
+    return sum + (parseAmount(row?.principal ?? "") ?? 0) + (parseAmount(row?.fee ?? "") ?? 0);
   }, 0);
 
   useEffect(() => {

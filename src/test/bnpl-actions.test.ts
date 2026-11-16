@@ -239,9 +239,8 @@ describe("BNPL actions", () => {
   it("rejects platform allocations that do not equal actual paid or exceed item balances", async () => {
     const { store, main, bank, input } = await setup();
     const plan = await createPlan(store, main, input([p(1000)]));
-    const installment = store
-      .getSnapshot()
-      .loans.find((loan) => loan.id === plan)?.data.bnpl?.schedule[0];
+    const installment = store.getSnapshot().loans.find((loan) => loan.id === plan)?.data.bnpl
+      ?.schedule[0];
     if (!installment) throw new Error("Missing installment.");
     const before = structuredClone(store.all());
     await expect(

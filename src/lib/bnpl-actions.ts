@@ -387,9 +387,7 @@ export async function updateInstallmentPayment(
     throw new Error("Choose an active account in this Main Space.");
   if (!isValidDate(input.date)) throw new Error("Enter a valid payment date.");
   if (!validMoney(input.actualPaid)) throw new Error("Enter a valid amount actually paid.");
-  const paidByOthers = bnplPaidAmounts(
-    snap.transactions.filter((tx) => tx.id !== payment.id),
-  );
+  const paidByOthers = bnplPaidAmounts(snap.transactions.filter((tx) => tx.id !== payment.id));
   const remaining = installment.amount - (paidByOthers.get(installment.id) ?? 0);
   const scheduled = Math.min(input.actualPaid, remaining);
   const extra = input.actualPaid - scheduled;
