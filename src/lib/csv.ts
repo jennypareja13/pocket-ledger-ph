@@ -1,7 +1,7 @@
 import type { Space } from "./types";
 import type { Snapshot } from "./store";
 import { centsToInput } from "./money";
-import { personForTx } from "./labels";
+import { bnplItemDescription, personForTx } from "./labels";
 import { isValidDate } from "./dates";
 
 export function csvCell(value: string, kind: "text" | "numeric" | "date" = "text"): string {
@@ -17,6 +17,7 @@ export function transactionsCsv(snap: Snapshot, spaceId: string, from: string, t
       "date",
       "space",
       "type",
+      "item_description",
       "amount_php",
       "fee_php",
       "category",
@@ -35,6 +36,7 @@ export function transactionsCsv(snap: Snapshot, spaceId: string, from: string, t
       d.date.split("-").reverse().join("/"),
       snap.spaces.find((s) => s.id === spaceId)?.data.name ?? "",
       d.type,
+      bnplItemDescription(t, snap),
       centsToInput(d.amount),
       centsToInput(d.fee ?? 0),
       snap.categories.find((c) => c.id === d.category_id && c.space_id === spaceId)?.data.name ??
@@ -47,7 +49,7 @@ export function transactionsCsv(snap: Snapshot, spaceId: string, from: string, t
       t._meta.sync,
     ]);
   }
-  const numeric = new Set([3, 4]);
+  const numeric = new Set([4, 5]);
   return rows
     .map((r, index) =>
       r

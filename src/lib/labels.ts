@@ -24,6 +24,40 @@ export const TX_TYPES: { value: TxType; label: string }[] = [
 ];
 export const txTypeLabel = (t: TxType) => TX_TYPES.find((x) => x.value === t)?.label ?? t;
 
+export function bnplItemDescription(t: Tx, s: Snapshot): string {
+  if (t.data.type !== "bnpl_purchase" && t.data.type !== "bnpl_payment") return "";
+  return (
+    s.loans.find((loan) => loan.id === t.data.loan_id && loan.data.module === "bnpl")?.data.label ??
+    ""
+  );
+}
+
+export function bnplPaymentItems(t: Tx, s: Snapshot) {
+  if (t.data.type !== "bnpl_payment") return [];
+  const related =
+    t.data.payment_group_id === undefined
+      ? [t]
+      : s.transactions.filter(
+          (item) =>
+            !item.deleted &&
+            item.space_id === t.space_id &&
+            item.data.type === "bnpl_payment" &&
+            item.data.payment_group_id === t.data.payment_group_id,
+        );
+  return related
+    .map((item) => {
+      const plan = s.loans.find(
+        (loan) => loan.id === item.data.loan_id && loan.data.module === "bnpl",
+      );
+      return {
+        label: plan?.data.label?.trim() || "BNPL purchase",
+        provider: plan?.data.bnpl?.provider ?? "",
+        amount: item.data.amount + (item.data.fee ?? 0),
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export function describeTx(t: Tx, s: Snapshot): string {
   const acc = (id?: string) => s.accounts.find((a) => a.id === id)?.data.name ?? "Unknown account";
   const cat = (id?: string) => s.categories.find((c) => c.id === id)?.data.name ?? "Uncategorized";
@@ -42,9 +76,8 @@ export function describeTx(t: Tx, s: Snapshot): string {
     case "loan_repayment":
       return `Repayment from ${person()}`;
     case "bnpl_purchase":
-      return "BNPL purchase";
     case "bnpl_payment":
-      return "BNPL payment";
+      return bnplItemDescription(t, s) || (t.data.type === "bnpl_purchase" ? "BNPL purchase" : "BNPL payment");
     case "adjustment":
       return t.data.note ?? "Balance adjustment";
   }
