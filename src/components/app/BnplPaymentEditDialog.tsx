@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteInstallmentPayment, updateInstallmentPayment } from "@/lib/bnpl-actions";
+import { bnplPaymentItems } from "@/lib/labels";
 import { formatDate } from "@/lib/dates";
 import { centsToInput, formatPHP, parseAmount } from "@/lib/money";
 import type { Tx } from "@/lib/types";
@@ -74,6 +75,8 @@ export function BnplPaymentEditDialog({
         .flatMap((loan) => loan.data.bnpl?.schedule ?? [])
         .find((item) => item.id === payment.data.installment_id)
     : undefined;
+  const paidItems = payment ? bnplPaymentItems(payment, snap) : [];
+  const provider = paidItems.find((item) => item.provider)?.provider;
   return (
     <Dialog open={!!payment} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -82,6 +85,32 @@ export function BnplPaymentEditDialog({
         </DialogHeader>
         {payment && (
           <form onSubmit={save} className="space-y-4">
+            <section
+              className="space-y-2 rounded-md bg-muted/50 p-3"
+              aria-label="Paid with these items"
+            >
+              <div className="text-sm font-semibold">Paid with these items</div>
+              {provider && <div className="text-xs text-muted-foreground">{provider}</div>}
+              <ul className="space-y-2">
+                {paidItems.map((item, index) => (
+                  <li
+                    key={`${item.label}-${index}`}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="min-w-0 truncate">{item.label}</span>
+                    <span className="num shrink-0 font-medium">{formatPHP(item.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+              {paidItems.length > 1 && (
+                <div className="flex justify-between border-t pt-2 text-sm font-semibold">
+                  <span>Total paid</span>
+                  <span className="num">
+                    {formatPHP(paidItems.reduce((sum, item) => sum + item.amount, 0))}
+                  </span>
+                </div>
+              )}
+            </section>
             <p className="text-sm text-muted-foreground">
               Scheduled installment:{" "}
               {installment ? formatDate(installment.due_date) : "Date unavailable"} ·{" "}
