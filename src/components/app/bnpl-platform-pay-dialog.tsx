@@ -42,9 +42,7 @@ export function BnplPlatformPayDialog({
   const allocated = items.reduce((sum, item) => {
     const row = allocations[item.installment.id];
     return (
-      sum +
-      (parseAmount(row?.principal ?? "") ?? 0) +
-      (parseAmount(row?.fee ?? "") ?? 0)
+      sum + (parseAmount(row?.principal ?? "") ?? 0) + (parseAmount(row?.fee ?? "") ?? 0)
     );
   }, 0);
 
@@ -79,8 +77,7 @@ export function BnplPlatformPayDialog({
   function review(e: FormEvent) {
     e.preventDefault();
     if (!items.length) return setErr("Select at least one item.");
-    if (actualCents === null || actualCents <= 0)
-      return setErr("Enter the exact amount you paid.");
+    if (actualCents === null || actualCents <= 0) return setErr("Enter the exact amount you paid.");
     if (!accountId) return setErr("Choose the account used for this payment.");
     setAllocations(makeDefaultAllocations(actualCents, items));
     setConfirmedMismatch(actualCents !== scheduled);
@@ -111,9 +108,7 @@ export function BnplPlatformPayDialog({
       onClose();
     } catch (error) {
       setErr(
-        error instanceof Error
-          ? error.message
-          : "Could not save the payment. Please try again.",
+        error instanceof Error ? error.message : "Could not save the payment. Please try again.",
       );
     } finally {
       setBusy(false);
@@ -261,10 +256,7 @@ export function BnplPlatformPayDialog({
                   <div className="col-span-2 text-sm font-medium">
                     {item.label} · remaining {formatPHP(item.installment.amount)}
                   </div>
-                  <Field
-                    label="Applied to installment"
-                    htmlFor={`alloc-${item.installment.id}`}
-                  >
+                  <Field label="Applied to installment" htmlFor={`alloc-${item.installment.id}`}>
                     <Input
                       id={`alloc-${item.installment.id}`}
                       inputMode="decimal"
@@ -279,9 +271,7 @@ export function BnplPlatformPayDialog({
                       id={`fee-${item.installment.id}`}
                       inputMode="decimal"
                       value={allocations[item.installment.id]?.fee ?? "0.00"}
-                      onChange={(e) =>
-                        updateAllocation(item.installment.id, "fee", e.target.value)
-                      }
+                      onChange={(e) => updateAllocation(item.installment.id, "fee", e.target.value)}
                     />
                   </Field>
                 </div>

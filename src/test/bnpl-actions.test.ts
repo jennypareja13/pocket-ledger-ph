@@ -199,9 +199,7 @@ describe("BNPL actions", () => {
       description: "Microphone",
     });
     const a = store.getSnapshot().loans.find((loan) => loan.id === planA)?.data.bnpl?.schedule[0];
-    const b = store
-      .getSnapshot()
-      .loans.find((loan) => loan.id === planB)?.data.bnpl?.schedule[0];
+    const b = store.getSnapshot().loans.find((loan) => loan.id === planB)?.data.bnpl?.schedule[0];
     if (!a || !b) throw new Error("Missing installments.");
     const groupId = await recordPlatformPayment(store, main, {
       accountId: bank,
@@ -222,7 +220,9 @@ describe("BNPL actions", () => {
   it("rejects platform allocations that do not equal actual paid or exceed item balances", async () => {
     const { store, main, bank, input } = await setup();
     const plan = await createPlan(store, main, input([p(1000)]));
-    const installment = store.getSnapshot().loans.find((loan) => loan.id === plan)?.data.bnpl?.schedule[0];
+    const installment = store
+      .getSnapshot()
+      .loans.find((loan) => loan.id === plan)?.data.bnpl?.schedule[0];
     if (!installment) throw new Error("Missing installment.");
     const before = structuredClone(store.all());
     await expect(
@@ -230,9 +230,7 @@ describe("BNPL actions", () => {
         accountId: bank,
         date,
         actualTotal: p(900),
-        allocations: [
-          { planId: plan, installmentId: installment.id, principal: p(800), fee: 0 },
-        ],
+        allocations: [{ planId: plan, installmentId: installment.id, principal: p(800), fee: 0 }],
       }),
     ).rejects.toThrow("add up exactly");
     await expect(
