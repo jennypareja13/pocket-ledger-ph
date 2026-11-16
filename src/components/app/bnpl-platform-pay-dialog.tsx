@@ -323,8 +323,8 @@ export function BnplPlatformPayDialog({
               )}
               {invalidAllocation && (
                 <p className="mt-1 text-destructive">
-                  Each selected item needs a positive allocation within its remaining balance.
-                  Go back and unselect items not covered by this payment.
+                  Each selected item needs a positive allocation within its remaining balance. Go
+                  back and unselect items not covered by this payment.
                 </p>
               )}
             </div>
@@ -333,7 +333,19 @@ export function BnplPlatformPayDialog({
                 {err}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={busy || allocated !== actualCents || invalidAllocation}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => setReviewing(false)}
+            >
+              Back to item selection
+            </Button>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={busy || allocated !== actualCents || invalidAllocation}
+            >
               {busy
                 ? "Saving…"
                 : actualCents !== null && actualCents < scheduled
