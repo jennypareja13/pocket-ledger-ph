@@ -387,7 +387,13 @@ export async function updateInstallmentPayment(
     throw new Error("Choose an active account in this Main Space.");
   if (!isValidDate(input.date)) throw new Error("Enter a valid payment date.");
   if (!validMoney(input.actualPaid)) throw new Error("Enter a valid amount actually paid.");
-  const { scheduled, extra } = splitPayment(installment.amount, input.actualPaid);
+  const paidByOthers = bnplPaidAmounts(
+    snap.transactions.filter((tx) => tx.id !== payment.id),
+  );
+  const remaining = installment.amount - (paidByOthers.get(installment.id) ?? 0);
+  const scheduled = Math.min(input.actualPaid, remaining);
+  const extra = input.actualPaid - scheduled;
+  if (scheduled <= 0) throw new Error("This installment is already fully paid.");
   const changes: Change[] = [];
   const feeId = extra > 0 ? feeCategory(snap, mainId, changes) : undefined;
   const tx: Omit<TxData, "entries"> = {
@@ -395,9 +401,10 @@ export async function updateInstallmentPayment(
     account_id: input.accountId,
     date: input.date,
     amount: scheduled,
-    fee: extra,
+    fee: extra || undefined,
     fee_category_id: feeId,
     installment_id: installment.id,
+    payment_group_id: payment.data.payment_group_id,
     loan_id: payment.data.loan_id,
   };
   changes.push({

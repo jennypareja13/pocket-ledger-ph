@@ -26,6 +26,7 @@ export function BnplPlatformPayDialog({
   const [accountId, setAccountId] = useState("");
   const [date, setDate] = useState(todayManila());
   const [actual, setActual] = useState("");
+  const [amountEdited, setAmountEdited] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [allocations, setAllocations] = useState<Record<string, Allocation>>({});
   const [reviewing, setReviewing] = useState(false);
@@ -50,6 +51,7 @@ export function BnplPlatformPayDialog({
     if (!group) return;
     setSelected(group.items.map((item) => item.installment.id));
     setActual(centsToInput(group.total));
+    setAmountEdited(false);
     setDate(todayManila());
     setAccountId("");
     setAllocations({});
@@ -72,6 +74,20 @@ export function BnplPlatformPayDialog({
       };
     });
     return next;
+  }
+
+  function toggleItem(installmentId: string, checked: boolean) {
+    if (!group) return;
+    const next = checked
+      ? [...selected, installmentId]
+      : selected.filter((id) => id !== installmentId);
+    setSelected(next);
+    if (!amountEdited) {
+      const total = group.items
+        .filter((item) => next.includes(item.installment.id))
+        .reduce((sum, item) => sum + item.installment.amount, 0);
+      setActual(centsToInput(total));
+    }
   }
 
   function review(e: FormEvent) {
@@ -148,13 +164,7 @@ export function BnplPlatformPayDialog({
                   <input
                     type="checkbox"
                     checked={selected.includes(item.installment.id)}
-                    onChange={(e) =>
-                      setSelected((current) =>
-                        e.target.checked
-                          ? [...current, item.installment.id]
-                          : current.filter((id) => id !== item.installment.id),
-                      )
-                    }
+                    onChange={(e) => toggleItem(item.installment.id, e.target.checked)}
                   />
                   <span className="min-w-0 flex-1 text-sm">
                     <span className="block font-medium">{item.label}</span>
@@ -200,7 +210,10 @@ export function BnplPlatformPayDialog({
                   id="platform-pay-actual"
                   inputMode="decimal"
                   value={actual}
-                  onChange={(e) => setActual(e.target.value)}
+                  onChange={(e) => {
+                    setAmountEdited(true);
+                    setActual(e.target.value);
+                  }}
                 />
               </Field>
             </div>
