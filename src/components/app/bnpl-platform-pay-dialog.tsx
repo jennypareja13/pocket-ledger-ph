@@ -44,6 +44,18 @@ export function BnplPlatformPayDialog({
     const row = allocations[item.installment.id];
     return sum + (parseAmount(row?.principal ?? "") ?? 0) + (parseAmount(row?.fee ?? "") ?? 0);
   }, 0);
+  const invalidAllocation = items.some((item) => {
+    const row = allocations[item.installment.id];
+    const principal = parseAmount(row?.principal ?? "");
+    const fee = parseAmount(row?.fee ?? "");
+    return (
+      principal === null ||
+      principal <= 0 ||
+      principal > item.installment.amount ||
+      fee === null ||
+      fee < 0
+    );
+  });
 
   useEffect(() => {
     if (!group) return;
@@ -59,10 +71,7 @@ export function BnplPlatformPayDialog({
   }, [group]);
 
   function makeDefaultAllocations(total: number, selectedItems: typeof items) {
-    const scheduledTotal = selectedItems.reduce(
-      (sum, item) => sum + item.installment.amount,
-      0,
-    );
+    const scheduledTotal = selectedItems.reduce((sum, item) => sum + item.installment.amount, 0);
     let principalLeft = Math.min(total, scheduledTotal);
     const next: Record<string, Allocation> = {};
     selectedItems.forEach((item) => {
@@ -312,13 +321,19 @@ export function BnplPlatformPayDialog({
                   Allocations must equal the actual payment amount.
                 </p>
               )}
+              {invalidAllocation && (
+                <p className="mt-1 text-destructive">
+                  Each selected item needs a positive allocation within its remaining balance.
+                  Go back and unselect items not covered by this payment.
+                </p>
+              )}
             </div>
             {err && (
               <p role="alert" className="text-sm text-destructive">
                 {err}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={busy || allocated !== actualCents}>
+            <Button type="submit" className="w-full" disabled={busy || allocated !== actualCents || invalidAllocation}>
               {busy
                 ? "Saving…"
                 : actualCents !== null && actualCents < scheduled
