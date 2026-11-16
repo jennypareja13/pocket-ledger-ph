@@ -1,9 +1,4 @@
-import {
-  budgetStatus,
-  monthOf,
-  type Installment,
-  type InstallmentStatus,
-} from "./bnpl";
+import { budgetStatus, monthOf, type Installment, type InstallmentStatus } from "./bnpl";
 import { bnplEnabled } from "./bnpl-actions";
 import { bnplOwed, bnplPaidAmounts, bnplPlans, mainSpaces } from "./selectors";
 import type { Snapshot } from "./store";
