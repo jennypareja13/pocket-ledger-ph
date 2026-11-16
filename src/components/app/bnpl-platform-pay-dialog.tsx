@@ -59,18 +59,28 @@ export function BnplPlatformPayDialog({
   }, [group]);
 
   function makeDefaultAllocations(total: number, selectedItems: typeof items) {
-    let left = total;
+    const scheduledTotal = selectedItems.reduce(
+      (sum, item) => sum + item.installment.amount,
+      0,
+    );
+    let principalLeft = Math.min(total, scheduledTotal);
     const next: Record<string, Allocation> = {};
-    selectedItems.forEach((item, index) => {
-      const amount = Math.min(item.installment.amount, Math.max(0, left));
-      left -= amount;
-      const fee = index === 0 && left > 0 ? left : 0;
-      if (fee) left -= fee;
+    selectedItems.forEach((item) => {
+      const principal = Math.min(item.installment.amount, principalLeft);
+      principalLeft -= principal;
       next[item.installment.id] = {
-        principal: centsToInput(amount),
-        fee: centsToInput(fee),
+        principal: centsToInput(principal),
+        fee: "0.00",
       };
     });
+    const extraFee = Math.max(0, total - scheduledTotal);
+    const first = selectedItems[0];
+    if (first && extraFee > 0) {
+      next[first.installment.id] = {
+        ...next[first.installment.id],
+        fee: centsToInput(extraFee),
+      };
+    }
     return next;
   }
 
