@@ -85,12 +85,18 @@ export function BnplPaymentEditDialog({
         </DialogHeader>
         {payment && (
           <form onSubmit={save} className="space-y-4">
-            <section className="space-y-2 rounded-md bg-muted/50 p-3" aria-label="Paid with these items">
+            <section
+              className="space-y-2 rounded-md bg-muted/50 p-3"
+              aria-label="Paid with these items"
+            >
               <div className="text-sm font-semibold">Paid with these items</div>
               {provider && <div className="text-xs text-muted-foreground">{provider}</div>}
               <ul className="space-y-2">
                 {paidItems.map((item, index) => (
-                  <li key={`${item.label}-${index}`} className="flex items-center justify-between gap-3 text-sm">
+                  <li
+                    key={`${item.label}-${index}`}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
                     <span className="min-w-0 truncate">{item.label}</span>
                     <span className="num shrink-0 font-medium">{formatPHP(item.amount)}</span>
                   </li>

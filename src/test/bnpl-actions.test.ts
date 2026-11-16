@@ -509,7 +509,7 @@ describe("BNPL actions", () => {
     const purchase = csv.split("\r\n").find((line) => line.includes('"bnpl_purchase"'));
     const payment = csv.split("\r\n").find((line) => line.includes('"bnpl_payment"'));
     expect(purchase?.split(",")[6]).toBe('""');
-    expect(payment?.split(",")[6]).toBe('"Bank"');
+    expect(payment?.split(",")[7]).toBe('"Bank"');
     expect(txTypeLabel("bnpl_purchase")).toBe("BNPL purchase");
     expect(txTypeLabel("bnpl_payment")).toBe("BNPL payment");
   });

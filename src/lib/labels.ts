@@ -26,29 +26,30 @@ export const txTypeLabel = (t: TxType) => TX_TYPES.find((x) => x.value === t)?.l
 
 export function bnplItemDescription(t: Tx, s: Snapshot): string {
   if (t.data.type !== "bnpl_purchase" && t.data.type !== "bnpl_payment") return "";
+  const loanId = t.data.loan_id;
   return (
-    s.loans.find((loan) => loan.id === t.data.loan_id && loan.data.module === "bnpl")?.data.label ??
-    ""
+    s.loans.find((loan) => loan.id === loanId && loan.data.module === "bnpl")?.data.label ?? ""
   );
 }
 
 export function bnplPaymentItems(t: Tx, s: Snapshot) {
   if (t.data.type !== "bnpl_payment") return [];
+  const paymentGroupId = t.data.payment_group_id;
+  const spaceId = t.space_id;
   const related =
-    t.data.payment_group_id === undefined
+    paymentGroupId === undefined
       ? [t]
       : s.transactions.filter(
           (item) =>
             !item.deleted &&
-            item.space_id === t.space_id &&
+            item.space_id === spaceId &&
             item.data.type === "bnpl_payment" &&
-            item.data.payment_group_id === t.data.payment_group_id,
+            item.data.payment_group_id === paymentGroupId,
         );
   return related
     .map((item) => {
-      const plan = s.loans.find(
-        (loan) => loan.id === item.data.loan_id && loan.data.module === "bnpl",
-      );
+      const loanId = item.data.loan_id;
+      const plan = s.loans.find((loan) => loan.id === loanId && loan.data.module === "bnpl");
       return {
         label: plan?.data.label?.trim() || "BNPL purchase",
         provider: plan?.data.bnpl?.provider ?? "",
@@ -77,7 +78,10 @@ export function describeTx(t: Tx, s: Snapshot): string {
       return `Repayment from ${person()}`;
     case "bnpl_purchase":
     case "bnpl_payment":
-      return bnplItemDescription(t, s) || (t.data.type === "bnpl_purchase" ? "BNPL purchase" : "BNPL payment");
+      return (
+        bnplItemDescription(t, s) ||
+        (t.data.type === "bnpl_purchase" ? "BNPL purchase" : "BNPL payment")
+      );
     case "adjustment":
       return t.data.note ?? "Balance adjustment";
   }
