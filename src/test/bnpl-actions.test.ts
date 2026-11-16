@@ -14,6 +14,7 @@ import {
   type CreatePlanInput,
 } from "@/lib/bnpl-actions";
 import { buildSchedule } from "@/lib/bnpl";
+import { bnplView } from "@/lib/bnpl-view";
 import { createAccount, createSpace } from "@/lib/actions";
 import { transactionsCsv } from "@/lib/csv";
 import { isValidDate } from "@/lib/dates";
@@ -215,6 +216,24 @@ describe("BNPL actions", () => {
     expect(bnplOwed(planA, snap.transactions)).toBe(0);
     expect(bnplOwed(planB, snap.transactions)).toBe(p(100));
     expect(accountBalance(bank, snap.transactions)).toBe(-p(1900));
+    const view = bnplView(snap, main, date);
+    expect(view.outstanding).toBe(p(100));
+    expect(view.upcoming).toHaveLength(1);
+    expect(view.upcoming[0]?.installment.amount).toBe(p(100));
+    expect(view.platformGroups[0]?.total).toBe(p(100));
+    const partialPayment = snap.transactions.find(
+      (tx) => tx.data.installment_id === b.id && tx.data.type === "bnpl_payment",
+    );
+    if (!partialPayment) throw new Error("Missing partial payment.");
+    await updateInstallmentPayment(store, partialPayment.id, {
+      accountId: bank,
+      date,
+      actualPaid: p(800),
+    });
+    const edited = store.getSnapshot().transactions.find((tx) => tx.id === partialPayment.id);
+    expect(edited?.data.amount).toBe(p(800));
+    expect(edited?.data.payment_group_id).toBe(groupId);
+    expect(bnplOwed(planB, store.getSnapshot().transactions)).toBe(p(200));
   });
 
   it("rejects platform allocations that do not equal actual paid or exceed item balances", async () => {
