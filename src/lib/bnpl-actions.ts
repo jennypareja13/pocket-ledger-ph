@@ -229,6 +229,14 @@ export async function recordPlatformPayment(
     actualTotal: number;
   },
 ) {
+  if (!input.allocations.length) throw new Error("Select at least one installment.");
+  const groupId = crypto.randomUUID();
+  const paymentIds = await Promise.all(
+    input.allocations.map((item) =>
+      deterministicId("bnpl-platform-payment", groupId + ":" + item.installmentId),
+    ),
+  );
+  // Re-read after asynchronous ID generation so concurrent payments cannot use a stale balance.
   const snap = store.getSnapshot();
   requireMain(snap, mainId);
   if (!bnplEnabled(snap, mainId)) throw new Error("Enable BNPL before recording payments.");
@@ -241,7 +249,6 @@ export async function recordPlatformPayment(
     )
   )
     throw new Error("Choose an active account in the Main Space.");
-  if (!input.allocations.length) throw new Error("Select at least one installment.");
   const paid = bnplPaidAmounts(snap.transactions);
   const seen = new Set<string>();
   let allocated = 0;
@@ -280,11 +287,11 @@ export async function recordPlatformPayment(
   }
   if (allocated !== input.actualTotal)
     throw new Error("Item allocations must add up exactly to the actual amount paid.");
-  const groupId = crypto.randomUUID();
   const changes: Change[] = [];
   const feeId = rows.some((r) => r.fee > 0) ? feeCategory(snap, mainId, changes) : undefined;
-  for (const row of rows) {
-    const id = await deterministicId("bnpl-platform-payment", groupId + ":" + row.installmentId);
+  for (const [index, row] of rows.entries()) {
+    const id = paymentIds[index];
+    if (!id) throw new Error("Could not create a payment record identity.");
     const tx: Omit<TxData, "entries"> = {
       type: "bnpl_payment",
       account_id: input.accountId,
