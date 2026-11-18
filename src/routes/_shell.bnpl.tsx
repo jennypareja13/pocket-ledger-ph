@@ -6,6 +6,7 @@ import { PlanTabs } from "@/components/app/PlanTabs";
 import { Bar, Empty, PageHeader, Panel, Stat } from "@/components/app/bits";
 import { BnplPlatformPayDialog } from "@/components/app/bnpl-platform-pay-dialog";
 import { BnplPlanDialog } from "@/components/app/bnpl-plan-dialog";
+import { BnplReminderPanel } from "@/components/app/BnplReminderPanel";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/config";
 import { bnplView, type PlatformDueGroup } from "@/lib/bnpl-view";
@@ -97,6 +98,7 @@ function BnplPage() {
           ) : null}
         </Panel>
       )}
+      <BnplReminderPanel spaceId={spaceId ?? ""} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Platform payments">
           {v.platformGroups.length === 0 ? (
