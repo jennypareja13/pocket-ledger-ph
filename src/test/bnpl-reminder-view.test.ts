@@ -81,9 +81,7 @@ describe("BNPL in-app reminder view", () => {
   });
 
   it("suppresses a fully paid installment", () => {
-    expect(bnplReminderView(makeSnapshot({ paidAmount: 65000 }), "main", "2026-11-18")).toEqual(
-      [],
-    );
+    expect(bnplReminderView(makeSnapshot({ paidAmount: 65000 }), "main", "2026-11-18")).toEqual([]);
   });
 
   it("does not count a payment recorded in another space", () => {
@@ -105,7 +103,9 @@ describe("BNPL in-app reminder view", () => {
   });
 
   it("does not expose reminders in managed spaces", () => {
-    expect(bnplReminderView(makeSnapshot({ spaceType: "managed" }), "main", "2026-11-18")).toEqual([]);
+    expect(
+      bnplReminderView(makeSnapshot({ spaceType: "managed" }), "main", "2026-11-18"),
+    ).toEqual([]);
   });
 
   it("does not show reminders on dates without a scheduled occurrence", () => {
