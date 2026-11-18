@@ -47,7 +47,11 @@ export interface BnplReminderItem {
 }
 
 /** Current-day reminders for an enabled Main Space; partial payments remain outstanding. */
-export function bnplReminderView(snap: Snapshot, spaceId: string, today: string): BnplReminderItem[] {
+export function bnplReminderView(
+  snap: Snapshot,
+  spaceId: string,
+  today: string,
+): BnplReminderItem[] {
   const isMain = mainSpaces(snap.spaces).some((space) => space.id === spaceId);
   if (!isMain || !bnplEnabled(snap, spaceId)) return [];
   const plans = bnplPlans(spaceId, snap.spaces, snap.loans).filter(
@@ -56,7 +60,10 @@ export function bnplReminderView(snap: Snapshot, spaceId: string, today: string)
   const paidAmounts = bnplPaidAmounts(
     snap.transactions.filter((transaction) => transaction.space_id === spaceId),
   );
-  const details = new Map<string, { label: string; provider: string; amount: number; paidAmount: number }>();
+  const details = new Map<
+    string,
+    { label: string; provider: string; amount: number; paidAmount: number }
+  >();
   const installments = plans.flatMap((plan) =>
     (plan.data.bnpl?.schedule ?? []).map((installment) => {
       const paidAmount = paidAmounts.get(installment.id) ?? 0;
@@ -66,19 +73,25 @@ export function bnplReminderView(snap: Snapshot, spaceId: string, today: string)
         amount: installment.amount,
         paidAmount,
       });
-      return { planId: plan.id, installment, paid: paidAmount >= installment.amount };
+      return {
+        planId: plan.id,
+        installment,
+        paid: paidAmount >= installment.amount,
+      };
     }),
   );
   return dueBnplReminders(installments, today).flatMap((reminder) => {
     const detail = details.get(reminder.installmentId);
     if (!detail) return [];
-    return [{
-      reminder,
-      label: detail.label,
-      provider: detail.provider,
-      amountRemaining: Math.max(0, detail.amount - detail.paidAmount),
-      paidAmount: detail.paidAmount,
-    }];
+    return [
+      {
+        reminder,
+        label: detail.label,
+        provider: detail.provider,
+        amountRemaining: Math.max(0, detail.amount - detail.paidAmount),
+        paidAmount: detail.paidAmount,
+      },
+    ];
   });
 }
 

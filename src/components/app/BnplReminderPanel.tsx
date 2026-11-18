@@ -44,11 +44,7 @@ export function BnplReminderPanel({
         {reminders.map(({ reminder, label, provider, amountRemaining, paidAmount }) => (
           <li
             key={reminder.id}
-            className={
-              compact
-                ? "rounded-xl bg-muted/45 p-3"
-                : "rounded-xl border border-border/70 p-4"
-            }
+            className={compact ? "rounded-xl bg-muted/45 p-3" : "rounded-xl border border-border/70 p-4"}
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
@@ -67,13 +63,9 @@ export function BnplReminderPanel({
                 {reminderLabel(reminder.daysBeforeDue)}
               </span>
             </div>
-            <p className="num mt-2 text-lg font-semibold">
-              {formatPHP(amountRemaining)} remaining
-            </p>
+            <p className="num mt-2 text-lg font-semibold">{formatPHP(amountRemaining)} remaining</p>
             {paidAmount > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {formatPHP(paidAmount)} already paid
-              </p>
+              <p className="text-xs text-muted-foreground">{formatPHP(paidAmount)} already paid</p>
             )}
             {!compact && (
               <p className="mt-2 text-sm text-muted-foreground">
