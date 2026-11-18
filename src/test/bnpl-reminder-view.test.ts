@@ -2,19 +2,24 @@ import { describe, expect, it } from "vitest";
 import { bnplReminderView } from "@/lib/bnpl-view";
 import type { Snapshot } from "@/lib/store";
 
-const makeSnapshot = (options: {
-  enabled?: boolean;
-  spaceType?: "personal" | "managed";
-  cancelled?: boolean;
-  paidAmount?: number;
-  paymentSpaceId?: string;
-} = {}) =>
+const makeSnapshot = (
+  options: {
+    enabled?: boolean;
+    spaceType?: "personal" | "managed";
+    cancelled?: boolean;
+    paidAmount?: number;
+    paymentSpaceId?: string;
+  } = {},
+) =>
   ({
     spaces: [
       {
         id: "main",
         deleted: false,
-        data: { type: options.spaceType ?? "personal", modules: { bnpl: options.enabled ?? true } },
+        data: {
+          type: options.spaceType ?? "personal",
+          modules: { bnpl: options.enabled ?? true },
+        },
       },
     ],
     loans: [
@@ -76,9 +81,9 @@ describe("BNPL in-app reminder view", () => {
   });
 
   it("suppresses a fully paid installment", () => {
-    expect(
-      bnplReminderView(makeSnapshot({ paidAmount: 65000 }), "main", "2026-11-18"),
-    ).toEqual([]);
+    expect(bnplReminderView(makeSnapshot({ paidAmount: 65000 }), "main", "2026-11-18")).toEqual(
+      [],
+    );
   });
 
   it("does not count a payment recorded in another space", () => {
