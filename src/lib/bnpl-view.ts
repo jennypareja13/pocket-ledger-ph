@@ -1,5 +1,6 @@
 import { budgetStatus, monthOf, type Installment, type InstallmentStatus } from "./bnpl";
 import { bnplEnabled } from "./bnpl-actions";
+import { dueBnplReminders, type BnplReminderOccurrence } from "./bnpl-reminders";
 import { bnplOwed, bnplPaidAmounts, bnplPlans, mainSpaces } from "./selectors";
 import type { Snapshot } from "./store";
 import type { Loan } from "./types";
@@ -35,6 +36,50 @@ export interface BnplView {
   upcoming: UpcomingItem[];
   platformGroups: PlatformDueGroup[];
   plans: PlanProgress[];
+}
+
+export interface BnplReminderItem {
+  reminder: BnplReminderOccurrence;
+  label: string;
+  provider: string;
+  amountRemaining: number;
+  paidAmount: number;
+}
+
+/** Current-day reminders for an enabled Main Space; partial payments remain outstanding. */
+export function bnplReminderView(snap: Snapshot, spaceId: string, today: string): BnplReminderItem[] {
+  const isMain = mainSpaces(snap.spaces).some((space) => space.id === spaceId);
+  if (!isMain || !bnplEnabled(snap, spaceId)) return [];
+  const plans = bnplPlans(spaceId, snap.spaces, snap.loans).filter(
+    (plan) => plan.data.bnpl && !plan.data.bnpl.cancelled,
+  );
+  const paidAmounts = bnplPaidAmounts(
+    snap.transactions.filter((transaction) => transaction.space_id === spaceId),
+  );
+  const details = new Map<string, { label: string; provider: string; amount: number; paidAmount: number }>();
+  const installments = plans.flatMap((plan) =>
+    (plan.data.bnpl?.schedule ?? []).map((installment) => {
+      const paidAmount = paidAmounts.get(installment.id) ?? 0;
+      details.set(installment.id, {
+        label: plan.data.label ?? "BNPL plan",
+        provider: plan.data.bnpl?.provider ?? "",
+        amount: installment.amount,
+        paidAmount,
+      });
+      return { planId: plan.id, installment, paid: paidAmount >= installment.amount };
+    }),
+  );
+  return dueBnplReminders(installments, today).flatMap((reminder) => {
+    const detail = details.get(reminder.installmentId);
+    if (!detail) return [];
+    return [{
+      reminder,
+      label: detail.label,
+      provider: detail.provider,
+      amountRemaining: Math.max(0, detail.amount - detail.paidAmount),
+      paidAmount: detail.paidAmount,
+    }];
+  });
 }
 
 /** Read-only BNPL data; partial payments reduce each installment's remaining balance. */

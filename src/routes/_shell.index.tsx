@@ -6,6 +6,7 @@ import { Bar, Empty, PageHeader, Panel, Stat } from "@/components/app/bits";
 import { TxRow } from "@/components/app/TxRow";
 import { SyncBadge } from "@/components/app/SyncBadge";
 import { HomeCharts } from "@/components/app/home-charts";
+import { BnplReminderPanel } from "@/components/app/BnplReminderPanel";
 import { Button } from "@/components/ui/button";
 import { PeriodFilter } from "@/components/app/PeriodFilter";
 import { APP_NAME } from "@/lib/config";
@@ -113,6 +114,7 @@ function Dashboard() {
       </div>
 
       <HomeCharts spaceId={spaceId} month={month} txs={snap.transactions} categories={categories} />
+      <BnplReminderPanel spaceId={spaceId} compact />
 
       {managed.length > 0 && (
         <Panel title="Managed funds - held for others" className="mt-4">
