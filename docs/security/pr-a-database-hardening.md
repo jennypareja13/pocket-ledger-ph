@@ -24,12 +24,12 @@ Possible impact: any feature or external client incorrectly using the anonymous 
 
 ### `0003_restrict_public_default_privileges.sql`
 
-- Removes default privileges for `anon` on future tables, sequences, and functions created by role `postgres` in schema `public`.
-- Revokes default function EXECUTE from `PUBLIC` as well.
-- Intentionally leaves `authenticated` default privileges unchanged. The live ACL shows broad authenticated defaults. Removing them now could cause future Lovable-generated schema objects to stop working until explicit grants are added. This is the conservative compatibility choice, not a claim that all future objects will be safe automatically.
-- Applies to objects created by `postgres` only.
+- Removes default privileges for `anon` on future tables and sequences created by role `postgres` in schema `public`.
+- Does not alter default function EXECUTE privileges for any role. This includes `PUBLIC EXECUTE` on future functions and the existing `anon` and `authenticated` function defaults.
+- Intentionally leaves `authenticated` table and sequence default privileges unchanged. Removing them now could cause future Lovable-generated schema objects to stop working until explicit grants are added. This is the conservative compatibility choice, not a claim that all future objects will be safe automatically.
+- Applies only to future tables and sequences created by `postgres` in `public`.
 
-**PARTIAL protection:** the live migration role is `postgres`, is not a superuser, and has neither membership nor USAGE rights for `supabase_admin`. It cannot alter `supabase_admin` defaults. Those defaults remain unchanged.
+**PARTIAL protection, explicitly accepted:** `PUBLIC EXECUTE` on future functions remains unchanged; `anon` and `authenticated` default privileges on future functions remain unchanged; `authenticated` defaults on future tables and sequences remain unchanged; and all `supabase_admin` defaults remain unchanged. The live migration role is `postgres`, is not a superuser, and has neither membership nor USAGE rights for `supabase_admin`, so it cannot alter that role's defaults. This migration is not comprehensive default-privilege hardening.
 
 This migration does not change existing objects. It means future tables, sequences, and functions created by `postgres` need explicit GRANTs as appropriate. Lovable-generated schema changes may fail until the necessary grants are added. Every new public table still needs deliberate RLS enablement and policies.
 
@@ -194,7 +194,7 @@ ORDER BY owner_role, object_type;
 Expected for `postgres`:
 - tables: `{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres,sandbox_exec=ar/postgres}`
 - sequences: `{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres,sandbox_exec=rU/postgres}`
-- functions: `{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}`
+- functions: unchanged from the pre-check, including the existing `anon` and `authenticated` defaults. `PUBLIC EXECUTE` remains governed by PostgreSQL's built-in default.
 
 Expected for `supabase_admin`: all three ACL strings unchanged from the pre-check.
 
@@ -220,8 +220,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT ALL PRIVILEGES ON SEQUENCES TO anon;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  GRANT EXECUTE ON FUNCTIONS TO anon;
 ```
 
 The previous `postgres` default ACLs did not contain a PUBLIC entry, so rollback does not grant function EXECUTE to PUBLIC. No `supabase_admin` defaults were changed. These rollback statements restore the previous anon entries while preserving authenticated, service_role, sandbox_exec, and owner entries.
@@ -245,8 +243,9 @@ Use a test transaction/account if possible. Do not use a record you cannot affor
 ## Known risks and limits
 
 - Anonymous direct access to the two tables will be removed. Any legitimate anonymous feature depending on it would break; the current app is expected to use authenticated access.
-- Default privileges are only hardened for objects created by `postgres`. Objects created by `supabase_admin` remain exposed to its existing defaults.
-- Authenticated defaults are retained for compatibility. This does not make future objects safe by itself: new tables still need RLS and reviewed grants/policies.
+- Default privileges are only partially hardened: anon defaults are revoked for future tables and sequences created by `postgres` in `public`.
+- `PUBLIC EXECUTE` and anon/authenticated defaults for future functions remain unchanged. Authenticated defaults for future tables and sequences also remain unchanged.
+- All `supabase_admin` defaults remain unchanged. New tables still need RLS and reviewed grants/policies.
 - Lovable-generated future schema changes may need explicit GRANT statements after the default-privilege change.
 - The 16 KiB row limit and 10,000-row cap are not implemented in this PR. They remain deferred to PR F with the terminal-rejection sync fix.
 - No live migration has been applied as part of this PR.
