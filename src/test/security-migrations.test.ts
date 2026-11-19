@@ -63,9 +63,9 @@ describe("database migration security guard", () => {
 
       for (const table of createdTables) {
         const enablesRls = new RegExp(
-          "\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?public\\." +
+          "\bALTER\s+TABLE\s+(?:ONLY\s+)?public\\." +
             table +
-            "\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b",
+            "\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY\b",
           "i",
         );
         expect(sql, file + " creates public." + table).toMatch(enablesRls);
@@ -78,15 +78,15 @@ describe("database migration security guard", () => {
     for (const file of migrationFiles) {
       const sql = stripSqlComments(readMigration(file));
       const createsSecurityDefiner =
-        /\\bCREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\b[\\s\\S]*?\\bSECURITY\\s+DEFINER\\b/i.test(sql);
+        /\bCREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\b[\s\S]*?\bSECURITY\s+DEFINER\b/i.test(sql);
 
       if (!createsSecurityDefiner) continue;
 
       expect(sql, file + " SECURITY DEFINER fixed search_path").toMatch(
-        /\\bSET\\s+search_path\\s*=\\s*(?:pg_catalog\\s*,\\s*)?[a-z_][a-z0-9_]*(?:\\s*,\\s*[a-z_][a-z0-9_]*)*\\b/i,
+        /\bSET\s+search_path\s*=\s*(?:pg_catalog\s*,\s*)?[a-z_][a-z0-9_]*(?:\s*,\s*[a-z_][a-z0-9_]*)*\b/i,
       );
       expect(sql, file + " SECURITY DEFINER EXECUTE revoked from PUBLIC and anon").toMatch(
-        /\\bREVOKE\\s+EXECUTE\\s+ON\\s+FUNCTION\\b[\\s\\S]*?\\bFROM\\s+PUBLIC\\s*,\\s*anon\\b/i,
+        /\bREVOKE\s+EXECUTE\s+ON\s+FUNCTION\b[\s\S]*?\bFROM\s+PUBLIC\s*,\s*anon\b/i,
       );
     }
   });
