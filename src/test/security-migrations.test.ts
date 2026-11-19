@@ -65,10 +65,10 @@ describe("database migration security guard", () => {
 
       for (const table of createdTables) {
         const enablesRls = new RegExp(
-          String.raw\`\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?public\\.\${table}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b\`,
+          "\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?public\\." + table + "\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b",
           "i",
         );
-        expect(sql, \`\${file} creates public.\${table}\`).toMatch(enablesRls);
+        expect(sql, file + " creates public." + table).toMatch(enablesRls);
       }
     }
   });
