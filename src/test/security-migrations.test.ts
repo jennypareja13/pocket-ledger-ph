@@ -63,9 +63,9 @@ describe("database migration security guard", () => {
 
       for (const table of createdTables) {
         const enablesRls = new RegExp(
-          "\bALTER\s+TABLE\s+(?:ONLY\s+)?public\\." +
+          "\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?public\\." +
             table +
-            "\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY\b",
+            "\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b",
           "i",
         );
         expect(sql, file + " creates public." + table).toMatch(enablesRls);
@@ -73,8 +73,7 @@ describe("database migration security guard", () => {
     }
   });
 
-
-  it("requires safe search_path and restricted EXECUTE for SECURITY DEFINER migrations", () => {
+  it("requires a fixed search_path and EXECUTE revokes for SECURITY DEFINER migrations", () => {
     for (const file of migrationFiles) {
       const sql = stripSqlComments(readMigration(file));
       const createsSecurityDefiner =
@@ -90,7 +89,8 @@ describe("database migration security guard", () => {
       );
     }
   });
-\n  it("documents deferred PR F limits and keeps them out of active PR A migrations", () => {
+
+  it("documents deferred PR F limits and keeps them out of active PR A migrations", () => {
     const docs = readFileSync(
       resolve(process.cwd(), "docs/security/pr-a-database-hardening.md"),
       "utf8",
