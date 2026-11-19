@@ -7,13 +7,10 @@ const migrationFiles = readdirSync(migrationsDir)
   .filter((file) => file.endsWith(".sql"))
   .sort();
 
-const readMigration = (file: string) =>
-  readFileSync(join(migrationsDir, file), "utf8");
+const readMigration = (file: string) => readFileSync(join(migrationsDir, file), "utf8");
 
 const stripSqlComments = (sql: string) =>
-  sql
-    .replace(/--[^\n]*/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "");
+  sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 const statementsFor = (file: string) =>
   stripSqlComments(readMigration(file))
@@ -58,15 +55,17 @@ describe("database migration security guard", () => {
   it("enables RLS in the same migration file for every public table it creates", () => {
     for (const file of migrationFiles) {
       const sql = stripSqlComments(readMigration(file));
-      const createdTables = [
-        ...sql.matchAll(
-          /\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z_][a-z0-9_]*)/gi,
-        ),
-      ].map((match) => match[1]?.toLowerCase()).filter(Boolean);
+      const createTablePattern =
+        /\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z_][a-z0-9_]*)/gi;
+      const createdTables = [...sql.matchAll(createTablePattern)]
+        .map((match) => match[1]?.toLowerCase())
+        .filter(Boolean);
 
       for (const table of createdTables) {
         const enablesRls = new RegExp(
-          "\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?public\\." + table + "\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b",
+          "\\bALTER\\s+TABLE\\s+(?:ONLY\\s+)?public\\." +
+            table +
+            "\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b",
           "i",
         );
         expect(sql, file + " creates public." + table).toMatch(enablesRls);
