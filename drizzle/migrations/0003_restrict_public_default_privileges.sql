@@ -8,7 +8,7 @@
 --
 -- Existing objects are NOT changed by ALTER DEFAULT PRIVILEGES.
 -- Authenticated defaults are intentionally retained to avoid breaking future
--- Lovable-generated application tables/sequences/functions. New objects still
+-- Lovable-generated application tables and sequences. New objects still
 -- require explicit RLS policies and explicit review of their grants.
 -- Future schema changes may need explicit GRANTs because anon defaults are removed.
 --
