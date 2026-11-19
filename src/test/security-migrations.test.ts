@@ -73,7 +73,24 @@ describe("database migration security guard", () => {
     }
   });
 
-  it("documents deferred PR F limits and keeps them out of active PR A migrations", () => {
+
+  it("requires safe search_path and restricted EXECUTE for SECURITY DEFINER migrations", () => {
+    for (const file of migrationFiles) {
+      const sql = stripSqlComments(readMigration(file));
+      const createsSecurityDefiner =
+        /\\bCREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\b[\\s\\S]*?\\bSECURITY\\s+DEFINER\\b/i.test(sql);
+
+      if (!createsSecurityDefiner) continue;
+
+      expect(sql, file + " SECURITY DEFINER fixed search_path").toMatch(
+        /\\bSET\\s+search_path\\s*=\\s*(?:pg_catalog\\s*,\\s*)?[a-z_][a-z0-9_]*(?:\\s*,\\s*[a-z_][a-z0-9_]*)*\\b/i,
+      );
+      expect(sql, file + " SECURITY DEFINER EXECUTE revoked from PUBLIC and anon").toMatch(
+        /\\bREVOKE\\s+EXECUTE\\s+ON\\s+FUNCTION\\b[\\s\\S]*?\\bFROM\\s+PUBLIC\\s*,\\s*anon\\b/i,
+      );
+    }
+  });
+\n  it("documents deferred PR F limits and keeps them out of active PR A migrations", () => {
     const docs = readFileSync(
       resolve(process.cwd(), "docs/security/pr-a-database-hardening.md"),
       "utf8",
