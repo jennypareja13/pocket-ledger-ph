@@ -31,7 +31,7 @@ Possible impact: any feature or external client incorrectly using the anonymous 
 
 **PARTIAL protection, explicitly accepted:** `PUBLIC EXECUTE` on future functions remains unchanged; `anon` and `authenticated` default privileges on future functions remain unchanged; `authenticated` defaults on future tables and sequences remain unchanged; and all `supabase_admin` defaults remain unchanged. The live migration role is `postgres`, is not a superuser, and has neither membership nor USAGE rights for `supabase_admin`, so it cannot alter that role's defaults. This migration is not comprehensive default-privilege hardening.
 
-This migration does not change existing objects. It means future tables, sequences, and functions created by `postgres` need explicit GRANTs as appropriate. Lovable-generated schema changes may fail until the necessary grants are added. Every new public table still needs deliberate RLS enablement and policies.
+This migration does not change existing objects. Future tables and sequences created by `postgres` no longer receive the `anon` default grants revoked here. Function defaults are not changed; all future functions still require explicit review of effective EXECUTE privileges. Lovable-generated schema changes may fail until the necessary grants are added. Every new public table still needs deliberate RLS enablement and policies.
 
 ## Deferred: PR F (not included here)
 
@@ -222,7 +222,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 
 ```
 
-The previous `postgres` default ACLs did not contain a PUBLIC entry, so rollback does not grant function EXECUTE to PUBLIC. No `supabase_admin` defaults were changed. These rollback statements restore the previous anon entries while preserving authenticated, service_role, sandbox_exec, and owner entries.
+No function default privileges were changed, so there is no function rollback statement. No `supabase_admin` defaults were changed. These rollback statements restore the previous anon table and sequence entries while preserving authenticated, service_role, sandbox_exec, and owner entries.
 
 ## Manual smoke test after applying
 
