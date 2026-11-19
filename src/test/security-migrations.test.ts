@@ -1,13 +1,14 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationsDir = new URL("../../drizzle/migrations/", import.meta.url);
+const migrationsDir = resolve(process.cwd(), "drizzle/migrations");
 const migrationFiles = readdirSync(migrationsDir)
   .filter((file) => file.endsWith(".sql"))
   .sort();
 
 const readMigration = (file: string) =>
-  readFileSync(new URL(file, migrationsDir), "utf8");
+  readFileSync(join(migrationsDir, file), "utf8");
 
 const stripSqlComments = (sql: string) =>
   sql
@@ -75,7 +76,7 @@ describe("database migration security guard", () => {
 
   it("documents deferred PR F limits and keeps them out of active PR A migrations", () => {
     const docs = readFileSync(
-      new URL("../../docs/security/pr-a-database-hardening.md", import.meta.url),
+      resolve(process.cwd(), "docs/security/pr-a-database-hardening.md"),
       "utf8",
     );
     expect(docs).toContain("16 KiB");
