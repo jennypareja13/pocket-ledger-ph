@@ -118,7 +118,8 @@ async function discoverDependencies(assetUrl, source) {
 
   if (/\.m?js$/i.test(pathname)) {
     const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+)["']/g;
-    const assetPattern = /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
+    const assetPattern =
+      /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
     let parsedImports = 0;
     for (const match of source.matchAll(importPattern)) {
       if (/\.(?:m?js)(?:[?#].*)?$/i.test(match[1])) {
@@ -214,7 +215,12 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
       type: "SHELL_ASSET_WARM_FAILED",
       message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
     });
-    return { success: false, assets: [...protectedAssets], fingerprint, changed: false };
+    return {
+      success: false,
+      assets: [...protectedAssets],
+      fingerprint,
+      changed: false,
+    };
   }
 
   const updatePending = Boolean(previous.fingerprint && previous.fingerprint !== fingerprint);
@@ -289,14 +295,18 @@ async function deletePocketVaultCachesExceptCurrent() {
   const names = await caches.keys();
   await Promise.all(
     names
-      .filter((name) => name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name))
+      .filter(
+        (name) => name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name),
+      )
       .map((name) => caches.delete(name)),
   );
 }
 
 async function clearPocketVaultCaches() {
   const names = await caches.keys();
-  await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)));
+  await Promise.all(
+    names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)),
+  );
 }
 
 self.addEventListener("install", (event) => {
