@@ -214,7 +214,7 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
     await trimAssetCache(new Set(previous.assets || []));
     await notifyClients({
       type: "SHELL_ASSET_WARM_FAILED",
-      message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
+      message:\n        "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
     });
     return {
       success: false,
@@ -302,7 +302,7 @@ async function deletePocketVaultCachesExceptCurrent() {
   await Promise.all(
     names
       .filter(
-        (name) => name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name),
+        (name) =>\n          name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name),
       )
       .map((name) => caches.delete(name)),
   );
