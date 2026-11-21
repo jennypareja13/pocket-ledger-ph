@@ -1,3 +1,4 @@
+/* global self, caches, Response, Request, fetch, AbortController, URL, setTimeout, clearTimeout */
 /* PocketVault offline worker. Keep this file dependency-free and safe to disable. */
 const CACHE_VERSION = "v1";
 const SHELL_CACHE = `pocketvault-shell-${CACHE_VERSION}`;
@@ -114,12 +115,25 @@ async function precacheAppShellAndAssets() {
         if (!isCacheableResponse(assetResponse)) continue;
         await cacheResponse(ASSET_CACHE, request, assetResponse);
 
-        if (/\.m?js(?:[?#].*)?$/i.test(new URL(href).pathname)) {
-          const source = await assetResponse.clone().text();
+        const pathname = new URL(href).pathname;
+        const source = await assetResponse.clone().text();
+        if (/\.m?js$/i.test(pathname)) {
           const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+\.m?js(?:[?#][^"']*)?)["']/g;
           for (const match of source.matchAll(importPattern)) {
             const imported = new URL(match[1], href);
             if (imported.origin === self.location.origin && !visited.has(imported.href)) {
+              pending.push(imported.href);
+            }
+          }
+        } else if (/\.css$/i.test(pathname)) {
+          const cssAssetPattern = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
+          for (const match of source.matchAll(cssAssetPattern)) {
+            const imported = new URL(match[1], href);
+            if (
+              imported.origin === self.location.origin &&
+              !imported.href.startsWith("data:") &&
+              !visited.has(imported.href)
+            ) {
               pending.push(imported.href);
             }
           }
