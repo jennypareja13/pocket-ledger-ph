@@ -28,6 +28,7 @@ describe("service worker cache policy", () => {
 
   it("never caches Supabase or server-function endpoint paths", () => {
     for (const path of [
+      "/auth",
       "/auth/v1/token",
       "/rest/v1/ledger_records",
       "/storage/v1/object/private",
