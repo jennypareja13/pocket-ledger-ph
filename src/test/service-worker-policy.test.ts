@@ -104,6 +104,7 @@ describe("service worker cache policy", () => {
     expect(shouldRegisterServiceWorker({ ...allowed, production: false })).toBe(false);
     expect(shouldRegisterServiceWorker({ ...allowed, topLevel: false })).toBe(false);
     expect(shouldRegisterServiceWorker({ ...allowed, secureContext: false })).toBe(false);
+    expect(shouldRegisterServiceWorker({ ...allowed, disabled: true })).toBe(false);
     expect(
       shouldRegisterServiceWorker({ ...allowed, hostname: "id-preview--abc123.lovable.app" }),
     ).toBe(false);
@@ -128,6 +129,9 @@ describe("service worker cache policy", () => {
     expect(worker).toContain("Your saved records are safe on this device.");
     expect(worker).toContain('onclick="location.reload()"');
     expect(worker).toContain("await self.registration.unregister()");
+    expect(worker).toContain('type: "POCKETVAULT_SW_DISABLED"');
+    const registration = readFileSync(resolve(process.cwd(), "src/lib/service-worker.ts"), "utf8");
+    expect(registration).toContain("pocketvault-service-worker-disabled");
     expect(worker).toContain("names.filter((name) => name.startsWith(CACHE_PREFIX))");
     expect(worker).not.toContain("indexedDB");
   });
