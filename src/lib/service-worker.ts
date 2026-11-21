@@ -11,8 +11,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     topLevel = false;
   }
 
+  let disabled = false;
+  try {
+    disabled = window.localStorage.getItem("pocketvault-service-worker-disabled") === "true";
+  } catch {
+    // If storage is unavailable, preserve normal registration behavior.
+  }
+
   if (
     !shouldRegisterServiceWorker({
+      disabled,
       production: import.meta.env.PROD,
       topLevel,
       secureContext: window.isSecureContext,
