@@ -130,6 +130,7 @@ describe("service worker cache policy", () => {
     expect(worker).toContain('onclick="location.reload()"');
     expect(worker).toContain("await self.registration.unregister()");
     expect(worker).toContain('type: "POCKETVAULT_SW_DISABLED"');
+    expect(worker).toContain("await self.clients.claim()");
     const registration = readFileSync(resolve(process.cwd(), "src/lib/service-worker.ts"), "utf8");
     expect(registration).toContain("pocketvault-service-worker-disabled");
     expect(worker).toContain("names.filter((name) => name.startsWith(CACHE_PREFIX))");
