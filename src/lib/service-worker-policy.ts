@@ -53,6 +53,10 @@ export function shouldRegisterServiceWorker(input: {
     input.topLevel &&
     input.secureContext &&
     !isPreviewHostname(input.hostname)
+  );
+}
+
+export function shellAssetFingerprintSource(html: string, origin: string): string | null {
   const assets = new Set<string>();
   const assetAttribute = /(?:src|href)=["']([^"']+)["']/gi;
 
