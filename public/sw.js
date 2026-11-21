@@ -1,22 +1,23 @@
 /* global self, caches, Response, Request, fetch, AbortController, URL, setTimeout, clearTimeout */
-/* PocketVault offline worker. Keep this file dependency-free and safe to disable. */
 const CACHE_VERSION = "v1";
 const SHELL_CACHE = `pocketvault-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `pocketvault-assets-${CACHE_VERSION}`;
+const META_CACHE = `pocketvault-meta-${CACHE_VERSION}`;
 const CACHE_PREFIX = "pocketvault-";
 const MAX_CACHE_ENTRIES = 120;
 const NAVIGATION_TIMEOUT_MS = 3000;
+const MANIFEST_URL = "/__pocketvault_current_assets__";
 
 /*
- * One-file emergency kill switch:
- * Change this value to true, publish, and let the new worker activate.
- * It unregisters itself and deletes every PocketVault-owned Cache API cache.
+ * Emergency kill switch. Set true, publish, then let the new worker activate.
+ * Activation unregisters this worker and deletes only caches with CACHE_PREFIX.
+ * It never accesses IndexedDB or ledger records.
  */
 const KILL_SWITCH = false;
 
 function offlineFallbackResponse() {
   return new Response(
-    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketVault offline</title><body style="font:16px system-ui,sans-serif;padding:2rem;max-width:34rem;margin:auto"><h1>PocketVault is offline</h1><p>The app shell is not available yet. Connect to the internet, open PocketVault once, then try again.</p></body></html>',
+    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketVault offline</title><body style="font:16px system-ui,sans-serif;padding:2rem;max-width:36rem;margin:auto"><h1>You are offline</h1><p>Your saved records are safe on this device. PocketVault will sync them when you are back online.</p><p>This page or one of its app files is not available offline yet. Connect to the internet, reopen PocketVault, and try again.</p><button onclick="location.reload()" style="padding:.7rem 1rem;border:0;border-radius:.5rem;background:#176975;color:white;font:inherit">Retry</button></body></html>',
     { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
   );
 }
@@ -54,18 +55,6 @@ function isHashedAsset(url) {
   );
 }
 
-async function trimCache(cache) {
-  const keys = await cache.keys();
-  if (keys.length <= MAX_CACHE_ENTRIES) return;
-  await Promise.all(keys.slice(0, keys.length - MAX_CACHE_ENTRIES).map((key) => cache.delete(key)));
-}
-
-async function cacheResponse(cacheName, request, response) {
-  const cache = await caches.open(cacheName);
-  await cache.put(request, response.clone());
-  await trimCache(cache);
-}
-
 async function fetchWithTimeout(request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
@@ -76,95 +65,170 @@ async function fetchWithTimeout(request) {
   }
 }
 
-async function precacheAppShellAndAssets() {
-  const rootUrl = new URL("/", self.location.origin);
-  const rootRequest = new Request(rootUrl.href, { cache: "reload" });
+async function readCurrentManifest() {
+  const cache = await caches.open(META_CACHE);
+  const response = await cache.match(MANIFEST_URL);
+  if (!response) return { fingerprint: null, assets: [] };
   try {
-    const response = await fetchWithTimeout(rootRequest);
-    if (!isCacheableResponse(response) || !isHtmlResponse(response)) return;
-    await cacheResponse(SHELL_CACHE, rootRequest, response);
-
-    const html = await response.clone().text();
-    const candidates = new Set();
-    const assetAttribute = /(?:src|href)=["']([^"']+)["']/gi;
-    for (const match of html.matchAll(assetAttribute)) {
-      const value = match[1];
-      if (value && /\.(?:m?js|css)(?:[?#].*)?$/i.test(value)) {
-        const url = new URL(value, rootUrl);
-        if (url.origin === self.location.origin) candidates.add(url.href);
-      }
-    }
-
-    /*
-     * Follow static and dynamic JS imports so code-split route chunks referenced
-     * by the entry bundle are available after a first online load.
-     */
-    const pending = [...candidates];
-    const visited = new Set();
-    while (pending.length > 0 && visited.size < MAX_CACHE_ENTRIES) {
-      const href = pending.shift();
-      if (!href || visited.has(href)) continue;
-      visited.add(href);
-
-      try {
-        const request = new Request(href);
-        if (!isCacheableRequest(request, new URL(href))) continue;
-        const assetResponse = await fetchWithTimeout(request);
-        if (!isCacheableResponse(assetResponse)) continue;
-        await cacheResponse(ASSET_CACHE, request, assetResponse);
-
-        const pathname = new URL(href).pathname;
-        const source = await assetResponse.clone().text();
-        if (/\.m?js$/i.test(pathname)) {
-          const importPattern =
-            /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+\.m?js(?:[?#][^"']*)?)["']/g;
-          for (const match of source.matchAll(importPattern)) {
-            const imported = new URL(match[1], href);
-            if (imported.origin === self.location.origin && !visited.has(imported.href)) {
-              pending.push(imported.href);
-            }
-          }
-          const assetReferencePattern =
-            /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
-          for (const match of source.matchAll(assetReferencePattern)) {
-            const imported = new URL(match[1], href);
-            if (imported.origin === self.location.origin && !visited.has(imported.href)) {
-              pending.push(imported.href);
-            }
-          }
-        } else if (/\.css$/i.test(pathname)) {
-          const cssAssetPattern = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
-          for (const match of source.matchAll(cssAssetPattern)) {
-            const imported = new URL(match[1], href);
-            if (
-              imported.origin === self.location.origin &&
-              !imported.href.startsWith("data:") &&
-              !visited.has(imported.href)
-            ) {
-              pending.push(imported.href);
-            }
-          }
-        }
-      } catch {
-        // A missing optional chunk should not prevent the shell from being installed.
-      }
-    }
+    return await response.json();
   } catch {
-    // Installation can still complete; runtime navigation caching may fill the shell.
+    return { fingerprint: null, assets: [] };
   }
 }
 
-async function networkFirstNavigation(request) {
+async function writeCurrentManifest(manifest) {
+  const cache = await caches.open(META_CACHE);
+  await cache.put(
+    MANIFEST_URL,
+    new Response(JSON.stringify(manifest), {
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
+
+function discoverShellAssets(html, baseUrl) {
+  const assets = new Set();
+  const attributePattern = /(?:src|href)=["']([^"']+)["']/gi;
+  for (const match of html.matchAll(attributePattern)) {
+    const value = match[1];
+    if (!value || !/\.(?:m?js|css)(?:[?#].*)?$/i.test(value)) continue;
+    try {
+      const url = new URL(value, baseUrl);
+      if (url.origin === self.location.origin) assets.add(url.href);
+    } catch {
+      // Ignore malformed HTML references; keep valid candidates.
+    }
+  }
+  return [...assets].sort();
+}
+
+async function discoverDependencies(assetUrl, source) {
+  const pathname = new URL(assetUrl).pathname;
+  const dependencies = new Set();
+  const addReference = (value) => {
+    try {
+      const url = new URL(value, assetUrl);
+      if (url.origin === self.location.origin && !url.href.startsWith("data:")) {
+        dependencies.add(url.href);
+      }
+    } catch {
+      // Malformed references are skipped; runtime caching remains available.
+    }
+  };
+
+  if (/\.m?js$/i.test(pathname)) {
+    const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+)["']/g;
+    const assetPattern = /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
+    for (const match of source.matchAll(importPattern)) {
+      if (/\.(?:m?js)(?:[?#].*)?$/i.test(match[1])) addReference(match[1]);
+    }
+    for (const match of source.matchAll(assetPattern)) addReference(match[1]);
+  } else if (/\.css$/i.test(pathname)) {
+    const cssPattern = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
+    for (const match of source.matchAll(cssPattern)) addReference(match[1]);
+  }
+
+  return [...dependencies];
+}
+
+async function trimAssetCache(protectedAssets) {
+  const cache = await caches.open(ASSET_CACHE);
+  const keys = await cache.keys();
+  const urls = keys.map((request) => request.url);
+  const evictions = [];
+  let remaining = urls.length;
+
+  for (let index = 0; index < urls.length && remaining > MAX_CACHE_ENTRIES; index += 1) {
+    if (protectedAssets.has(urls[index])) continue;
+    evictions.push(keys[index]);
+    remaining -= 1;
+  }
+
+  await Promise.all(evictions.map((request) => cache.delete(request)));
+}
+
+async function warmShellAssets(html, baseUrl, notifyClients) {
+  const roots = discoverShellAssets(html, baseUrl);
+  const pending = [...roots];
+  const visited = new Set();
+  const failed = [];
+  const protectedAssets = new Set();
+
+  while (pending.length > 0 && visited.size < MAX_CACHE_ENTRIES) {
+    const href = pending.shift();
+    if (!href || visited.has(href)) continue;
+    visited.add(href);
+
+    try {
+      const request = new Request(href);
+      const url = new URL(href);
+      if (!isCacheableRequest(request, url)) continue;
+
+      const response = await fetchWithTimeout(request);
+      if (!isCacheableResponse(response)) {
+        failed.push(href);
+        continue;
+      }
+
+      const cache = await caches.open(ASSET_CACHE);
+      await cache.put(request, response.clone());
+      protectedAssets.add(href);
+
+      const source = await response.clone().text();
+      for (const dependency of await discoverDependencies(href, source)) {
+        if (!visited.has(dependency)) pending.push(dependency);
+      }
+    } catch {
+      failed.push(href);
+      // A missed asset is recorded; the previous manifest remains protected.
+    }
+  }
+
+  if (pending.length > 0) failed.push(...pending);
+  if (failed.length > 0) {
+    await notifyClients({
+      type: "SHELL_ASSET_WARM_FAILED",
+      message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
+    });
+    return { success: false, assets: [...protectedAssets] };
+  }
+
+  await writeCurrentManifest({
+    fingerprint: roots.join("\n"),
+    assets: [...protectedAssets],
+  });
+  await trimAssetCache(protectedAssets);
+  return { success: true, assets: [...protectedAssets] };
+}
+
+async function notifyClients(message) {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of clients) client.postMessage(message);
+}
+
+async function saveNavigationDocument(request, response) {
   const cache = await caches.open(SHELL_CACHE);
+  await cache.put(request, response.clone());
+}
+
+async function networkFirstNavigation(request) {
+  const shellCache = await caches.open(SHELL_CACHE);
   try {
     const response = await fetchWithTimeout(request);
     if (isCacheableResponse(response) && isHtmlResponse(response)) {
-      await cacheResponse(SHELL_CACHE, request, response);
+      await saveNavigationDocument(request, response);
+      const html = await response.clone().text();
+      const previous = await readCurrentManifest();
+      const result = await warmShellAssets(html, new URL(request.url), notifyClients);
+
+      if (result.success && previous.fingerprint && previous.fingerprint !== result.assets.slice().sort().join("\n")) {
+        await notifyClients({ type: "SHELL_UPDATED" });
+      }
     }
     return response;
   } catch {
-    const exactPage = await cache.match(request);
-    const rootPage = await cache.match(new URL("/", self.location.origin).href);
+    const exactPage = await shellCache.match(request);
+    const rootPage = await shellCache.match(new URL("/", self.location.origin).href);
     return exactPage || rootPage || offlineFallbackResponse();
   }
 }
@@ -174,34 +238,54 @@ async function cacheFirstHashedAsset(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
 
-  const response = await fetch(request);
-  if (isCacheableResponse(response)) await cacheResponse(ASSET_CACHE, request, response);
-  return response;
+  try {
+    const response = await fetch(request);
+    if (isCacheableResponse(response)) {
+      await cache.put(request, response.clone());
+      const manifest = await readCurrentManifest();
+      await trimAssetCache(new Set(manifest.assets || []));
+    }
+    return response;
+  } catch {
+    if (request.destination === "script" || request.destination === "style") {
+      return new Response(
+        'throw new Error("PocketVault is offline and this app file has not been saved on this device. Reconnect and retry.");',
+        { status: 503, headers: { "Content-Type": request.destination === "script" ? "text/javascript" : "text/css" } },
+      );
+    }
+    return Response.error();
+  }
 }
 
 async function deletePocketVaultCachesExceptCurrent() {
   const names = await caches.keys();
   await Promise.all(
     names
-      .filter(
-        (name) => name.startsWith(CACHE_PREFIX) && name !== SHELL_CACHE && name !== ASSET_CACHE,
-      )
+      .filter((name) => name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name))
       .map((name) => caches.delete(name)),
   );
 }
 
 async function clearPocketVaultCaches() {
   const names = await caches.keys();
-  await Promise.all(
-    names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)),
-  );
+  await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)));
 }
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       if (KILL_SWITCH) return;
-      await precacheAppShellAndAssets();
+      const root = new Request(new URL("/", self.location.origin), { cache: "reload" });
+      try {
+        const response = await fetchWithTimeout(root);
+        if (isCacheableResponse(response) && isHtmlResponse(response)) {
+          await saveNavigationDocument(root, response);
+          const html = await response.clone().text();
+          await warmShellAssets(html, new URL(root.url), notifyClients);
+        }
+      } catch {
+        // Install remains non-fatal; runtime navigation will retry warming.
+      }
     })(),
   );
 });
@@ -221,14 +305,11 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING" && !KILL_SWITCH) {
-    self.skipWaiting();
-  }
+  if (event.data?.type === "SKIP_WAITING" && !KILL_SWITCH) self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
   if (KILL_SWITCH) return;
-
   const request = event.request;
   const url = new URL(request.url);
   if (!isCacheableRequest(request, url)) return;
@@ -238,7 +319,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (!isStaticAsset(request) || !isHashedAsset(url)) return;
-
-  event.respondWith(cacheFirstHashedAsset(request));
+  if (isStaticAsset(request) && isHashedAsset(url)) {
+    event.respondWith(cacheFirstHashedAsset(request));
+  }
 });
