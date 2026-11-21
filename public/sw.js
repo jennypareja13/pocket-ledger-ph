@@ -112,20 +112,34 @@ async function discoverDependencies(assetUrl, source) {
         dependencies.add(url.href);
       }
     } catch {
-      // Malformed references are skipped; runtime caching remains available.
+      throw new Error("A local asset reference could not be resolved.");
     }
   };
 
   if (/\.m?js$/i.test(pathname)) {
     const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+)["']/g;
     const assetPattern = /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
+    let parsedImports = 0;
     for (const match of source.matchAll(importPattern)) {
-      if (/\.(?:m?js)(?:[?#].*)?$/i.test(match[1])) addReference(match[1]);
+      if (/\.(?:m?js)(?:[?#].*)?$/i.test(match[1])) {
+        addReference(match[1]);
+        parsedImports += 1;
+      }
     }
     for (const match of source.matchAll(assetPattern)) addReference(match[1]);
+    if (/\bimport\s*\(/.test(source) && parsedImports === 0) {
+      throw new Error("Dynamic imports were present but could not be discovered.");
+    }
   } else if (/\.css$/i.test(pathname)) {
     const cssPattern = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
-    for (const match of source.matchAll(cssPattern)) addReference(match[1]);
+    let parsedUrls = 0;
+    for (const match of source.matchAll(cssPattern)) {
+      addReference(match[1]);
+      parsedUrls += 1;
+    }
+    if (/url\s*\(/i.test(source) && parsedUrls === 0) {
+      throw new Error("CSS asset references were present but could not be discovered.");
+    }
   }
 
   return [...dependencies];
@@ -152,6 +166,9 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
   const fingerprint = roots.join("\n");
   const previous = await readCurrentManifest();
   if (previous.fingerprint === fingerprint && previous.assets?.length) {
+    if (previous.updatePending) {
+      await writeCurrentManifest({ ...previous, updatePending: false });
+    }
     return { success: true, assets: previous.assets, fingerprint, changed: false };
   }
 
@@ -200,9 +217,10 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
     return { success: false, assets: [...protectedAssets], fingerprint, changed: false };
   }
 
-  await writeCurrentManifest({ fingerprint, assets: [...protectedAssets] });
+  const updatePending = Boolean(previous.fingerprint && previous.fingerprint !== fingerprint);
+  await writeCurrentManifest({ fingerprint, assets: [...protectedAssets], updatePending });
   await trimAssetCache(protectedAssets);
-  return { success: true, assets: [...protectedAssets], fingerprint, changed: true };
+  return { success: true, assets: [...protectedAssets], fingerprint, changed: updatePending };
 }
 async function notifyClients(message) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -316,6 +334,15 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data?.type === "CHECK_SHELL_UPDATE") {
+    event.waitUntil(
+      readCurrentManifest().then((manifest) => {
+        if (manifest.updatePending) {
+          event.source?.postMessage({ type: "SHELL_UPDATED" });
+        }
+      }),
+    );
+  }
 });
 
 self.addEventListener("fetch", (event) => {
