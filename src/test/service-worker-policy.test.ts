@@ -122,7 +122,7 @@ describe("service worker cache policy", () => {
     expect(worker).toContain("await trimAssetCache(new Set(previous.assets || []))");
     expect(worker).toContain("protectedAssets.has(urls[index])");
     expect(worker).toContain('type: "SHELL_UPDATED"');
-    expect(worker).toContain('type: "CHECK_SHELL_UPDATE"');
+    expect(worker).toContain('event.data?.type === "CHECK_SHELL_UPDATE"');
     expect(worker).toContain("warmFailed: true");
     expect(worker).toContain("return missingAssetResponse(request)");
     expect(worker).toContain("Your saved records are safe on this device.");
