@@ -47,10 +47,7 @@ export function shouldRegisterServiceWorker(input: {
   hostname: string;
 }): boolean {
   return (
-    input.production &&
-    input.topLevel &&
-    input.secureContext &&
-    !isPreviewHostname(input.hostname)
+    input.production && input.topLevel && input.secureContext && !isPreviewHostname(input.hostname)
   );
 }
 
