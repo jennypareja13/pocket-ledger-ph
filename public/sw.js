@@ -342,6 +342,7 @@ self.addEventListener("activate", (event) => {
       if (KILL_SWITCH) {
         await self.registration.unregister();
         await clearPocketVaultCaches();
+        await notifyClients({ type: "POCKETVAULT_SW_DISABLED" });
         return;
       }
       await deletePocketVaultCachesExceptCurrent();
