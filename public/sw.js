@@ -149,6 +149,10 @@ async function trimAssetCache(protectedAssets) {
 
 async function warmShellAssets(html, baseUrl, notifyClients) {
   const roots = discoverShellAssets(html, baseUrl);
+  const previous = await readCurrentManifest();
+  if (previous.fingerprint === roots.join("\\n") && previous.assets?.length) {
+    return { success: true, assets: previous.assets, fingerprint: previous.fingerprint, changed: false };
+  }
   const pending = [...roots];
   const visited = new Set();
   const failed = [];
@@ -186,11 +190,12 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
 
   if (pending.length > 0) failed.push(...pending);
   if (failed.length > 0) {
+    await trimAssetCache(new Set(previous.assets || []));
     await notifyClients({
       type: "SHELL_ASSET_WARM_FAILED",
       message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
     });
-    return { success: false, assets: [...protectedAssets] };
+    return { success: false, assets: [...protectedAssets], fingerprint: roots.join("\\n"), changed: false };
   }
 
   await writeCurrentManifest({
@@ -198,7 +203,7 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
     assets: [...protectedAssets],
   });
   await trimAssetCache(protectedAssets);
-  return { success: true, assets: [...protectedAssets] };
+  return { success: true, assets: [...protectedAssets], fingerprint: roots.join("\\n"), changed: true };
 }
 
 async function notifyClients(message) {
@@ -279,9 +284,9 @@ self.addEventListener("install", (event) => {
       try {
         const response = await fetchWithTimeout(root);
         if (isCacheableResponse(response) && isHtmlResponse(response)) {
-          await saveNavigationDocument(root, response);
           const html = await response.clone().text();
-          await warmShellAssets(html, new URL(root.url), notifyClients);
+          const result = await warmShellAssets(html, new URL(root.url), notifyClients);
+          if (result.success) await saveNavigationDocument(root, response);
         }
       } catch {
         // Install remains non-fatal; runtime navigation will retry warming.
