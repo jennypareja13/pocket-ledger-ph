@@ -343,6 +343,7 @@ self.addEventListener("activate", (event) => {
         await self.registration.unregister();
         await clearPocketVaultCaches();
         await notifyClients({ type: "POCKETVAULT_SW_DISABLED" });
+        await self.clients.claim();
         return;
       }
       await deletePocketVaultCachesExceptCurrent();
