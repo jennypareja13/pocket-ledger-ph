@@ -44,10 +44,11 @@ export function shouldRegisterServiceWorker(input: {
   production: boolean;
   topLevel: boolean;
   secureContext: boolean;
+  disabled?: boolean;
   hostname: string;
 }): boolean {
   return (
-    input.production && input.topLevel && input.secureContext && !isPreviewHostname(input.hostname)
+    !input.disabled &&\n    input.production &&\n    input.topLevel &&\n    input.secureContext &&\n    !isPreviewHostname(input.hostname)
   );
 }
 
