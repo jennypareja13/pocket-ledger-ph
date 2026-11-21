@@ -23,7 +23,7 @@ function offlineFallbackResponse() {
 
 function isExcludedPath(pathname) {
   return (
-    /^\/(?:auth\/v1|rest\/v1|storage\/v1|functions\/v1|realtime\/v1)(?:\/|$)/i.test(pathname) ||
+    /^\/(?:auth|rest\/v1|storage\/v1|functions\/v1|realtime\/v1)(?:\/|$)/i.test(pathname) ||
     /^\/(?:api|_serverFn|__serverFn)(?:\/|$)/i.test(pathname)
   );
 }
