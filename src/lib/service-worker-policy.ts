@@ -19,7 +19,7 @@ export function isCacheableResponse(status: number, responseType = "basic"): boo
   return status === 200 && responseType !== "opaque";
 }
 
-export function serviceWorkerCacheName(kind: "shell" | "assets", version: string): string {
+export function serviceWorkerCacheName(kind: "shell" | "assets" | "meta", version: string): string {
   return `pocketvault-${kind}-${version}`;
 }
 
@@ -43,7 +43,56 @@ export function isPreviewHostname(hostname: string): boolean {
 export function shouldRegisterServiceWorker(input: {
   production: boolean;
   topLevel: boolean;
+  secureContext: boolean;
   hostname: string;
 }): boolean {
-  return input.production && input.topLevel && !isPreviewHostname(input.hostname);
+  return (
+    input.production &&
+    input.topLevel &&
+    input.secureContext &&
+    !isPreviewHostname(input.hostname)
+  );
+}
+
+export function shellAssetFingerprintSource(html: string, origin: string): string | null {
+  const assets = new Set<string>();
+  const assetAttribute = /(?:src|href)=["']([^"']+)["']/gi;
+
+  for (const match of html.matchAll(assetAttribute)) {
+    const value = match[1];
+    if (!value || !/\.(?:m?js|css)(?:[?#].*)?$/i.test(value)) continue;
+
+    try {
+      const url = new URL(value, origin);
+      if (url.origin === origin) assets.add(url.href);
+    } catch {
+      // Ignore malformed references; valid references still form the fingerprint.
+    }
+  }
+
+  return assets.size > 0 ? [...assets].sort().join("\n") : null;
+}
+
+export function hasShellUpdate(previous: string | null, current: string | null): boolean {
+  return Boolean(previous && current && previous !== current);
+}
+
+export function selectCacheEntriesToEvict(
+  entriesOldestFirst: string[],
+  protectedEntries: ReadonlySet<string>,
+  maxEntries: number,
+): string[] {
+  if (entriesOldestFirst.length <= maxEntries) return [];
+
+  let remaining = entriesOldestFirst.length;
+  const evictions: string[] = [];
+
+  for (const entry of entriesOldestFirst) {
+    if (remaining <= maxEntries) break;
+    if (protectedEntries.has(entry)) continue;
+    evictions.push(entry);
+    remaining -= 1;
+  }
+
+  return evictions;
 }
