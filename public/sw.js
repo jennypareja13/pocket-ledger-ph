@@ -149,10 +149,12 @@ async function trimAssetCache(protectedAssets) {
 
 async function warmShellAssets(html, baseUrl, notifyClients) {
   const roots = discoverShellAssets(html, baseUrl);
+  const fingerprint = roots.join("\n");
   const previous = await readCurrentManifest();
-  if (previous.fingerprint === roots.join("\\n") && previous.assets?.length) {
-    return { success: true, assets: previous.assets, fingerprint: previous.fingerprint, changed: false };
+  if (previous.fingerprint === fingerprint && previous.assets?.length) {
+    return { success: true, assets: previous.assets, fingerprint, changed: false };
   }
+
   const pending = [...roots];
   const visited = new Set();
   const failed = [];
@@ -184,7 +186,7 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
       }
     } catch {
       failed.push(href);
-      // A missed asset is recorded; the previous manifest remains protected.
+      // Parse or fetch failures are contained; the previous manifest stays active.
     }
   }
 
@@ -195,17 +197,13 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
       type: "SHELL_ASSET_WARM_FAILED",
       message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
     });
-    return { success: false, assets: [...protectedAssets], fingerprint: roots.join("\\n"), changed: false };
+    return { success: false, assets: [...protectedAssets], fingerprint, changed: false };
   }
 
-  await writeCurrentManifest({
-    fingerprint: roots.join("\n"),
-    assets: [...protectedAssets],
-  });
+  await writeCurrentManifest({ fingerprint, assets: [...protectedAssets] });
   await trimAssetCache(protectedAssets);
-  return { success: true, assets: [...protectedAssets], fingerprint: roots.join("\\n"), changed: true };
+  return { success: true, assets: [...protectedAssets], fingerprint, changed: true };
 }
-
 async function notifyClients(message) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   for (const client of clients) client.postMessage(message);
@@ -221,13 +219,11 @@ async function networkFirstNavigation(request) {
   try {
     const response = await fetchWithTimeout(request);
     if (isCacheableResponse(response) && isHtmlResponse(response)) {
-      await saveNavigationDocument(request, response);
       const html = await response.clone().text();
-      const previous = await readCurrentManifest();
       const result = await warmShellAssets(html, new URL(request.url), notifyClients);
-
-      if (result.success && previous.fingerprint && previous.fingerprint !== result.assets.slice().sort().join("\n")) {
-        await notifyClients({ type: "SHELL_UPDATED" });
+      if (result.success) {
+        await shellCache.put(request, response.clone());
+        if (result.changed) await notifyClients({ type: "SHELL_UPDATED" });
       }
     }
     return response;
@@ -236,6 +232,21 @@ async function networkFirstNavigation(request) {
     const rootPage = await shellCache.match(new URL("/", self.location.origin).href);
     return exactPage || rootPage || offlineFallbackResponse();
   }
+}
+function missingAssetResponse(request) {
+  if (request.destination === "script") {
+    return new Response(
+      'document.body.innerHTML = \'<main style="font:16px system-ui,sans-serif;padding:2rem;max-width:36rem;margin:auto"><h1>You are offline</h1><p>Your saved records are safe on this device. PocketVault will sync them when you are back online.</p><p>This app file is not available offline yet. Reconnect and retry.</p><button onclick="location.reload()">Retry</button></main>\';',
+      { status: 200, headers: { "Content-Type": "text/javascript; charset=utf-8" } },
+    );
+  }
+  if (request.destination === "style") {
+    return new Response(
+      "body::before{content:'PocketVault is offline. Your saved records remain safe on this device and will sync when you are back online.';display:block;padding:1rem;font:16px system-ui,sans-serif}",
+      { status: 200, headers: { "Content-Type": "text/css; charset=utf-8" } },
+    );
+  }
+  return Response.error();
 }
 
 async function cacheFirstHashedAsset(request) {
@@ -252,13 +263,7 @@ async function cacheFirstHashedAsset(request) {
     }
     return response;
   } catch {
-    if (request.destination === "script" || request.destination === "style") {
-      return new Response(
-        'throw new Error("PocketVault is offline and this app file has not been saved on this device. Reconnect and retry.");',
-        { status: 503, headers: { "Content-Type": request.destination === "script" ? "text/javascript" : "text/css" } },
-      );
-    }
-    return Response.error();
+    return missingAssetResponse(request);
   }
 }
 
