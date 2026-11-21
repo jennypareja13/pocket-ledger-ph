@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   chooseNavigationFallback,
@@ -83,7 +84,7 @@ describe("service worker cache policy", () => {
   });
 
   it("keeps the standalone worker guarded against unsafe requests", () => {
-    const worker = readFileSync(new URL("../../public/sw.js", import.meta.url), "utf8");
+    const worker = readFileSync(resolve(process.cwd(), "public/sw.js"), "utf8");
     expect(worker).toContain('request.method.toUpperCase() !== "GET"');
     expect(worker).toContain("url.origin !== self.location.origin");
     expect(worker).toContain('request.headers.has("authorization")');
