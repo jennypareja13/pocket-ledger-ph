@@ -19,11 +19,7 @@ export function ServiceWorkerUpdatePrompt() {
       if (!installing) return;
 
       installing.addEventListener("statechange", () => {
-        if (
-          mounted &&
-          installing.state === "installed" &&
-          navigator.serviceWorker.controller
-        ) {
+        if (mounted && installing.state === "installed" && navigator.serviceWorker.controller) {
           setUpdateWaiting(true);
         }
       });
