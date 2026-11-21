@@ -48,11 +48,11 @@ export function shouldRegisterServiceWorker(input: {
   hostname: string;
 }): boolean {
   return (
-    !input.disabled &&\n    input.production &&\n    input.topLevel &&\n    input.secureContext &&\n    !isPreviewHostname(input.hostname)
-  );
-}
-
-export function shellAssetFingerprintSource(html: string, origin: string): string | null {
+    !input.disabled &&
+    input.production &&
+    input.topLevel &&
+    input.secureContext &&
+    !isPreviewHostname(input.hostname)
   const assets = new Set<string>();
   const assetAttribute = /(?:src|href)=["']([^"']+)["']/gi;
 
