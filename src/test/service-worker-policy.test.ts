@@ -75,16 +75,8 @@ describe("service worker cache policy", () => {
     expect(afterDeployTwo).toEqual(["old-b.js", "deploy-2-a.js", "deploy-2-b.js"]);
 
     const deployThree = new Set(["deploy-3-a.js", "deploy-3-b.js"]);
-    const afterDeployThree = [
-      ...afterDeployTwo,
-      "deploy-3-a.js",
-      "deploy-3-b.js",
-    ];
-    const evictedAfterDeployThree = selectCacheEntriesToEvict(
-      afterDeployThree,
-      deployThree,
-      3,
-    );
+    const afterDeployThree = [...afterDeployTwo, "deploy-3-a.js", "deploy-3-b.js"];
+    const evictedAfterDeployThree = selectCacheEntriesToEvict(afterDeployThree, deployThree, 3);
     const retainedAfterDeployThree = afterDeployThree.filter(
       (entry) => !evictedAfterDeployThree.includes(entry),
     );
