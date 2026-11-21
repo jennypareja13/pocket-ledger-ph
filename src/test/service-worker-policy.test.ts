@@ -7,7 +7,6 @@ import {
   isCacheableResponse,
   isPreviewHostname,
   selectCacheEntriesToEvict,
-  serviceWorkerCacheName,
   shellAssetFingerprintSource,
   shouldRegisterServiceWorker,
 } from "@/lib/service-worker-policy";
