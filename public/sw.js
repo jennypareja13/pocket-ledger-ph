@@ -125,6 +125,13 @@ async function precacheAppShellAndAssets() {
               pending.push(imported.href);
             }
           }
+          const assetReferencePattern = /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
+          for (const match of source.matchAll(assetReferencePattern)) {
+            const imported = new URL(match[1], href);
+            if (imported.origin === self.location.origin && !visited.has(imported.href)) {
+              pending.push(imported.href);
+            }
+          }
         } else if (/\.css$/i.test(pathname)) {
           const cssAssetPattern = /url\(\s*["']?([^"')]+)["']?\s*\)/g;
           for (const match of source.matchAll(cssAssetPattern)) {
