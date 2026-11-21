@@ -42,6 +42,7 @@ export function ServiceWorkerUpdatePrompt() {
       setUpdateWaiting(Boolean(nextRegistration.waiting));
       nextRegistration.addEventListener("updatefound", onUpdateFound);
       onUpdateFound();
+      navigator.serviceWorker.controller?.postMessage({ type: "CHECK_SHELL_UPDATE" });
       void nextRegistration.update().catch(() => {
         // A failed background check must not prevent normal app use.
       });
