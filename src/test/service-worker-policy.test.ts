@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  chooseNavigationFallback,
+  hasShellUpdate,
   isCacheableRequest,
   isCacheableResponse,
   isPreviewHostname,
+  selectCacheEntriesToEvict,
   serviceWorkerCacheName,
+  shellAssetFingerprintSource,
   shouldRegisterServiceWorker,
 } from "@/lib/service-worker-policy";
 
@@ -27,7 +29,7 @@ describe("service worker cache policy", () => {
     ).toBe(false);
   });
 
-  it("never caches Supabase or server-function endpoint paths", () => {
+  it("never caches auth, Supabase, or server-function endpoint paths", () => {
     for (const path of [
       "/auth",
       "/auth/v1/token",
@@ -49,46 +51,79 @@ describe("service worker cache policy", () => {
     expect(isCacheableResponse(200, "opaque")).toBe(false);
   });
 
-  it("uses versioned cache names and bounded navigation fallback order", () => {
-    expect(serviceWorkerCacheName("shell", "v1")).toBe("pocketvault-shell-v1");
-    expect(chooseNavigationFallback("exact", "root", "offline")).toBe("exact");
-    expect(chooseNavigationFallback(undefined, "root", "offline")).toBe("root");
-    expect(chooseNavigationFallback(undefined, undefined, "offline")).toBe("offline");
+  it("detects a deployment by comparing fresh shell asset fingerprints", () => {
+    const first = shellAssetFingerprintSource(
+      '<script type="module" src="/assets/index-old12345.js"></script><link href="/assets/style-old12345.css" rel="stylesheet">',
+      ORIGIN,
+    );
+    const second = shellAssetFingerprintSource(
+      '<script type="module" src="/assets/index-new67890.js"></script><link href="/assets/style-new67890.css" rel="stylesheet">',
+      ORIGIN,
+    );
+    expect(first).not.toBeNull();
+    expect(second).not.toBe(first);
+    expect(hasShellUpdate(first, second)).toBe(true);
+    expect(hasShellUpdate(first, first)).toBe(false);
+    expect(hasShellUpdate(null, second)).toBe(false);
   });
 
-  it("blocks Lovable preview hosts but permits the published PocketVault hostname", () => {
-    expect(isPreviewHostname("id-preview--abc123.lovable.app")).toBe(true);
+  it("evicts old deploy assets without evicting current-shell assets across deploys", () => {
+    const cache = ["old-a.js", "old-b.js", "deploy-2-a.js", "deploy-2-b.js"];
+    const deployTwo = new Set(["deploy-2-a.js", "deploy-2-b.js"]);
+    const evictedAfterDeployTwo = selectCacheEntriesToEvict(cache, deployTwo, 3);
+    expect(evictedAfterDeployTwo).toEqual(["old-a.js"]);
+    const afterDeployTwo = cache.filter((entry) => !evictedAfterDeployTwo.includes(entry));
+    expect(afterDeployTwo).toEqual(["old-b.js", "deploy-2-a.js", "deploy-2-b.js"]);
+
+    const deployThree = new Set(["deploy-3-a.js", "deploy-3-b.js"]);
+    const afterDeployThree = [
+      ...afterDeployTwo,
+      "deploy-3-a.js",
+      "deploy-3-b.js",
+    ];
+    const evictedAfterDeployThree = selectCacheEntriesToEvict(
+      afterDeployThree,
+      deployThree,
+      3,
+    );
+    const retainedAfterDeployThree = afterDeployThree.filter(
+      (entry) => !evictedAfterDeployThree.includes(entry),
+    );
+    expect(evictedAfterDeployThree).toEqual(["old-b.js", "deploy-2-a.js"]);
+    expect(retainedAfterDeployThree).toEqual(["deploy-2-b.js", "deploy-3-a.js", "deploy-3-b.js"]);
+  });
+
+  it("requires production, top-level, secure context, and a non-preview hostname", () => {
+    const allowed = {
+      production: true,
+      topLevel: true,
+      secureContext: true,
+      hostname: "pocket-vault-bnpl.lovable.app",
+    };
+    expect(shouldRegisterServiceWorker(allowed)).toBe(true);
+    expect(shouldRegisterServiceWorker({ ...allowed, production: false })).toBe(false);
+    expect(shouldRegisterServiceWorker({ ...allowed, topLevel: false })).toBe(false);
+    expect(shouldRegisterServiceWorker({ ...allowed, secureContext: false })).toBe(false);
+    expect(
+      shouldRegisterServiceWorker({ ...allowed, hostname: "id-preview--abc123.lovable.app" }),
+    ).toBe(false);
     expect(isPreviewHostname("abc.lovableproject.com")).toBe(true);
-    expect(isPreviewHostname("pocket-vault-bnpl.lovable.app")).toBe(false);
-    expect(
-      shouldRegisterServiceWorker({
-        production: true,
-        topLevel: true,
-        hostname: "pocket-vault-bnpl.lovable.app",
-      }),
-    ).toBe(true);
-    expect(
-      shouldRegisterServiceWorker({
-        production: false,
-        topLevel: true,
-        hostname: "pocket-vault-bnpl.lovable.app",
-      }),
-    ).toBe(false);
-    expect(
-      shouldRegisterServiceWorker({
-        production: true,
-        topLevel: false,
-        hostname: "pocket-vault-bnpl.lovable.app",
-      }),
-    ).toBe(false);
+    expect(isPreviewHostname("abc.lovable.dev")).toBe(true);
   });
 
-  it("keeps the standalone worker guarded against unsafe requests", () => {
+  it("keeps unsafe requests excluded and has safe worker failure/kill-switch paths", () => {
     const worker = readFileSync(resolve(process.cwd(), "public/sw.js"), "utf8");
     expect(worker).toContain('request.method.toUpperCase() !== "GET"');
     expect(worker).toContain("url.origin !== self.location.origin");
     expect(worker).toContain('request.headers.has("authorization")');
     expect(worker).toContain("isExcludedPath(url.pathname)");
     expect(worker).toContain("if (!isCacheableRequest(request, url)) return;");
+    expect(worker).toContain("catch {");
+    expect(worker).toContain("await trimAssetCache(new Set(previous.assets || []))");
+    expect(worker).toContain("Your saved records are safe on this device.");
+    expect(worker).toContain('onclick="location.reload()"');
+    expect(worker).toContain("await self.registration.unregister()");
+    expect(worker).toContain("names.filter((name) => name.startsWith(CACHE_PREFIX))");
+    expect(worker).not.toContain("indexedDB");
   });
 });
