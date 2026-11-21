@@ -1,7 +1,7 @@
 export type CacheRequestLike = Pick<Request, "method" | "url" | "headers">;
 
 const EXCLUDED_PATHS = [
-  /^\/(?:auth\/v1|rest\/v1|storage\/v1|functions\/v1|realtime\/v1)(?:\/|$)/i,
+  /^\/(?:auth|rest\/v1|storage\/v1|functions\/v1|realtime\/v1)(?:\/|$)/i,
   /^\/(?:api|_serverFn|__serverFn)(?:\/|$)/i,
 ];
 
