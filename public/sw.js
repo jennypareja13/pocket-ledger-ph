@@ -16,7 +16,7 @@ const KILL_SWITCH = false;
 
 function offlineFallbackResponse() {
   return new Response(
-    "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>PocketVault offline</title><body style=\"font:16px system-ui,sans-serif;padding:2rem;max-width:34rem;margin:auto\"><h1>PocketVault is offline</h1><p>The app shell is not available yet. Connect to the internet, open PocketVault once, then try again.</p></body></html>",
+    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketVault offline</title><body style="font:16px system-ui,sans-serif;padding:2rem;max-width:34rem;margin:auto"><h1>PocketVault is offline</h1><p>The app shell is not available yet. Connect to the internet, open PocketVault once, then try again.</p></body></html>',
     { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
   );
 }
@@ -116,14 +116,16 @@ async function precacheAppShellAndAssets() {
         const pathname = new URL(href).pathname;
         const source = await assetResponse.clone().text();
         if (/\.m?js$/i.test(pathname)) {
-          const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+\.m?js(?:[?#][^"']*)?)["']/g;
+          const importPattern =
+            /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+\.m?js(?:[?#][^"']*)?)["']/g;
           for (const match of source.matchAll(importPattern)) {
             const imported = new URL(match[1], href);
             if (imported.origin === self.location.origin && !visited.has(imported.href)) {
               pending.push(imported.href);
             }
           }
-          const assetReferencePattern = /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
+          const assetReferencePattern =
+            /["']([^"']+\.(?:css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)(?:[?#][^"']*)?)["']/gi;
           for (const match of source.matchAll(assetReferencePattern)) {
             const imported = new URL(match[1], href);
             if (imported.origin === self.location.origin && !visited.has(imported.href)) {
@@ -182,8 +184,7 @@ async function deletePocketVaultCachesExceptCurrent() {
   await Promise.all(
     names
       .filter(
-        (name) =>
-          name.startsWith(CACHE_PREFIX) && name !== SHELL_CACHE && name !== ASSET_CACHE,
+        (name) => name.startsWith(CACHE_PREFIX) && name !== SHELL_CACHE && name !== ASSET_CACHE,
       )
       .map((name) => caches.delete(name)),
   );
