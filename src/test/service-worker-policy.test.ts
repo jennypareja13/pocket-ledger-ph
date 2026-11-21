@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  chooseNavigationFallback,
   hasShellUpdate,
   isCacheableRequest,
   isCacheableResponse,
   isPreviewHostname,
   selectCacheEntriesToEvict,
+  serviceWorkerCacheName,
   shellAssetFingerprintSource,
   shouldRegisterServiceWorker,
 } from "@/lib/service-worker-policy";
@@ -48,6 +50,13 @@ describe("service worker cache policy", () => {
     expect(isCacheableResponse(204)).toBe(false);
     expect(isCacheableResponse(404)).toBe(false);
     expect(isCacheableResponse(200, "opaque")).toBe(false);
+  });
+
+  it("uses a versioned cache name and falls back to the cached shell before the offline page", () => {
+    expect(serviceWorkerCacheName("assets", "v1")).toBe("pocketvault-assets-v1");
+    expect(chooseNavigationFallback("exact", "root", "offline")).toBe("exact");
+    expect(chooseNavigationFallback(undefined, "root", "offline")).toBe("root");
+    expect(chooseNavigationFallback(undefined, undefined, "offline")).toBe("offline");
   });
 
   it("detects a deployment by comparing fresh shell asset fingerprints", () => {
@@ -111,6 +120,11 @@ describe("service worker cache policy", () => {
     expect(worker).toContain("if (!isCacheableRequest(request, url)) return;");
     expect(worker).toContain("catch {");
     expect(worker).toContain("await trimAssetCache(new Set(previous.assets || []))");
+    expect(worker).toContain("protectedAssets.has(urls[index])");
+    expect(worker).toContain('type: "SHELL_UPDATED"');
+    expect(worker).toContain('type: "CHECK_SHELL_UPDATE"');
+    expect(worker).toContain("warmFailed: true");
+    expect(worker).toContain("return missingAssetResponse(request)");
     expect(worker).toContain("Your saved records are safe on this device.");
     expect(worker).toContain('onclick="location.reload()"');
     expect(worker).toContain("await self.registration.unregister()");
