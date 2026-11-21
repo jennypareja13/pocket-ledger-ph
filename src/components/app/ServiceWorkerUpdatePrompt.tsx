@@ -41,6 +41,7 @@ export function ServiceWorkerUpdatePrompt() {
       setRegistration(nextRegistration);
       setUpdateWaiting(Boolean(nextRegistration.waiting));
       nextRegistration.addEventListener("updatefound", onUpdateFound);
+      onUpdateFound();
       void nextRegistration.update().catch(() => {
         // A failed background check must not prevent normal app use.
       });
