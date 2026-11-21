@@ -79,8 +79,6 @@ async function fetchWithTimeout(request) {
 async function precacheAppShellAndAssets() {
   const rootUrl = new URL("/", self.location.origin);
   const rootRequest = new Request(rootUrl.href, { cache: "reload" });
-  const shellCache = await caches.open(SHELL_CACHE);
-
   try {
     const response = await fetchWithTimeout(rootRequest);
     if (!isCacheableResponse(response) || !isHtmlResponse(response)) return;
@@ -179,17 +177,6 @@ async function cacheFirstHashedAsset(request) {
   return response;
 }
 
-async function networkFirstAsset(request) {
-  const cache = await caches.open(ASSET_CACHE);
-  try {
-    const response = await fetch(request);
-    if (isCacheableResponse(response)) await cacheResponse(ASSET_CACHE, request, response);
-    return response;
-  } catch {
-    return (await cache.match(request)) || Response.error();
-  }
-}
-
 async function deletePocketVaultCachesExceptCurrent() {
   const names = await caches.keys();
   await Promise.all(
@@ -250,11 +237,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (!isStaticAsset(request)) return;
+  if (!isStaticAsset(request) || !isHashedAsset(url)) return;
 
-  if (isHashedAsset(url)) {
-    event.respondWith(cacheFirstHashedAsset(request));
-  } else {
-    event.respondWith(networkFirstAsset(request));
-  }
+  event.respondWith(cacheFirstHashedAsset(request));
 });
