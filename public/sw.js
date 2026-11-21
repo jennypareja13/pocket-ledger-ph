@@ -13,10 +13,12 @@ const NAVIGATION_TIMEOUT_MS = 3000;
  */
 const KILL_SWITCH = false;
 
-const OFFLINE_FALLBACK = new Response(
-  "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>PocketVault offline</title><body style=\"font:16px system-ui,sans-serif;padding:2rem;max-width:34rem;margin:auto\"><h1>PocketVault is offline</h1><p>The app shell is not available yet. Connect to the internet, open PocketVault once, then try again.</p></body></html>",
-  { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
-);
+function offlineFallbackResponse() {
+  return new Response(
+    "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>PocketVault offline</title><body style=\"font:16px system-ui,sans-serif;padding:2rem;max-width:34rem;margin:auto\"><h1>PocketVault is offline</h1><p>The app shell is not available yet. Connect to the internet, open PocketVault once, then try again.</p></body></html>",
+    { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
+  );
+}
 
 function isExcludedPath(pathname) {
   return (
@@ -73,6 +75,64 @@ async function fetchWithTimeout(request) {
   }
 }
 
+async function precacheAppShellAndAssets() {
+  const rootUrl = new URL("/", self.location.origin);
+  const rootRequest = new Request(rootUrl.href, { cache: "reload" });
+  const shellCache = await caches.open(SHELL_CACHE);
+
+  try {
+    const response = await fetchWithTimeout(rootRequest);
+    if (!isCacheableResponse(response) || !isHtmlResponse(response)) return;
+    await cacheResponse(SHELL_CACHE, rootRequest, response);
+
+    const html = await response.clone().text();
+    const candidates = new Set();
+    const assetAttribute = /(?:src|href)=["']([^"']+)["']/gi;
+    for (const match of html.matchAll(assetAttribute)) {
+      const value = match[1];
+      if (value && /\.(?:m?js|css)(?:[?#].*)?$/i.test(value)) {
+        const url = new URL(value, rootUrl);
+        if (url.origin === self.location.origin) candidates.add(url.href);
+      }
+    }
+
+    /*
+     * Follow static and dynamic JS imports so code-split route chunks referenced
+     * by the entry bundle are available after a first online load.
+     */
+    const pending = [...candidates];
+    const visited = new Set();
+    while (pending.length > 0 && visited.size < MAX_CACHE_ENTRIES) {
+      const href = pending.shift();
+      if (!href || visited.has(href)) continue;
+      visited.add(href);
+
+      try {
+        const request = new Request(href);
+        if (!isCacheableRequest(request, new URL(href))) continue;
+        const assetResponse = await fetchWithTimeout(request);
+        if (!isCacheableResponse(assetResponse)) continue;
+        await cacheResponse(ASSET_CACHE, request, assetResponse);
+
+        if (/\.m?js(?:[?#].*)?$/i.test(new URL(href).pathname)) {
+          const source = await assetResponse.clone().text();
+          const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*)["']([^"']+\.m?js(?:[?#][^"']*)?)["']/g;
+          for (const match of source.matchAll(importPattern)) {
+            const imported = new URL(match[1], href);
+            if (imported.origin === self.location.origin && !visited.has(imported.href)) {
+              pending.push(imported.href);
+            }
+          }
+        }
+      } catch {
+        // A missing optional chunk should not prevent the shell from being installed.
+      }
+    }
+  } catch {
+    // Installation can still complete; runtime navigation caching may fill the shell.
+  }
+}
+
 async function networkFirstNavigation(request) {
   const cache = await caches.open(SHELL_CACHE);
   try {
@@ -84,7 +144,7 @@ async function networkFirstNavigation(request) {
   } catch {
     const exactPage = await cache.match(request);
     const rootPage = await cache.match(new URL("/", self.location.origin).href);
-    return exactPage || rootPage || OFFLINE_FALLBACK;
+    return exactPage || rootPage || offlineFallbackResponse();
   }
 }
 
@@ -131,25 +191,8 @@ async function clearPocketVaultCaches() {
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      if (KILL_SWITCH) {
-        await self.registration.unregister();
-        await clearPocketVaultCaches();
-        return;
-      }
-
-      /*
-       * Save the generic root document during installation. App records are loaded
-       * client-side from IndexedDB; this document must never contain user records.
-       */
-      try {
-        const root = new Request(new URL("/", self.location.origin), { cache: "reload" });
-        const response = await fetchWithTimeout(root);
-        if (isCacheableResponse(response) && isHtmlResponse(response)) {
-          await cacheResponse(SHELL_CACHE, root, response);
-        }
-      } catch {
-        // Installation can still complete; runtime navigation caching may fill the shell.
-      }
+      if (KILL_SWITCH) return;
+      await precacheAppShellAndAssets();
     })(),
   );
 });
