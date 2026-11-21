@@ -210,6 +210,7 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
 
   if (pending.length > 0) failed.push(...pending);
   if (failed.length > 0) {
+    await writeCurrentManifest({ ...previous, warmFailed: true });
     await trimAssetCache(new Set(previous.assets || []));
     await notifyClients({
       type: "SHELL_ASSET_WARM_FAILED",
@@ -224,7 +225,12 @@ async function warmShellAssets(html, baseUrl, notifyClients) {
   }
 
   const updatePending = Boolean(previous.fingerprint && previous.fingerprint !== fingerprint);
-  await writeCurrentManifest({ fingerprint, assets: [...protectedAssets], updatePending });
+  await writeCurrentManifest({
+    fingerprint,
+    assets: [...protectedAssets],
+    updatePending,
+    warmFailed: false,
+  });
   await trimAssetCache(protectedAssets);
   return { success: true, assets: [...protectedAssets], fingerprint, changed: updatePending };
 }
@@ -349,6 +355,9 @@ self.addEventListener("message", (event) => {
       readCurrentManifest().then((manifest) => {
         if (manifest.updatePending) {
           event.source?.postMessage({ type: "SHELL_UPDATED" });
+        }
+        if (manifest.warmFailed) {
+          event.source?.postMessage({ type: "SHELL_ASSET_WARM_FAILED" });
         }
       }),
     );
