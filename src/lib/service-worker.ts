@@ -15,6 +15,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     !shouldRegisterServiceWorker({
       production: import.meta.env.PROD,
       topLevel,
+      secureContext: window.isSecureContext,
       hostname: window.location.hostname,
     })
   ) {
