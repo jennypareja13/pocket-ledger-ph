@@ -45,9 +45,5 @@ export function shouldRegisterServiceWorker(input: {
   topLevel: boolean;
   hostname: string;
 }): boolean {
-  return (
-    input.production &&
-    input.topLevel &&
-    !isPreviewHostname(input.hostname)
-  );
+  return input.production && input.topLevel && !isPreviewHostname(input.hostname);
 }
