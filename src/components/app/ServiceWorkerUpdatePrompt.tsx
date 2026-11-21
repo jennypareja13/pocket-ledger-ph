@@ -19,6 +19,13 @@ export function ServiceWorkerUpdatePrompt() {
     const onWorkerMessage = (event: MessageEvent) => {
       if (event.data?.type === "SHELL_UPDATED") setShellUpdate(true);
       if (event.data?.type === "SHELL_ASSET_WARM_FAILED") setWarmWarning(true);
+      if (event.data?.type === "POCKETVAULT_SW_DISABLED") {
+        try {
+          window.localStorage.setItem("pocketvault-service-worker-disabled", "true");
+        } catch {
+          // The worker still unregisters and clears its caches if storage is unavailable.
+        }
+      }
     };
 
     const onUpdateFound = () => {
