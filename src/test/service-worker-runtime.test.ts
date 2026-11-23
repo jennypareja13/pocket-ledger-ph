@@ -238,7 +238,7 @@ describe("public/sw.js real worker behavior", () => {
       },
     });
     const { event, waits } = worker.dispatch("fetch", { request: navigation("/") });
-    const response = await event.responsePromise;
+    const response = await event.responsePromise!;
     expect(response.status).toBe(200);
     expect(waits.length).toBeGreaterThan(0);
     releaseAsset();
@@ -289,7 +289,7 @@ describe("public/sw.js real worker behavior", () => {
       destination: "script",
     };
     const { event } = worker.dispatch("fetch", { request });
-    const response = await event.responsePromise;
+    const response = await event.responsePromise!;
     expect(response.type).toBe("error");
     expect(WORKER_SOURCE).not.toContain("document.body.innerHTML");
   });
@@ -355,7 +355,7 @@ describe("public/sw.js real worker behavior", () => {
     expect(worker.cachesMap.has("pocketvault-shell-v2")).toBe(false);
     expect(worker.cachesMap.has("pocketvault-assets-v2")).toBe(false);
     expect(worker.cachesMap.has("unrelated-cache")).toBe(true);
-    expect(worker.clients[0].postMessage).toHaveBeenCalledWith({
+    expect(worker.clients[0]!.postMessage).toHaveBeenCalledWith({
       type: "POCKETVAULT_SW_DISABLED",
       version: "v2",
     });
@@ -386,7 +386,7 @@ describe("public/sw.js real worker behavior", () => {
       await shell.put(new Request(ORIGIN + "/"), new Response("cached root"));
       const { event, waits } = worker.dispatch("fetch", { request: navigation("/transactions") });
       await vi.advanceTimersByTimeAsync(3000);
-      const fallback = await event.responsePromise;
+      const fallback = await event.responsePromise!;
       expect(await fallback.text()).toBe("cached root");
       releaseNavigation(
         new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
