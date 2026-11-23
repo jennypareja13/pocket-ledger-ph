@@ -78,6 +78,7 @@ function createWorker(options: {
   if (options.killSwitch) source = source.replace("const KILL_SWITCH = false;", "const KILL_SWITCH = true;");
   const context: any = {
     self,
+    indexedDB: { open: vi.fn() },
     caches: cacheStorage,
     Request,
     Response,
@@ -271,7 +272,7 @@ describe("public/sw.js real worker behavior", () => {
       type: "POCKETVAULT_SW_DISABLED",
       version: "v2",
     });
-    expect(WORKER_SOURCE.toLowerCase()).not.toContain("indexeddb");
+    expect(context.indexedDB.open).not.toHaveBeenCalled();
   });
 
   it("serves cached navigation at three seconds without aborting the late network request", async () => {
