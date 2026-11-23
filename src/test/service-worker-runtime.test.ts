@@ -151,7 +151,6 @@ describe("public/sw.js real worker behavior", () => {
     const worker = createWorker({
       fetch: async (input: any) => {
         const url = typeof input === "string" ? input : input.url;
-        worker.calls.fetch.push(url);
         if (url === ORIGIN + "/") {
           return new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
             status: 200, headers: { "Content-Type": "text/html" },
@@ -190,7 +189,6 @@ describe("public/sw.js real worker behavior", () => {
     for (let index = 0; index < 25; index += 1) {
       await cache.put(new Request(ORIGIN + "/page-" + index), new Response("page"));
     }
-    await vm.runInNewContext("0", worker.context);
     await worker.hooks.trimShellCache();
     const keys = await cache.keys();
     expect(keys).toHaveLength(20);
