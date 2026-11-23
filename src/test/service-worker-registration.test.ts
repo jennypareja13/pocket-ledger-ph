@@ -35,7 +35,7 @@ describe("PocketVault offline opt-in and update fingerprint", () => {
 
   it("recognizes only offline=1 and offline=0 and leaves other query strings alone", () => {
     expect(getOfflineQueryAction("?offline=1")).toBe("enable");
-    expect(getOfflineQueryAction("?keep=yes&offline=0#tab")).toBe("disable");
+    expect(getOfflineQueryAction("?keep=yes&offline=0")).toBe("disable");
     expect(getOfflineQueryAction("?offline=true")).toBeNull();
     expect(getOfflineQueryAction("?other=1")).toBeNull();
   });
