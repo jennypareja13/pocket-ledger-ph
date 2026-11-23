@@ -306,6 +306,28 @@ describe("public/sw.js real worker behavior", () => {
     expect(await assetCache.match(ORIGIN + "/assets/entry-12345678.js")).toBeDefined();
   });
 
+  it("evicts oldest asset entries while protecting the current shell assets", async () => {
+    const worker = createWorker();
+    const cache = await worker.cacheStorage.open("pocketvault-assets-v2");
+    for (let index = 0; index < 122; index += 1) {
+      await cache.put(
+        new Request(ORIGIN + "/assets/asset-" + index + ".js"),
+        new Response("asset"),
+      );
+    }
+    const protectedAssets = new Set([
+      ORIGIN + "/assets/asset-120.js",
+      ORIGIN + "/assets/asset-121.js",
+    ]);
+    await worker.hooks.trimAssetCache(protectedAssets);
+    const keys = await cache.keys();
+    expect(keys).toHaveLength(120);
+    expect(await cache.match(ORIGIN + "/assets/asset-0.js")).toBeUndefined();
+    expect(await cache.match(ORIGIN + "/assets/asset-1.js")).toBeUndefined();
+    expect(await cache.match(ORIGIN + "/assets/asset-120.js")).toBeDefined();
+    expect(await cache.match(ORIGIN + "/assets/asset-121.js")).toBeDefined();
+  });
+
   it("caps shell documents at 20 and never evicts the root document", async () => {
     const worker = createWorker();
     const cache = await worker.cacheStorage.open("pocketvault-shell-v2");
