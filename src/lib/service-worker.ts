@@ -66,7 +66,7 @@ function consumeOfflineQuery(): "enable" | "disable" | null {
   if (!action) return null;
   url.searchParams.delete("offline");
   window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
-  return value === "1" ? "enable" : "disable";
+  return action;
 }
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
