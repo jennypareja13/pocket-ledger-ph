@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { registerServiceWorker } from "@/lib/service-worker";
+import { checkForRunningAppUpdate, registerServiceWorker } from "@/lib/service-worker";
+
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 export function ServiceWorkerUpdatePrompt() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -11,19 +13,35 @@ export function ServiceWorkerUpdatePrompt() {
   useEffect(() => {
     let mounted = true;
     let currentRegistration: ServiceWorkerRegistration | null = null;
+    let lastUpdateCheck = 0;
+    const runningEntry = document.querySelector<HTMLScriptElement>('script[type="module"][src]');
+    const runningFingerprint = runningEntry ? new URL(runningEntry.src).pathname : null;
+
+    const checkUpdate = async (force = false) => {
+      if (!runningFingerprint || document.visibilityState !== "visible") return;
+      if (!force && Date.now() - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
+      lastUpdateCheck = Date.now();
+      if (await checkForRunningAppUpdate(runningFingerprint) && mounted) setShellUpdate(true);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void checkUpdate();
+    };
 
     const onControllerChange = () => {
       if (activationRequested.current) window.location.reload();
     };
 
     const onWorkerMessage = (event: MessageEvent) => {
-      if (event.data?.type === "SHELL_UPDATED") setShellUpdate(true);
       if (event.data?.type === "SHELL_ASSET_WARM_FAILED") setWarmWarning(true);
       if (event.data?.type === "POCKETVAULT_SW_DISABLED") {
         try {
-          window.localStorage.setItem("pocketvault-service-worker-disabled", "true");
+          window.localStorage.setItem(
+            "pocketvault-service-worker-disabled-version",
+            String(event.data.version || "unknown"),
+          );
         } catch {
-          // The worker still unregisters and clears its caches if storage is unavailable.
+          // The worker still unregisters and clears PocketVault caches.
         }
       }
     };
@@ -31,7 +49,6 @@ export function ServiceWorkerUpdatePrompt() {
     const onUpdateFound = () => {
       const installing = currentRegistration?.installing;
       if (!installing) return;
-
       installing.addEventListener("statechange", () => {
         if (mounted && installing.state === "installed" && navigator.serviceWorker.controller) {
           setUpdateWaiting(true);
@@ -39,6 +56,7 @@ export function ServiceWorkerUpdatePrompt() {
       });
     };
 
+    document.addEventListener("visibilitychange", onVisibilityChange);
     navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
     navigator.serviceWorker?.addEventListener("message", onWorkerMessage);
 
@@ -49,14 +67,18 @@ export function ServiceWorkerUpdatePrompt() {
       setUpdateWaiting(Boolean(nextRegistration.waiting));
       nextRegistration.addEventListener("updatefound", onUpdateFound);
       onUpdateFound();
-      navigator.serviceWorker.controller?.postMessage({ type: "CHECK_SHELL_UPDATE" });
       void nextRegistration.update().catch(() => {
         // A failed background check must not prevent normal app use.
       });
+      void checkUpdate(true);
     });
+
+    const interval = window.setInterval(() => void checkUpdate(), UPDATE_CHECK_INTERVAL_MS);
 
     return () => {
       mounted = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
       navigator.serviceWorker?.removeEventListener("message", onWorkerMessage);
       currentRegistration?.removeEventListener("updatefound", onUpdateFound);
