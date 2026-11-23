@@ -135,8 +135,8 @@ function createWorker(
     Array,
     Error,
     console,
-  };
-  vm.runInNewContext(
+  });
+  vm.runInContext(
     source +
       "\n;globalThis.__workerTest = { navigationCacheKey, hasSensitiveNavigationParams, trimShellCache, trimAssetCache, warmShellAssets, readCurrentManifest, isBuildAsset };",
     context,
@@ -153,14 +153,18 @@ function createWorker(
     return { event, waits };
   }
 
+  const workerContext = context as vm.Context & {
+    __workerTest: WorkerHooks;
+    indexedDB: { open: ReturnType<typeof vi.fn> };
+  };
   return {
-    context,
+    context: workerContext,
     cachesMap,
     cacheStorage,
     calls,
     clients,
     dispatch,
-    hooks: context.__workerTest,
+    hooks: workerContext.__workerTest,
   };
 }
 
@@ -355,7 +359,7 @@ describe("public/sw.js real worker behavior", () => {
       type: "POCKETVAULT_SW_DISABLED",
       version: "v2",
     });
-    expect((worker.context as vm.Context & { indexedDB: { open: ReturnType<typeof vi.fn> } }).indexedDB.open).not.toHaveBeenCalled();
+    expect(worker.context.indexedDB.open).not.toHaveBeenCalled();
   });
 
   it("serves cached navigation at three seconds without aborting the late network request", async () => {
