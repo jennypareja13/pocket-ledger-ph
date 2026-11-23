@@ -214,7 +214,11 @@ async function warmShellAssets(html, rootUrl) {
   const previous = await readCurrentManifest();
   const assetCache = await caches.open(ASSET_CACHE);
 
-  if (previous.fingerprint === fingerprint && Array.isArray(previous.assets) && previous.assets.length) {
+  if (
+    previous.fingerprint === fingerprint &&
+    Array.isArray(previous.assets) &&
+    previous.assets.length
+  ) {
     const missing = [];
     for (const asset of previous.assets) {
       if (!(await assetCache.match(asset))) missing.push(asset);
@@ -235,7 +239,11 @@ async function warmShellAssets(html, rootUrl) {
 
   while (queue.length > 0 && visited.size < MAX_ASSET_ENTRIES) {
     const batch = [];
-    while (queue.length > 0 && batch.length < MAX_CONCURRENT_ASSETS && visited.size + batch.length < MAX_ASSET_ENTRIES) {
+    while (
+      queue.length > 0 &&
+      batch.length < MAX_CONCURRENT_ASSETS &&
+      visited.size + batch.length < MAX_ASSET_ENTRIES
+    ) {
       const href = queue.shift();
       if (href && !visited.has(href)) {
         visited.add(href);
@@ -255,7 +263,8 @@ async function warmShellAssets(html, rootUrl) {
           let response = await assetCache.match(request);
           if (!response) {
             response = await fetchAssetWithTimeout(request);
-            if (!isCacheableResponse(response)) throw new Error("Build asset response was not cacheable.");
+            if (!isCacheableResponse(response))
+              throw new Error("Build asset response was not cacheable.");
             await assetCache.put(request, response.clone());
           }
 
@@ -286,7 +295,8 @@ async function warmShellAssets(html, rootUrl) {
     await trimAssetCache(new Set(previous.assets || []));
     await notifyClients({
       type: "SHELL_ASSET_WARM_FAILED",
-      message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
+      message:
+        "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
     });
     throw new Error("One or more build assets could not be warmed.");
   }
@@ -339,7 +349,8 @@ async function warmFromNavigation(request, response) {
   } catch {
     await notifyClients({
       type: "SHELL_ASSET_WARM_FAILED",
-      message: "Some app files could not be saved. Keep PocketVault online and reopen it before going offline.",
+      message:
+        "Some app files could not be saved. Keep PocketVault online and reopen it before going offline.",
     });
   }
 }
@@ -399,14 +410,19 @@ async function deletePocketVaultCachesExceptCurrent() {
   const names = await caches.keys();
   await Promise.all(
     names
-      .filter((name) => name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name))
+      .filter(
+        (name) =>
+          name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name),
+      )
       .map((name) => caches.delete(name)),
   );
 }
 
 async function clearPocketVaultCaches() {
   const names = await caches.keys();
-  await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)));
+  await Promise.all(
+    names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)),
+  );
 }
 
 self.addEventListener("install", (event) => {
