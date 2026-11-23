@@ -11,7 +11,6 @@ export function ServiceWorkerUpdatePrompt() {
 
   useEffect(() => {
     let mounted = true;
-    let currentRegistration: ServiceWorkerRegistration | null = null;
     let lastUpdateCheck = 0;
     const runningEntry = document.querySelector<HTMLScriptElement>('script[type="module"][src]');
     const runningFingerprint = runningEntry ? new URL(runningEntry.src).pathname : null;
@@ -51,7 +50,6 @@ export function ServiceWorkerUpdatePrompt() {
 
     void registerServiceWorker().then((nextRegistration) => {
       if (!mounted || !nextRegistration) return;
-      currentRegistration = nextRegistration;
       setRegistration(nextRegistration);
       void nextRegistration.update().catch(() => {
         // A failed background check must not prevent normal app use.
