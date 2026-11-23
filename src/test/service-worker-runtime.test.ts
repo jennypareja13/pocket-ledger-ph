@@ -6,10 +6,12 @@ import { describe, expect, it, vi } from "vitest";
 const ORIGIN = "https://pocket-vault-bnpl.lovable.app";
 const WORKER_SOURCE = readFileSync(resolve(process.cwd(), "public/sw.js"), "utf8");
 
-function createWorker(options: {
-  killSwitch?: boolean;
-  fetch?: (request: any) => Promise<Response>;
-} = {}) {
+function createWorker(
+  options: {
+    killSwitch?: boolean;
+    fetch?: (request: any) => Promise<Response>;
+  } = {},
+) {
   const cachesMap = new Map<string, Map<string, Response>>();
   const listeners = new Map<string, (event: any) => void>();
   const calls = { fetch: [] as string[], skipWaiting: 0, unregister: 0, claim: 0 };
@@ -63,11 +65,20 @@ function createWorker(options: {
 
   const self = {
     location: { origin: ORIGIN },
-    registration: { unregister: vi.fn(async () => { calls.unregister += 1; return true; }) },
-    skipWaiting: vi.fn(() => { calls.skipWaiting += 1; }),
+    registration: {
+      unregister: vi.fn(async () => {
+        calls.unregister += 1;
+        return true;
+      }),
+    },
+    skipWaiting: vi.fn(() => {
+      calls.skipWaiting += 1;
+    }),
     clients: {
       matchAll: vi.fn(async () => clients),
-      claim: vi.fn(async () => { calls.claim += 1; }),
+      claim: vi.fn(async () => {
+        calls.claim += 1;
+      }),
     },
     addEventListener(type: string, handler: (event: any) => void) {
       listeners.set(type, handler);
@@ -75,7 +86,8 @@ function createWorker(options: {
   };
 
   let source = WORKER_SOURCE;
-  if (options.killSwitch) source = source.replace("const KILL_SWITCH = false;", "const KILL_SWITCH = true;");
+  if (options.killSwitch)
+    source = source.replace("const KILL_SWITCH = false;", "const KILL_SWITCH = true;");
   const context: any = {
     self,
     indexedDB: { open: vi.fn() },
@@ -101,7 +113,8 @@ function createWorker(options: {
     console,
   };
   vm.runInNewContext(
-    source + "\n;globalThis.__workerTest = { navigationCacheKey, hasSensitiveNavigationParams, trimShellCache, trimAssetCache, warmShellAssets, readCurrentManifest, isBuildAsset };",
+    source +
+      "\n;globalThis.__workerTest = { navigationCacheKey, hasSensitiveNavigationParams, trimShellCache, trimAssetCache, warmShellAssets, readCurrentManifest, isBuildAsset };",
     context,
     { filename: "public/sw.js" },
   );
@@ -109,12 +122,22 @@ function createWorker(options: {
   function dispatch(type: string, event: any = {}) {
     const waits: Promise<unknown>[] = [];
     event.waitUntil = (promise: Promise<unknown>) => waits.push(Promise.resolve(promise));
-    event.respondWith = (promise: Promise<Response>) => { event.responsePromise = Promise.resolve(promise); };
+    event.respondWith = (promise: Promise<Response>) => {
+      event.responsePromise = Promise.resolve(promise);
+    };
     listeners.get(type)?.(event);
     return { event, waits };
   }
 
-  return { context, cachesMap, cacheStorage, calls, clients, dispatch, hooks: context.__workerTest };
+  return {
+    context,
+    cachesMap,
+    cacheStorage,
+    calls,
+    clients,
+    dispatch,
+    hooks: context.__workerTest,
+  };
 }
 
 function navigation(url: string, headers = new Headers()) {
@@ -131,9 +154,27 @@ describe("public/sw.js real worker behavior", () => {
   it("does not intercept POST, cross-origin, Authorization, auth, Supabase, or server-function requests", () => {
     const worker = createWorker();
     const requests = [
-      { url: ORIGIN + "/transactions", method: "POST", headers: new Headers(), mode: "cors", destination: "" },
-      { url: "https://cdn.example.com/assets/app-12345678.js", method: "GET", headers: new Headers(), mode: "cors", destination: "script" },
-      { url: ORIGIN + "/assets/app-12345678.js", method: "GET", headers: new Headers({ Authorization: "Bearer token" }), mode: "cors", destination: "script" },
+      {
+        url: ORIGIN + "/transactions",
+        method: "POST",
+        headers: new Headers(),
+        mode: "cors",
+        destination: "",
+      },
+      {
+        url: "https://cdn.example.com/assets/app-12345678.js",
+        method: "GET",
+        headers: new Headers(),
+        mode: "cors",
+        destination: "script",
+      },
+      {
+        url: ORIGIN + "/assets/app-12345678.js",
+        method: "GET",
+        headers: new Headers({ Authorization: "Bearer token" }),
+        mode: "cors",
+        destination: "script",
+      },
       navigation("/auth"),
       navigation("https://project.supabase.co/rest/v1/ledger_records"),
       navigation("/rest/v1/ledger_records"),
@@ -149,13 +190,16 @@ describe("public/sw.js real worker behavior", () => {
 
   it("intercepts same-origin navigation and attaches warming to waitUntil without delaying response", async () => {
     let releaseAsset!: () => void;
-    const blockedAsset = new Promise<void>((resolve) => { releaseAsset = resolve; });
+    const blockedAsset = new Promise<void>((resolve) => {
+      releaseAsset = resolve;
+    });
     const worker = createWorker({
       fetch: async (input: any) => {
         const url = typeof input === "string" ? input : input.url;
         if (url === ORIGIN + "/") {
           return new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
-            status: 200, headers: { "Content-Type": "text/html" },
+            status: 200,
+            headers: { "Content-Type": "text/html" },
           });
         }
         if (url.startsWith(ORIGIN + "/assets/")) {
@@ -175,8 +219,15 @@ describe("public/sw.js real worker behavior", () => {
 
   it("never intercepts OAuth callback query parameters and strips query/hash from shell keys", () => {
     const worker = createWorker();
-    for (const key of ["code", "access_token", "refresh_token", "error", "error_description", "state"]) {
-      const { event } = worker.dispatch("fetch", { request: navigation("/?"+key+"=secret") });
+    for (const key of [
+      "code",
+      "access_token",
+      "refresh_token",
+      "error",
+      "error_description",
+      "state",
+    ]) {
+      const { event } = worker.dispatch("fetch", { request: navigation("/?" + key + "=secret") });
       expect(event.responsePromise).toBeUndefined();
     }
     const key = worker.hooks.navigationCacheKey(new URL(ORIGIN + "/transactions?filter=all#top"));
@@ -187,13 +238,21 @@ describe("public/sw.js real worker behavior", () => {
   it("only cache-first handles assets under the real /assets build directory", () => {
     const worker = createWorker();
     const request = { method: "GET", headers: new Headers(), destination: "image" };
-    expect(worker.hooks.isBuildAsset(request, new URL(ORIGIN + "/assets/logo-12345678.svg"))).toBe(true);
+    expect(worker.hooks.isBuildAsset(request, new URL(ORIGIN + "/assets/logo-12345678.svg"))).toBe(
+      true,
+    );
     expect(worker.hooks.isBuildAsset(request, new URL(ORIGIN + "/favicon.svg"))).toBe(false);
-    expect(worker.hooks.isBuildAsset(request, new URL("https://cdn.example.com/assets/logo.svg"))).toBe(false);
+    expect(
+      worker.hooks.isBuildAsset(request, new URL("https://cdn.example.com/assets/logo.svg")),
+    ).toBe(false);
   });
 
   it("returns Response.error for a missing lazy asset without replacing the current document", async () => {
-    const worker = createWorker({ fetch: async () => { throw new Error("offline"); } });
+    const worker = createWorker({
+      fetch: async () => {
+        throw new Error("offline");
+      },
+    });
     const request = {
       url: ORIGIN + "/assets/lazy-route-12345678.js",
       method: "GET",
@@ -279,14 +338,17 @@ describe("public/sw.js real worker behavior", () => {
     vi.useFakeTimers();
     try {
       let releaseNavigation!: (response: Response) => void;
-      const delayed = new Promise<Response>((resolve) => { releaseNavigation = resolve; });
+      const delayed = new Promise<Response>((resolve) => {
+        releaseNavigation = resolve;
+      });
       const worker = createWorker({
         fetch: async (input: any) => {
           const url = typeof input === "string" ? input : input.url;
           if (url === ORIGIN + "/transactions") return delayed;
           if (url === ORIGIN + "/") {
             return new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
-              status: 200, headers: { "Content-Type": "text/html" },
+              status: 200,
+              headers: { "Content-Type": "text/html" },
             });
           }
           return new Response("export const ok = true;", { status: 200 });
@@ -298,9 +360,12 @@ describe("public/sw.js real worker behavior", () => {
       await vi.advanceTimersByTimeAsync(3000);
       const fallback = await event.responsePromise;
       expect(await fallback.text()).toBe("cached root");
-      releaseNavigation(new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
-        status: 200, headers: { "Content-Type": "text/html" },
-      }));
+      releaseNavigation(
+        new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        }),
+      );
       await Promise.all(waits);
       expect(await shell.match(ORIGIN + "/transactions")).toBeDefined();
     } finally {
@@ -326,8 +391,9 @@ describe("public/sw.js real worker behavior", () => {
         return new Response("unused", { status: 200 });
       },
     });
-    const html = Array.from({ length: 9 }, (_, index) =>
-      '<script type="module" src="/assets/chunk-' + index + '-12345678.js"></script>',
+    const html = Array.from(
+      { length: 9 },
+      (_, index) => '<script type="module" src="/assets/chunk-' + index + '-12345678.js"></script>',
     ).join("");
     await worker.hooks.warmShellAssets(html, new URL(ORIGIN + "/"));
     expect(maximum).toBeLessThanOrEqual(4);
@@ -341,9 +407,13 @@ describe("public/sw.js real worker behavior", () => {
       },
     });
     const failedHtml = '<script type="module" src="/assets/fail-12345678.js"></script>';
-    await expect(failing.hooks.warmShellAssets(failedHtml, new URL(ORIGIN + "/"))).rejects.toThrow();
+    await expect(
+      failing.hooks.warmShellAssets(failedHtml, new URL(ORIGIN + "/")),
+    ).rejects.toThrow();
     const callsAfterFailure = failing.calls.fetch.length;
-    await expect(failing.hooks.warmShellAssets(failedHtml, new URL(ORIGIN + "/"))).rejects.toThrow();
+    await expect(
+      failing.hooks.warmShellAssets(failedHtml, new URL(ORIGIN + "/")),
+    ).rejects.toThrow();
     expect(failing.calls.fetch.length).toBe(callsAfterFailure);
   });
 });
