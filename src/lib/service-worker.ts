@@ -53,7 +53,7 @@ async function unregisterPocketVaultWorker(): Promise<void> {
 export function getOfflineQueryAction(search: string): "enable" | "disable" | null {
   const value = new URLSearchParams(search).get("offline");
   if (value !== "1" && value !== "0") return null;
-  return action;
+  return value === "1" ? "enable" : "disable";
 }
 
 export function isOfflineOptedIn(value: string | null): boolean {
