@@ -100,7 +100,7 @@ function createWorker(options: {
     console,
   };
   vm.runInNewContext(
-    source + "\n;globalThis.__workerTest = { navigationCacheKey, hasSensitiveNavigationParams, trimShellCache, warmShellAssets, readCurrentManifest };",
+    source + "\n;globalThis.__workerTest = { navigationCacheKey, hasSensitiveNavigationParams, trimShellCache, trimAssetCache, warmShellAssets, readCurrentManifest, isBuildAsset };",
     context,
     { filename: "public/sw.js" },
   );
@@ -134,6 +134,7 @@ describe("public/sw.js real worker behavior", () => {
       { url: "https://cdn.example.com/assets/app-12345678.js", method: "GET", headers: new Headers(), mode: "cors", destination: "script" },
       { url: ORIGIN + "/assets/app-12345678.js", method: "GET", headers: new Headers({ Authorization: "Bearer token" }), mode: "cors", destination: "script" },
       navigation("/auth"),
+      navigation("https://project.supabase.co/rest/v1/ledger_records"),
       navigation("/rest/v1/ledger_records"),
       navigation("/functions/v1/do-work"),
       navigation("/_serverFn/update"),
@@ -180,6 +181,41 @@ describe("public/sw.js real worker behavior", () => {
     const key = worker.hooks.navigationCacheKey(new URL(ORIGIN + "/transactions?filter=all#top"));
     expect(key.url).toBe(ORIGIN + "/transactions");
     expect(worker.hooks.hasSensitiveNavigationParams(new URL(ORIGIN + "/?STATE=abc"))).toBe(true);
+  });
+
+  it("only cache-first handles assets under the real /assets build directory", () => {
+    const worker = createWorker();
+    const request = { method: "GET", headers: new Headers(), destination: "image" };
+    expect(worker.hooks.isBuildAsset(request, new URL(ORIGIN + "/assets/logo-12345678.svg"))).toBe(true);
+    expect(worker.hooks.isBuildAsset(request, new URL(ORIGIN + "/favicon.svg"))).toBe(false);
+    expect(worker.hooks.isBuildAsset(request, new URL("https://cdn.example.com/assets/logo.svg"))).toBe(false);
+  });
+
+  it("returns Response.error for a missing lazy asset without replacing the current document", async () => {
+    const worker = createWorker({ fetch: async () => { throw new Error("offline"); } });
+    const request = {
+      url: ORIGIN + "/assets/lazy-route-12345678.js",
+      method: "GET",
+      headers: new Headers(),
+      mode: "cors",
+      destination: "script",
+    };
+    const { event } = worker.dispatch("fetch", { request });
+    const response = await event.responsePromise;
+    expect(response.type).toBe("error");
+    expect(WORKER_SOURCE).not.toContain("document.body.innerHTML");
+  });
+
+  it("re-warms an asset when the manifest exists but CacheStorage has evicted that file", async () => {
+    const worker = createWorker();
+    const html = '<script type="module" src="/assets/entry-12345678.js"></script>';
+    await worker.hooks.warmShellAssets(html, new URL(ORIGIN + "/"));
+    const assetCache = await worker.cacheStorage.open("pocketvault-assets-v2");
+    await assetCache.delete(ORIGIN + "/assets/entry-12345678.js");
+    const callsBefore = worker.calls.fetch.length;
+    await worker.hooks.warmShellAssets(html, new URL(ORIGIN + "/"));
+    expect(worker.calls.fetch.length).toBeGreaterThan(callsBefore);
+    expect(await assetCache.match(ORIGIN + "/assets/entry-12345678.js")).toBeDefined();
   });
 
   it("caps shell documents at 20 and never evicts the root document", async () => {
@@ -236,6 +272,39 @@ describe("public/sw.js real worker behavior", () => {
       version: "v2",
     });
     expect(WORKER_SOURCE.toLowerCase()).not.toContain("indexeddb");
+  });
+
+  it("serves cached navigation at three seconds without aborting the late network request", async () => {
+    vi.useFakeTimers();
+    try {
+      let releaseNavigation!: (response: Response) => void;
+      const delayed = new Promise<Response>((resolve) => { releaseNavigation = resolve; });
+      const worker = createWorker({
+        fetch: async (input: any) => {
+          const url = typeof input === "string" ? input : input.url;
+          if (url === ORIGIN + "/transactions") return delayed;
+          if (url === ORIGIN + "/") {
+            return new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
+              status: 200, headers: { "Content-Type": "text/html" },
+            });
+          }
+          return new Response("export const ok = true;", { status: 200 });
+        },
+      });
+      const shell = await worker.cacheStorage.open("pocketvault-shell-v2");
+      await shell.put(new Request(ORIGIN + "/"), new Response("cached root"));
+      const { event, waits } = worker.dispatch("fetch", { request: navigation("/transactions") });
+      await vi.advanceTimersByTimeAsync(3000);
+      const fallback = await event.responsePromise;
+      expect(await fallback.text()).toBe("cached root");
+      releaseNavigation(new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
+        status: 200, headers: { "Content-Type": "text/html" },
+      }));
+      await Promise.all(waits);
+      expect(await shell.match(ORIGIN + "/transactions")).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("limits asset warming to four concurrent requests and backs off after failures", async () => {
