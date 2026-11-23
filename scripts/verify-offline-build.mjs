@@ -22,9 +22,7 @@ function getRouteBlock(routeKey, startAt = 0) {
 }
 
 const rootBlock = getRouteBlock("__root__");
-const entryMatch = rootBlock.match(
-  /scripts:\s*\[\{\s*attrs:\s*\{[\s\S]*?src:\s*"([^"]+)"/,
-);
+const entryMatch = rootBlock.match(/scripts:\s*\[\{\s*attrs:\s*\{[\s\S]*?src:\s*"([^"]+)"/);
 const rootEntry = entryMatch?.[1];
 
 if (!rootEntry || !rootEntry.startsWith("/assets/")) {
@@ -37,7 +35,9 @@ const routeEvidence = new Map();
 for (const routeKey of routeKeys) {
   const block = getRouteBlock(routeKey);
   if (/\bscripts\s*:/.test(block)) {
-    throw new Error("Route " + routeKey + " declares a separate script entry instead of inheriting __root__.");
+    throw new Error(
+      "Route " + routeKey + " declares a separate script entry instead of inheriting __root__.",
+    );
   }
   const preloads = [...block.matchAll(/"([^"]+\.js)"/g)].map((match) => match[1]);
   routeEvidence.set(routeKey, preloads);
@@ -49,7 +49,9 @@ for (const [route, preloads] of routeEvidence) {
   }
 }
 
-process.stdout.write("Production route manifest: one inherited root module entry for all checked routes.\n");
+process.stdout.write(
+  "Production route manifest: one inherited root module entry for all checked routes.\n",
+);
 process.stdout.write("__root__ script: " + rootEntry + "\n");
 for (const [route, preloads] of routeEvidence) {
   process.stdout.write(route + " preloads: " + preloads.join(", ") + "\n");
