@@ -16,7 +16,7 @@ function getRouteBlock(routeKey, startAt = 0) {
   const marker = routeKey === "__root__" ? "__root__: {" : '"' + routeKey + '": {';
   const start = manifest.indexOf(marker, startAt);
   if (start < 0) throw new Error("Production route manifest is missing " + routeKey);
-  const end = manifest.indexOf("\n\t},", start);
+  const end = manifest.indexOf("\n\t}", start);
   if (end < 0) throw new Error("Production route manifest block is incomplete for " + routeKey);
   return manifest.slice(start, end);
 }
