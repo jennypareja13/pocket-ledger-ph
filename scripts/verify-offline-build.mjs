@@ -22,7 +22,9 @@ function getRouteBlock(routeKey, startAt = 0) {
 }
 
 const rootBlock = getRouteBlock("__root__");
-const entryMatch = rootBlock.match(/scripts:\s*\[\{\s*attrs:\s*\{[\s\S]*?src:\s*"([^"]+)"/);
+const entryMatch = rootBlock.match(
+  /scripts:\s*\[\{\s*attrs:\s*\{[\s\S]*?src:\s*"([^"]+)"/,
+);
 const rootEntry = entryMatch?.[1];
 
 if (!rootEntry || !rootEntry.startsWith("/assets/")) {
@@ -41,13 +43,10 @@ for (const routeKey of routeKeys) {
   routeEvidence.set(routeKey, preloads);
 }
 
-const home = routeEvidence.get("_shell/");
-const bnpl = routeEvidence.get("_shell/bnpl");
-const auth = routeEvidence.get("auth");
-const transactions = routeEvidence.get("_shell/transactions");
-
-if (!home?.length || !bnpl?.length || !auth?.length || !transactions?.length) {
-  throw new Error("One or more production route entries did not expose their code-split preloads.");
+for (const [route, preloads] of routeEvidence) {
+  if (preloads.length === 0) {
+    throw new Error("Production route " + route + " did not expose its code-split preloads.");
+  }
 }
 
 process.stdout.write("Production route manifest: one inherited root module entry for all checked routes.\n");
