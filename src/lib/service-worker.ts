@@ -50,10 +50,20 @@ async function unregisterPocketVaultWorker(): Promise<void> {
     .map((registration) => registration.unregister()));
 }
 
+export function getOfflineQueryAction(search: string): "enable" | "disable" | null {
+  const value = new URLSearchParams(search).get("offline");
+  if (value !== "1" && value !== "0") return null;
+  return action;
+}
+
+export function isOfflineOptedIn(value: string | null): boolean {
+  return value === "true";
+}
+
 function consumeOfflineQuery(): "enable" | "disable" | null {
   const url = new URL(window.location.href);
-  const value = url.searchParams.get("offline");
-  if (value !== "1" && value !== "0") return null;
+  const action = getOfflineQueryAction(url.search);
+  if (!action) return null;
   url.searchParams.delete("offline");
   window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
   return value === "1" ? "enable" : "disable";
@@ -73,7 +83,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     return null;
   }
 
-  const optedIn = window.localStorage.getItem(OPT_IN_KEY) === "true";
+  const optedIn = isOfflineOptedIn(window.localStorage.getItem(OPT_IN_KEY));
   const disabledVersion = window.localStorage.getItem(DISABLED_VERSION_KEY);
   if (disabledVersion && disabledVersion !== SERVICE_WORKER_VERSION) {
     window.localStorage.removeItem(DISABLED_VERSION_KEY);
