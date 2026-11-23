@@ -46,7 +46,6 @@ function createWorker(options: {
 
   const defaultFetch = async (input: any) => {
     const url = typeof input === "string" ? input : input.url;
-    calls.fetch.push(url);
     if (url === ORIGIN + "/" || url === ORIGIN + "/transactions") {
       return new Response(
         '<!doctype html><script type="module" src="/assets/index-12345678.js"></script>',
@@ -85,7 +84,11 @@ function createWorker(options: {
     Headers,
     URL,
     AbortController,
-    fetch: options.fetch || defaultFetch,
+    fetch: async (input: any) => {
+      const url = typeof input === "string" ? input : input.url;
+      calls.fetch.push(url);
+      return (options.fetch || defaultFetch)(input);
+    },
     setTimeout,
     clearTimeout,
     Date,
