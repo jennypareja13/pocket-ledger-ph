@@ -5,7 +5,6 @@ const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 export function ServiceWorkerUpdatePrompt() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
-  const [updateWaiting, setUpdateWaiting] = useState(false);
   const [shellUpdate, setShellUpdate] = useState(false);
   const [warmWarning, setWarmWarning] = useState(false);
   const activationRequested = useRef(false);
@@ -46,16 +45,6 @@ export function ServiceWorkerUpdatePrompt() {
       }
     };
 
-    const onUpdateFound = () => {
-      const installing = currentRegistration?.installing;
-      if (!installing) return;
-      installing.addEventListener("statechange", () => {
-        if (mounted && installing.state === "installed" && navigator.serviceWorker.controller) {
-          setUpdateWaiting(true);
-        }
-      });
-    };
-
     document.addEventListener("visibilitychange", onVisibilityChange);
     navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
     navigator.serviceWorker?.addEventListener("message", onWorkerMessage);
@@ -64,9 +53,6 @@ export function ServiceWorkerUpdatePrompt() {
       if (!mounted || !nextRegistration) return;
       currentRegistration = nextRegistration;
       setRegistration(nextRegistration);
-      setUpdateWaiting(Boolean(nextRegistration.waiting));
-      nextRegistration.addEventListener("updatefound", onUpdateFound);
-      onUpdateFound();
       void nextRegistration.update().catch(() => {
         // A failed background check must not prevent normal app use.
       });
@@ -81,11 +67,10 @@ export function ServiceWorkerUpdatePrompt() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
       navigator.serviceWorker?.removeEventListener("message", onWorkerMessage);
-      currentRegistration?.removeEventListener("updatefound", onUpdateFound);
     };
   }, []);
 
-  if (!updateWaiting && !shellUpdate && !warmWarning) return null;
+  if (!shellUpdate && !warmWarning) return null;
 
   return (
     <div
