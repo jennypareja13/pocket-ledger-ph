@@ -32,6 +32,17 @@ jobs:
       - name: Run tests
         run: bun run test
 
+      - name: Format PR G files for review
+        run: |
+          files="public/sw.js src/lib/service-worker.ts src/components/app/ServiceWorkerUpdatePrompt.tsx src/test/service-worker-runtime.test.ts src/test/service-worker-registration.test.ts scripts/verify-offline-build.mjs"
+          bunx prettier --write $files
+          for file in $files; do
+            echo "PRG_FORMAT_BEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "PRG_FORMAT_END:$file"
+          done
+
       - name: Run lint
         run: bun run lint
 
