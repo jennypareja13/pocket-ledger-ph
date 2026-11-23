@@ -5,9 +5,11 @@ const CACHE_PREFIX = "pocketvault-";
 
 function isPreviewHostname(hostname: string): boolean {
   const normalized = hostname.toLowerCase().replace(/\.$/, "");
-  return normalized.startsWith("id-preview--") ||
+  return (
+    normalized.startsWith("id-preview--") ||
     normalized.endsWith(".lovableproject.com") ||
-    normalized.endsWith(".lovable.dev");
+    normalized.endsWith(".lovable.dev")
+  );
 }
 
 export function shouldRegisterServiceWorker(input: {
@@ -17,12 +19,19 @@ export function shouldRegisterServiceWorker(input: {
   hostname: string;
   optedIn: boolean;
 }): boolean {
-  return input.production && input.topLevel && input.secureContext &&
-    input.optedIn && !isPreviewHostname(input.hostname);
+  return (
+    input.production &&
+    input.topLevel &&
+    input.secureContext &&
+    input.optedIn &&
+    !isPreviewHostname(input.hostname)
+  );
 }
 
 export function getBootFingerprint(html: string, origin: string): string | null {
-  const match = html.match(/<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']([^"']+)["'])[^>]*>/i);
+  const match = html.match(
+    /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']([^"']+)["'])[^>]*>/i,
+  );
   if (!match?.[1]) return null;
   try {
     const url = new URL(match[1], origin);
@@ -32,22 +41,39 @@ export function getBootFingerprint(html: string, origin: string): string | null 
   }
 }
 
-export function hasRunningAppUpdate(runningFingerprint: string | null, latestFingerprint: string | null): boolean {
-  return Boolean(runningFingerprint && latestFingerprint && runningFingerprint !== latestFingerprint);
+export function hasRunningAppUpdate(
+  runningFingerprint: string | null,
+  latestFingerprint: string | null,
+): boolean {
+  return Boolean(
+    runningFingerprint && latestFingerprint && runningFingerprint !== latestFingerprint,
+  );
 }
 
 async function clearPocketVaultCaches(): Promise<void> {
   if (!("caches" in window)) return;
   const names = await window.caches.keys();
-  await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => window.caches.delete(name)));
+  await Promise.all(
+    names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => window.caches.delete(name)),
+  );
 }
 
 async function unregisterPocketVaultWorker(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
   const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(registrations
-    .filter((registration) => new URL(registration.active?.scriptURL || registration.waiting?.scriptURL || registration.installing?.scriptURL || window.location.href).pathname === "/sw.js")
-    .map((registration) => registration.unregister()));
+  await Promise.all(
+    registrations
+      .filter(
+        (registration) =>
+          new URL(
+            registration.active?.scriptURL ||
+              registration.waiting?.scriptURL ||
+              registration.installing?.scriptURL ||
+              window.location.href,
+          ).pathname === "/sw.js",
+      )
+      .map((registration) => registration.unregister()),
+  );
 }
 
 export function getOfflineQueryAction(search: string): "enable" | "disable" | null {
@@ -116,13 +142,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     topLevel = false;
   }
 
-  if (!shouldRegisterServiceWorker({
-    production: import.meta.env.PROD,
-    topLevel,
-    secureContext: window.isSecureContext,
-    hostname: window.location.hostname,
-    optedIn,
-  })) return null;
+  if (
+    !shouldRegisterServiceWorker({
+      production: import.meta.env.PROD,
+      topLevel,
+      secureContext: window.isSecureContext,
+      hostname: window.location.hostname,
+      optedIn,
+    })
+  )
+    return null;
 
   try {
     return await navigator.serviceWorker.register("/sw.js", {
@@ -140,7 +169,10 @@ export async function checkForRunningAppUpdate(runningFingerprint: string): Prom
     const response = await fetch("/", { cache: "no-store", credentials: "same-origin" });
     if (!response.ok) return false;
     const html = await response.text();
-    return hasRunningAppUpdate(runningFingerprint, getBootFingerprint(html, window.location.origin));
+    return hasRunningAppUpdate(
+      runningFingerprint,
+      getBootFingerprint(html, window.location.origin),
+    );
   } catch {
     return false;
   }
