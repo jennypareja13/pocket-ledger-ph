@@ -1,17 +1,29 @@
-/* global self, caches, Response, Request, fetch, AbortController, URL, setTimeout, clearTimeout */
-const CACHE_VERSION = "v1";
-const SHELL_CACHE = `pocketvault-shell-${CACHE_VERSION}`;
-const ASSET_CACHE = `pocketvault-assets-${CACHE_VERSION}`;
-const META_CACHE = `pocketvault-meta-${CACHE_VERSION}`;
+/* global self, caches, Response, Request, fetch, AbortController, URL, setTimeout, clearTimeout, Date, Promise, Set, Map, Array */
+const CACHE_VERSION = "v2";
+const SHELL_CACHE = "pocketvault-shell-" + CACHE_VERSION;
+const ASSET_CACHE = "pocketvault-assets-" + CACHE_VERSION;
+const META_CACHE = "pocketvault-meta-" + CACHE_VERSION;
 const CACHE_PREFIX = "pocketvault-";
-const MAX_CACHE_ENTRIES = 120;
+const MAX_ASSET_ENTRIES = 120;
+const MAX_SHELL_ENTRIES = 20;
 const NAVIGATION_TIMEOUT_MS = 3000;
+const ASSET_TIMEOUT_MS = 30000;
+const WARM_BACKOFF_MS = 10 * 60 * 1000;
+const MAX_CONCURRENT_ASSETS = 4;
 const MANIFEST_URL = "/__pocketvault_current_assets__";
+const SENSITIVE_QUERY_PARAMS = new Set([
+  "code",
+  "access_token",
+  "refresh_token",
+  "error",
+  "error_description",
+  "state",
+]);
 
 /*
- * Emergency kill switch. Set true, publish, then let the new worker activate.
- * Activation unregisters this worker and deletes only caches with CACHE_PREFIX.
- * It never accesses IndexedDB or ledger records.
+ * Emergency kill switch. Set true and publish. Install calls skipWaiting()
+ * immediately; activation unregisters this worker and deletes only PocketVault
+ * CacheStorage entries. It never accesses IndexedDB or ledger records.
  */
 const KILL_SWITCH = false;
 
@@ -37,6 +49,17 @@ function isCacheableRequest(request, url) {
   return true;
 }
 
+function hasSensitiveNavigationParams(url) {
+  for (const key of url.searchParams.keys()) {
+    if (SENSITIVE_QUERY_PARAMS.has(key.toLowerCase())) return true;
+  }
+  return false;
+}
+
+function navigationCacheKey(url) {
+  return new Request(url.origin + url.pathname, { method: "GET" });
+}
+
 function isCacheableResponse(response) {
   return response.status === 200 && response.type !== "opaque";
 }
@@ -45,34 +68,28 @@ function isHtmlResponse(response) {
   return (response.headers.get("content-type") || "").toLowerCase().includes("text/html");
 }
 
-function isStaticAsset(request) {
-  return ["script", "style", "font", "image", "manifest"].includes(request.destination);
-}
-
-function isHashedAsset(url) {
-  return /(?:^|[.-])[a-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif)$/i.test(
-    url.pathname,
+function isBuildAsset(request, url) {
+  return (
+    url.origin === self.location.origin &&
+    url.pathname.startsWith("/assets/") &&
+    ["script", "style", "font", "image"].includes(request.destination)
   );
 }
 
-async function fetchWithTimeout(request) {
+function fetchAssetWithTimeout(request) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
-  try {
-    return await fetch(request, { signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
+  const timeout = setTimeout(() => controller.abort(), ASSET_TIMEOUT_MS);
+  return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timeout));
 }
 
 async function readCurrentManifest() {
   const cache = await caches.open(META_CACHE);
   const response = await cache.match(MANIFEST_URL);
-  if (!response) return { fingerprint: null, assets: [] };
+  if (!response) return { fingerprint: null, assets: [], lastAttempt: 0, warmFailed: false };
   try {
     return await response.json();
   } catch {
-    return { fingerprint: null, assets: [] };
+    return { fingerprint: null, assets: [], lastAttempt: 0, warmFailed: false };
   }
 }
 
@@ -94,9 +111,11 @@ function discoverShellAssets(html, baseUrl) {
     if (!value || !/\.(?:m?js|css)(?:[?#].*)?$/i.test(value)) continue;
     try {
       const url = new URL(value, baseUrl);
-      if (url.origin === self.location.origin) assets.add(url.href);
+      if (url.origin === self.location.origin && url.pathname.startsWith("/assets/")) {
+        assets.add(url.href);
+      }
     } catch {
-      // Ignore malformed HTML references; keep valid candidates.
+      // Ignore malformed references; valid local build assets remain eligible.
     }
   }
   return [...assets].sort();
@@ -108,11 +127,15 @@ async function discoverDependencies(assetUrl, source) {
   const addReference = (value) => {
     try {
       const url = new URL(value, assetUrl);
-      if (url.origin === self.location.origin && !url.href.startsWith("data:")) {
+      if (
+        url.origin === self.location.origin &&
+        url.pathname.startsWith("/assets/") &&
+        !url.href.startsWith("data:")
+      ) {
         dependencies.add(url.href);
       }
     } catch {
-      throw new Error("A local asset reference could not be resolved.");
+      throw new Error("A local build-asset reference could not be resolved.");
     }
   };
 
@@ -149,142 +172,217 @@ async function discoverDependencies(assetUrl, source) {
 async function trimAssetCache(protectedAssets) {
   const cache = await caches.open(ASSET_CACHE);
   const keys = await cache.keys();
-  const urls = keys.map((request) => request.url);
+  let remaining = keys.length;
   const evictions = [];
-  let remaining = urls.length;
-
-  for (let index = 0; index < urls.length && remaining > MAX_CACHE_ENTRIES; index += 1) {
-    if (protectedAssets.has(urls[index])) continue;
-    evictions.push(keys[index]);
+  for (const request of keys) {
+    if (remaining <= MAX_ASSET_ENTRIES) break;
+    if (protectedAssets.has(request.url)) continue;
+    evictions.push(request);
     remaining -= 1;
   }
-
   await Promise.all(evictions.map((request) => cache.delete(request)));
 }
 
-async function warmShellAssets(html, baseUrl, notifyClients) {
-  const roots = discoverShellAssets(html, baseUrl);
+async function trimShellCache() {
+  const cache = await caches.open(SHELL_CACHE);
+  const keys = await cache.keys();
+  let remaining = keys.length;
+  const evictions = [];
+  for (const request of keys) {
+    if (remaining <= MAX_SHELL_ENTRIES) break;
+    if (new URL(request.url).pathname === "/") continue;
+    evictions.push(request);
+    remaining -= 1;
+  }
+  await Promise.all(evictions.map((request) => cache.delete(request)));
+}
+
+async function saveShellDocument(url, response) {
+  if (hasSensitiveNavigationParams(url)) return;
+  const cache = await caches.open(SHELL_CACHE);
+  const key = navigationCacheKey(url);
+  await cache.delete(key);
+  await cache.put(key, response.clone());
+  await trimShellCache();
+}
+
+async function warmShellAssets(html, rootUrl) {
+  const roots = discoverShellAssets(html, rootUrl);
+  if (roots.length === 0) throw new Error("The root document did not expose build assets.");
+
   const fingerprint = roots.join("\n");
   const previous = await readCurrentManifest();
-  if (previous.fingerprint === fingerprint && previous.assets?.length) {
-    if (previous.updatePending) {
-      await writeCurrentManifest({ ...previous, updatePending: false });
+  const assetCache = await caches.open(ASSET_CACHE);
+
+  if (previous.fingerprint === fingerprint && Array.isArray(previous.assets) && previous.assets.length) {
+    const missing = [];
+    for (const asset of previous.assets) {
+      if (!(await assetCache.match(asset))) missing.push(asset);
     }
-    return { success: true, assets: previous.assets, fingerprint, changed: false };
+    if (missing.length === 0) return { success: true, assets: previous.assets, fingerprint };
   }
 
-  const pending = [...roots];
+  const now = Date.now();
+  if (previous.warmFailed && previous.lastAttempt && now - previous.lastAttempt < WARM_BACKOFF_MS) {
+    throw new Error("Asset warming is in backoff after a previous failure.");
+  }
+  await writeCurrentManifest({ ...previous, lastAttempt: now });
+
+  const queue = [...roots];
   const visited = new Set();
-  const failed = [];
   const protectedAssets = new Set();
+  const failed = [];
 
-  while (pending.length > 0 && visited.size < MAX_CACHE_ENTRIES) {
-    const href = pending.shift();
-    if (!href || visited.has(href)) continue;
-    visited.add(href);
+  while (queue.length > 0 && visited.size < MAX_ASSET_ENTRIES) {
+    const batch = [];
+    while (queue.length > 0 && batch.length < MAX_CONCURRENT_ASSETS && visited.size + batch.length < MAX_ASSET_ENTRIES) {
+      const href = queue.shift();
+      if (href && !visited.has(href)) {
+        visited.add(href);
+        batch.push(href);
+      }
+    }
 
-    try {
-      const request = new Request(href);
-      const url = new URL(href);
-      if (!isCacheableRequest(request, url)) continue;
+    const results = await Promise.all(
+      batch.map(async (href) => {
+        try {
+          const url = new URL(href);
+          if (url.origin !== self.location.origin || !url.pathname.startsWith("/assets/")) {
+            return { href, dependencies: [], success: true };
+          }
 
-      const response = await fetchWithTimeout(request);
-      if (!isCacheableResponse(response)) {
-        failed.push(href);
+          const request = new Request(href);
+          let response = await assetCache.match(request);
+          if (!response) {
+            response = await fetchAssetWithTimeout(request);
+            if (!isCacheableResponse(response)) throw new Error("Build asset response was not cacheable.");
+            await assetCache.put(request, response.clone());
+          }
+
+          const source = await response.clone().text();
+          const dependencies = await discoverDependencies(href, source);
+          return { href, dependencies, success: true };
+        } catch {
+          return { href, dependencies: [], success: false };
+        }
+      }),
+    );
+
+    for (const result of results) {
+      if (!result.success) {
+        failed.push(result.href);
         continue;
       }
-
-      const cache = await caches.open(ASSET_CACHE);
-      await cache.put(request, response.clone());
-      protectedAssets.add(href);
-
-      const source = await response.clone().text();
-      for (const dependency of await discoverDependencies(href, source)) {
-        if (!visited.has(dependency)) pending.push(dependency);
+      protectedAssets.add(result.href);
+      for (const dependency of result.dependencies) {
+        if (!visited.has(dependency)) queue.push(dependency);
       }
-    } catch {
-      failed.push(href);
-      // Parse or fetch failures are contained; the previous manifest stays active.
     }
   }
 
-  if (pending.length > 0) failed.push(...pending);
+  if (queue.length > 0) failed.push(...queue);
   if (failed.length > 0) {
-    await writeCurrentManifest({ ...previous, warmFailed: true });
+    await writeCurrentManifest({ ...previous, lastAttempt: now, warmFailed: true });
     await trimAssetCache(new Set(previous.assets || []));
     await notifyClients({
       type: "SHELL_ASSET_WARM_FAILED",
-      message:
-        "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
+      message: "Some app files could not be saved. Keep PocketVault online and retry before going offline.",
     });
-    return {
-      success: false,
-      assets: [...protectedAssets],
-      fingerprint,
-      changed: false,
-    };
+    throw new Error("One or more build assets could not be warmed.");
   }
 
-  const updatePending = Boolean(previous.fingerprint && previous.fingerprint !== fingerprint);
   await writeCurrentManifest({
     fingerprint,
     assets: [...protectedAssets],
-    updatePending,
+    lastAttempt: now,
     warmFailed: false,
   });
   await trimAssetCache(protectedAssets);
-  return { success: true, assets: [...protectedAssets], fingerprint, changed: updatePending };
+  return { success: true, assets: [...protectedAssets], fingerprint };
 }
+
 async function notifyClients(message) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   for (const client of clients) client.postMessage(message);
 }
 
-async function saveNavigationDocument(request, response) {
-  const cache = await caches.open(SHELL_CACHE);
-  await cache.put(request, response.clone());
+async function warmFromRootDocument(rootResponse) {
+  const html = await rootResponse.clone().text();
+  const result = await warmShellAssets(html, new URL(self.location.origin + "/"));
+  return result;
 }
 
-async function networkFirstNavigation(request) {
-  const shellCache = await caches.open(SHELL_CACHE);
+async function fetchRootDocument() {
+  const rootRequest = new Request(self.location.origin + "/", { cache: "no-store" });
+  const response = await fetch(rootRequest);
+  if (!isCacheableResponse(response) || !isHtmlResponse(response)) {
+    throw new Error("The root document could not be refreshed.");
+  }
+  return response;
+}
+
+async function warmFromNavigation(request, response) {
   try {
-    const response = await fetchWithTimeout(request);
-    if (isCacheableResponse(response) && isHtmlResponse(response)) {
-      const html = await response.clone().text();
-      const result = await warmShellAssets(html, new URL(request.url), notifyClients);
-      if (result.success) {
-        await shellCache.put(request, response.clone());
-        if (result.changed) await notifyClients({ type: "SHELL_UPDATED" });
-      }
-    }
-    return response;
+    const path = new URL(request.url).pathname;
+    const rootResponse = path === "/" ? response.clone() : await fetchRootDocument();
+    await warmFromRootDocument(rootResponse);
+    await saveShellDocument(new URL(request.url), response);
+    if (path === "/") await saveShellDocument(new URL(self.location.origin + "/"), rootResponse);
   } catch {
-    const exactPage = await shellCache.match(request);
-    const rootPage = await shellCache.match(new URL("/", self.location.origin).href);
-    return exactPage || rootPage || offlineFallbackResponse();
+    await notifyClients({
+      type: "SHELL_ASSET_WARM_FAILED",
+      message: "Some app files could not be saved. Keep PocketVault online and reopen it before going offline.",
+    });
   }
-}
-function missingAssetResponse(request) {
-  if (request.destination === "script") {
-    return new Response(
-      'document.body.innerHTML = \'<main style="font:16px system-ui,sans-serif;padding:2rem;max-width:36rem;margin:auto"><h1>You are offline</h1><p>Your saved records are safe on this device. PocketVault will sync them when you are back online.</p><p>This app file is not available offline yet. Reconnect and retry.</p><button onclick="location.reload()">Retry</button></main>\';',
-      { status: 200, headers: { "Content-Type": "text/javascript; charset=utf-8" } },
-    );
-  }
-  if (request.destination === "style") {
-    return new Response(
-      "body::before{content:'PocketVault is offline. Your saved records remain safe on this device and will sync when you are back online.';display:block;padding:1rem;font:16px system-ui,sans-serif}",
-      { status: 200, headers: { "Content-Type": "text/css; charset=utf-8" } },
-    );
-  }
-  return Response.error();
 }
 
-async function cacheFirstHashedAsset(request) {
+async function getNavigationFallback(url) {
+  const cache = await caches.open(SHELL_CACHE);
+  const exact = await cache.match(navigationCacheKey(url));
+  if (exact) return exact;
+  const root = await cache.match(new Request(self.location.origin + "/", { method: "GET" }));
+  return root || offlineFallbackResponse();
+}
+
+async function networkFirstNavigation(request, event) {
+  const url = new URL(request.url);
+  if (hasSensitiveNavigationParams(url)) return fetch(request);
+
+  const networkPromise = fetch(request).then(
+    (response) => response,
+    () => null,
+  );
+
+  let timeoutId;
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutId = setTimeout(() => resolve(null), NAVIGATION_TIMEOUT_MS);
+  });
+
+  const firstResponse = await Promise.race([networkPromise, timeoutPromise]);
+  clearTimeout(timeoutId);
+
+  if (firstResponse) {
+    if (isCacheableResponse(firstResponse) && isHtmlResponse(firstResponse)) {
+      event.waitUntil(warmFromNavigation(request, firstResponse.clone()));
+    }
+    return firstResponse;
+  }
+
+  event.waitUntil(
+    networkPromise.then((lateResponse) => {
+      if (lateResponse && isCacheableResponse(lateResponse) && isHtmlResponse(lateResponse)) {
+        return warmFromNavigation(request, lateResponse.clone());
+      }
+      return undefined;
+    }),
+  );
+  return getNavigationFallback(url);
+}
+
+async function cacheFirstBuildAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
-
   try {
     const response = await fetch(request);
     if (isCacheableResponse(response)) {
@@ -294,7 +392,7 @@ async function cacheFirstHashedAsset(request) {
     }
     return response;
   } catch {
-    return missingAssetResponse(request);
+    return Response.error();
   }
 }
 
@@ -302,35 +400,27 @@ async function deletePocketVaultCachesExceptCurrent() {
   const names = await caches.keys();
   await Promise.all(
     names
-      .filter(
-        (name) =>
-          name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name),
-      )
+      .filter((name) => name.startsWith(CACHE_PREFIX) && ![SHELL_CACHE, ASSET_CACHE, META_CACHE].includes(name))
       .map((name) => caches.delete(name)),
   );
 }
 
 async function clearPocketVaultCaches() {
   const names = await caches.keys();
-  await Promise.all(
-    names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)),
-  );
+  await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX)).map((name) => caches.delete(name)));
 }
 
 self.addEventListener("install", (event) => {
+  if (KILL_SWITCH) self.skipWaiting();
   event.waitUntil(
     (async () => {
       if (KILL_SWITCH) return;
-      const root = new Request(new URL("/", self.location.origin), { cache: "reload" });
       try {
-        const response = await fetchWithTimeout(root);
-        if (isCacheableResponse(response) && isHtmlResponse(response)) {
-          const html = await response.clone().text();
-          const result = await warmShellAssets(html, new URL(root.url), notifyClients);
-          if (result.success) await saveNavigationDocument(root, response);
-        }
+        const root = await fetchRootDocument();
+        await warmFromRootDocument(root);
+        await saveShellDocument(new URL(self.location.origin + "/"), root);
       } catch {
-        // Install remains non-fatal; runtime navigation will retry warming.
+        // Installation remains non-fatal; online navigation can retry after backoff.
       }
     })(),
   );
@@ -342,7 +432,7 @@ self.addEventListener("activate", (event) => {
       if (KILL_SWITCH) {
         await self.registration.unregister();
         await clearPocketVaultCaches();
-        await notifyClients({ type: "POCKETVAULT_SW_DISABLED" });
+        await notifyClients({ type: "POCKETVAULT_SW_DISABLED", version: CACHE_VERSION });
         await self.clients.claim();
         return;
       }
@@ -353,33 +443,17 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
-  if (event.data?.type === "CHECK_SHELL_UPDATE") {
-    event.waitUntil(
-      readCurrentManifest().then((manifest) => {
-        if (manifest.updatePending) {
-          event.source?.postMessage({ type: "SHELL_UPDATED" });
-        }
-        if (manifest.warmFailed) {
-          event.source?.postMessage({ type: "SHELL_ASSET_WARM_FAILED" });
-        }
-      }),
-    );
-  }
+  if (event.data?.type === "SKIP_WAITING" && !KILL_SWITCH) self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
-  if (KILL_SWITCH) return;
   const request = event.request;
   const url = new URL(request.url);
-  if (!isCacheableRequest(request, url)) return;
-
+  if (KILL_SWITCH || !isCacheableRequest(request, url)) return;
   if (request.mode === "navigate") {
-    event.respondWith(networkFirstNavigation(request));
+    if (hasSensitiveNavigationParams(url)) return;
+    event.respondWith(networkFirstNavigation(request, event));
     return;
   }
-
-  if (isStaticAsset(request) && isHashedAsset(url)) {
-    event.respondWith(cacheFirstHashedAsset(request));
-  }
+  if (isBuildAsset(request, url)) event.respondWith(cacheFirstBuildAsset(request));
 });
