@@ -6,6 +6,8 @@ import {
   getOfflineQueryAction,
   hasRunningAppUpdate,
   isOfflineOptedIn,
+  isDisabledForWorkerVersion,
+  persistOfflineOptIn,
   shouldRegisterServiceWorker,
   SERVICE_WORKER_VERSION,
 } from "@/lib/service-worker";
@@ -31,6 +33,22 @@ describe("PocketVault offline opt-in and update fingerprint", () => {
     expect(shouldRegisterServiceWorker({
       ...base, optedIn: true, hostname: "id-preview--abc.lovable.app",
     })).toBe(false);
+  });
+
+  it("persists opt-in, clears opt-out, and allows a newer worker version to re-enable offline support", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+    persistOfflineOptIn("enable", storage);
+    expect(values.get("pocketvault-offline-opt-in")).toBe("true");
+    values.set("pocketvault-service-worker-disabled-version", "v2");
+    expect(isDisabledForWorkerVersion("v2", "v2")).toBe(true);
+    expect(isDisabledForWorkerVersion("v2", "v3")).toBe(false);
+    persistOfflineOptIn("disable", storage);
+    expect(values.has("pocketvault-offline-opt-in")).toBe(false);
+    expect(values.has("pocketvault-service-worker-disabled-version")).toBe(false);
   });
 
   it("recognizes only offline=1 and offline=0 and leaves other query strings alone", () => {
