@@ -366,7 +366,7 @@ describe("public/sw.js real worker behavior", () => {
         releaseNavigation = resolve;
       });
       const worker = createWorker({
-        fetch: async (input: any) => {
+        fetch: async (input: FetchInput) => {
           const url = typeof input === "string" ? input : input.url;
           if (url === ORIGIN + "/transactions") return delayed;
           if (url === ORIGIN + "/") {
@@ -402,7 +402,7 @@ describe("public/sw.js real worker behavior", () => {
     let maximum = 0;
     let calls = 0;
     const worker = createWorker({
-      fetch: async (input: any) => {
+      fetch: async (input: FetchInput) => {
         const url = typeof input === "string" ? input : input.url;
         calls += 1;
         if (url.startsWith(ORIGIN + "/assets/")) {
@@ -424,7 +424,7 @@ describe("public/sw.js real worker behavior", () => {
     expect(maximum).toBeGreaterThan(1);
 
     const failing = createWorker({
-      fetch: async (input: any) => {
+      fetch: async (input: FetchInput) => {
         const url = typeof input === "string" ? input : input.url;
         if (url.startsWith(ORIGIN + "/assets/")) return new Response("bad", { status: 500 });
         return new Response("unused", { status: 200 });
