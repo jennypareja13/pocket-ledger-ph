@@ -348,9 +348,14 @@ async function networkFirstNavigation(request, event) {
   const url = new URL(request.url);
   if (hasSensitiveNavigationParams(url)) return fetch(request);
 
-  const networkPromise = fetch(request).then(
-    (response) => response,
-    () => null,
+  const networkPromise = fetch(request).catch(() => null);
+  event.waitUntil(
+    networkPromise.then((response) => {
+      if (response && isCacheableResponse(response) && isHtmlResponse(response)) {
+        return warmFromNavigation(request, response.clone());
+      }
+      return undefined;
+    }),
   );
 
   let timeoutId;
@@ -361,21 +366,7 @@ async function networkFirstNavigation(request, event) {
   const firstResponse = await Promise.race([networkPromise, timeoutPromise]);
   clearTimeout(timeoutId);
 
-  if (firstResponse) {
-    if (isCacheableResponse(firstResponse) && isHtmlResponse(firstResponse)) {
-      event.waitUntil(warmFromNavigation(request, firstResponse.clone()));
-    }
-    return firstResponse;
-  }
-
-  event.waitUntil(
-    networkPromise.then((lateResponse) => {
-      if (lateResponse && isCacheableResponse(lateResponse) && isHtmlResponse(lateResponse)) {
-        return warmFromNavigation(request, lateResponse.clone());
-      }
-      return undefined;
-    }),
-  );
+  if (firstResponse) return firstResponse;
   return getNavigationFallback(url);
 }
 
