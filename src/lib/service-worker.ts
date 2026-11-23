@@ -122,6 +122,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if (queryAction === "disable") {
     await unregisterPocketVaultWorker();
     await clearPocketVaultCaches();
+    window.location.reload();
     return null;
   }
 
