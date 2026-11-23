@@ -19,7 +19,7 @@ export function ServiceWorkerUpdatePrompt() {
       if (!runningFingerprint || document.visibilityState !== "visible") return;
       if (!force && Date.now() - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
       lastUpdateCheck = Date.now();
-      if (await checkForRunningAppUpdate(runningFingerprint) && mounted) setShellUpdate(true);
+      if ((await checkForRunningAppUpdate(runningFingerprint)) && mounted) setShellUpdate(true);
     };
 
     const onVisibilityChange = () => {
