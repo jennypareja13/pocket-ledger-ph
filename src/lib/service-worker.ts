@@ -60,6 +60,25 @@ export function isOfflineOptedIn(value: string | null): boolean {
   return value === "true";
 }
 
+export function persistOfflineOptIn(
+  action: "enable" | "disable",
+  storage: Pick<Storage, "setItem" | "removeItem">,
+): void {
+  if (action === "enable") {
+    storage.setItem(OPT_IN_KEY, "true");
+  } else {
+    storage.removeItem(OPT_IN_KEY);
+    storage.removeItem(DISABLED_VERSION_KEY);
+  }
+}
+
+export function isDisabledForWorkerVersion(
+  disabledVersion: string | null,
+  currentVersion: string,
+): boolean {
+  return disabledVersion === currentVersion;
+}
+
 function consumeOfflineQuery(): "enable" | "disable" | null {
   const url = new URL(window.location.href);
   const action = getOfflineQueryAction(url.search);
@@ -73,11 +92,8 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if (typeof window === "undefined" || typeof navigator === "undefined") return null;
 
   const queryAction = consumeOfflineQuery();
-  if (queryAction === "enable") {
-    window.localStorage.setItem(OPT_IN_KEY, "true");
-  } else if (queryAction === "disable") {
-    window.localStorage.removeItem(OPT_IN_KEY);
-    window.localStorage.removeItem(DISABLED_VERSION_KEY);
+  if (queryAction) persistOfflineOptIn(queryAction, window.localStorage);
+  if (queryAction === "disable") {
     await unregisterPocketVaultWorker();
     await clearPocketVaultCaches();
     return null;
@@ -87,7 +103,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   const disabledVersion = window.localStorage.getItem(DISABLED_VERSION_KEY);
   if (disabledVersion && disabledVersion !== SERVICE_WORKER_VERSION) {
     window.localStorage.removeItem(DISABLED_VERSION_KEY);
-  } else if (disabledVersion === SERVICE_WORKER_VERSION) {
+  } else if (isDisabledForWorkerVersion(disabledVersion, SERVICE_WORKER_VERSION)) {
     return null;
   }
 
