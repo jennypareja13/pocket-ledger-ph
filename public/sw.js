@@ -323,6 +323,14 @@ async function fetchRootDocument() {
 
 async function warmFromNavigation(request, response) {
   try {
+    const previous = await readCurrentManifest();
+    if (
+      previous.warmFailed &&
+      previous.lastAttempt &&
+      Date.now() - previous.lastAttempt < WARM_BACKOFF_MS
+    ) {
+      return;
+    }
     const path = new URL(request.url).pathname;
     const rootResponse = path === "/" ? response.clone() : await fetchRootDocument();
     await warmFromRootDocument(rootResponse);
