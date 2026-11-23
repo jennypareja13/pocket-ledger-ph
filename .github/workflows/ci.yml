@@ -52,5 +52,15 @@ jobs:
       - name: Build production app
         run: bun run build
 
+      - name: Inspect production route manifest
+        run: |
+          find .output node_modules/.nitro/vite/services/ssr/assets -type f -iname '*manifest*' -print
+          for file in $(find .output node_modules/.nitro/vite/services/ssr/assets -type f -iname '*manifest*'); do
+            echo "PRG_MANIFEST_BEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "PRG_MANIFEST_END:$file"
+          done
+
       - name: Verify production route entry fingerprints
         run: node scripts/verify-offline-build.mjs
