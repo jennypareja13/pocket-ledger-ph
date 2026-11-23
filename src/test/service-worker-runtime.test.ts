@@ -6,14 +6,38 @@ import { describe, expect, it, vi } from "vitest";
 const ORIGIN = "https://pocket-vault-bnpl.lovable.app";
 const WORKER_SOURCE = readFileSync(resolve(process.cwd(), "public/sw.js"), "utf8");
 
+type WorkerRequest = {
+  url: string;
+  method: string;
+  headers: Headers;
+  mode: string;
+  destination: string;
+};
+type FetchInput = Request | Pick<WorkerRequest, "url"> | string;
+type WorkerEvent = {
+  request?: WorkerRequest;
+  waitUntil?: (promise: Promise<unknown>) => void;
+  respondWith?: (promise: Promise<Response>) => void;
+  responsePromise?: Promise<Response>;
+};
+type WorkerHooks = {
+  navigationCacheKey: (url: URL) => Request;
+  hasSensitiveNavigationParams: (url: URL) => boolean;
+  trimShellCache: () => Promise<void>;
+  trimAssetCache: (protectedAssets: Set<string>) => Promise<void>;
+  warmShellAssets: (html: string, rootUrl: URL) => Promise<unknown>;
+  readCurrentManifest: () => Promise<unknown>;
+  isBuildAsset: (request: Pick<WorkerRequest, "destination">, url: URL) => boolean;
+};
+
 function createWorker(
   options: {
     killSwitch?: boolean;
-    fetch?: (request: any) => Promise<Response>;
+    fetch?: (request: FetchInput) => Promise<Response>;
   } = {},
 ) {
   const cachesMap = new Map<string, Map<string, Response>>();
-  const listeners = new Map<string, (event: any) => void>();
+  const listeners = new Map<string, (event: WorkerEvent) => void>();
   const calls = { fetch: [] as string[], skipWaiting: 0, unregister: 0, claim: 0 };
   const clients = [{ postMessage: vi.fn() }];
   const cacheStorage = {
@@ -46,7 +70,7 @@ function createWorker(
     },
   };
 
-  const defaultFetch = async (input: any) => {
+  const defaultFetch = async (input: FetchInput) => {
     const url = typeof input === "string" ? input : input.url;
     if (url === ORIGIN + "/" || url === ORIGIN + "/transactions") {
       return new Response(
@@ -80,7 +104,7 @@ function createWorker(
         calls.claim += 1;
       }),
     },
-    addEventListener(type: string, handler: (event: any) => void) {
+    addEventListener(type: string, handler: (event: WorkerEvent) => void) {
       listeners.set(type, handler);
     },
   };
@@ -88,7 +112,7 @@ function createWorker(
   let source = WORKER_SOURCE;
   if (options.killSwitch)
     source = source.replace("const KILL_SWITCH = false;", "const KILL_SWITCH = true;");
-  const context: any = {
+  const context = vm.createContext({
     self,
     indexedDB: { open: vi.fn() },
     caches: cacheStorage,
@@ -97,7 +121,7 @@ function createWorker(
     Headers,
     URL,
     AbortController,
-    fetch: async (input: any) => {
+    fetch: async (input: FetchInput) => {
       const url = typeof input === "string" ? input : input.url;
       calls.fetch.push(url);
       return (options.fetch || defaultFetch)(input);
@@ -119,7 +143,7 @@ function createWorker(
     { filename: "public/sw.js" },
   );
 
-  function dispatch(type: string, event: any = {}) {
+  function dispatch(type: string, event: WorkerEvent = {}) {
     const waits: Promise<unknown>[] = [];
     event.waitUntil = (promise: Promise<unknown>) => waits.push(Promise.resolve(promise));
     event.respondWith = (promise: Promise<Response>) => {
@@ -140,7 +164,7 @@ function createWorker(
   };
 }
 
-function navigation(url: string, headers = new Headers()) {
+function navigation(url: string, headers = new Headers()): WorkerRequest {
   return {
     url: new URL(url, ORIGIN).href,
     method: "GET",
@@ -194,7 +218,7 @@ describe("public/sw.js real worker behavior", () => {
       releaseAsset = resolve;
     });
     const worker = createWorker({
-      fetch: async (input: any) => {
+      fetch: async (input: FetchInput) => {
         const url = typeof input === "string" ? input : input.url;
         if (url === ORIGIN + "/") {
           return new Response('<script type="module" src="/assets/index-12345678.js"></script>', {
@@ -331,7 +355,7 @@ describe("public/sw.js real worker behavior", () => {
       type: "POCKETVAULT_SW_DISABLED",
       version: "v2",
     });
-    expect(worker.context.indexedDB.open).not.toHaveBeenCalled();
+    expect((worker.context as vm.Context & { indexedDB: { open: ReturnType<typeof vi.fn> } }).indexedDB.open).not.toHaveBeenCalled();
   });
 
   it("serves cached navigation at three seconds without aborting the late network request", async () => {
