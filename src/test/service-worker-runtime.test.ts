@@ -272,7 +272,7 @@ describe("public/sw.js real worker behavior", () => {
       type: "POCKETVAULT_SW_DISABLED",
       version: "v2",
     });
-    expect(context.indexedDB.open).not.toHaveBeenCalled();
+    expect(worker.context.indexedDB.open).not.toHaveBeenCalled();
   });
 
   it("serves cached navigation at three seconds without aborting the late network request", async () => {
