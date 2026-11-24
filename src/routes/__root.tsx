@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { APP_NAME } from "../lib/config";
 import { ThemeProvider } from "../components/app/ThemeProvider";
+import { ServiceWorkerUpdatePrompt } from "../components/app/ServiceWorkerUpdatePrompt";
 
 function NotFoundComponent() {
   return (
@@ -129,6 +130,7 @@ function RootComponent() {
       <ThemeProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <ServiceWorkerUpdatePrompt />
       </ThemeProvider>
     </QueryClientProvider>
   );

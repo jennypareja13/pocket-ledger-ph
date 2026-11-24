@@ -40,3 +40,6 @@ jobs:
 
       - name: Build production app
         run: bun run build
+
+      - name: Verify production route entry fingerprints
+        run: node scripts/verify-offline-build.mjs
