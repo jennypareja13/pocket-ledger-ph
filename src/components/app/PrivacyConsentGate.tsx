@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { PRIVACY_NOTICE_TEXT, PRIVACY_NOTICE_VERSION, LOCAL_PRIVACY_CONSENT_VERSION_KEY, LOCAL_PRIVACY_CONSENT_AT_KEY } from "@/lib/privacy-notice";
+import {
+  PRIVACY_NOTICE_TEXT,
+  PRIVACY_NOTICE_VERSION,
+  LOCAL_PRIVACY_CONSENT_VERSION_KEY,
+  LOCAL_PRIVACY_CONSENT_AT_KEY,
+} from "@/lib/privacy-notice";
 import { GUEST_KEY } from "@/components/app/AppProvider";
 
 export function PrivacyConsentGate({
