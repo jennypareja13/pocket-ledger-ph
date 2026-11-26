@@ -28,5 +28,5 @@ This notice will be reviewed by the thesis adviser before PocketVault is publish
 export function hasCurrentPrivacyConsent(
   userMetadata: Record<string, unknown> | null | undefined,
 ): boolean {
-  return userMetadata?.privacy_consent_version === PRIVACY_NOTICE_VERSION;
+  return userMetadata?.["privacy_consent_version"] === PRIVACY_NOTICE_VERSION;
 }

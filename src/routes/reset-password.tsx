@@ -7,7 +7,7 @@ import { Field } from "@/components/app/bits";
 import { APP_NAME } from "@/lib/config";
 import { isValidPassword } from "@/lib/password-validation";
 
-export const Route = createFileRoute("/reset-password")({
+export const Route = createFileRoute("/reset-password" as never)({
   ssr: false,
   head: () => ({ meta: [{ title: `Reset password — ${APP_NAME}` }] }),
   component: ResetPasswordPage,
