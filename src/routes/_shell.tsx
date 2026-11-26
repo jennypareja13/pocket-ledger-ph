@@ -45,10 +45,10 @@ function isActiveNavItem(to: string, pathname: string) {
   return pathname.startsWith(to);
 }
 
+type ConsentState = "loading" | "required" | "accepted" | "guest";
+
 function ShellRoute() {
-  const [consentState, setConsentState] = useState<
-    "loading" | "required" | "accepted" | "guest"
-  >("loading");
+  const [consentState, setConsentState] = useState<ConsentState>("loading");
   useEffect(() => {
     let active = true;
     // This check runs before AppProvider mounts, so no local ledger storage or sync starts first.

@@ -14,9 +14,10 @@ describe("Privacy notice and consent version", () => {
     expect(PRIVACY_NOTICE_TEXT).not.toContain("___");
   });
   it("requires consent again when the notice version changes", () => {
-    expect(
-      hasCurrentPrivacyConsent({ privacy_consent_version: PRIVACY_NOTICE_VERSION }),
-    ).toBe(true);
+    const currentConsent = hasCurrentPrivacyConsent({
+      privacy_consent_version: PRIVACY_NOTICE_VERSION,
+    });
+    expect(currentConsent).toBe(true);
     expect(hasCurrentPrivacyConsent({})).toBe(false);
     expect(hasCurrentPrivacyConsent({ privacy_consent_version: "older" })).toBe(false);
     expect(hasCurrentPrivacyConsent(null)).toBe(false);
