@@ -17,7 +17,12 @@ import { parseAmount } from "@/lib/money";
 import { ACCOUNT_TYPES } from "@/lib/labels";
 import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
 import { PrivacyConsentGate } from "@/components/app/PrivacyConsentGate";
-import { hasCurrentPrivacyConsent } from "@/lib/privacy-notice";
+import {
+  hasCurrentPrivacyConsent,
+  LOCAL_PRIVACY_CONSENT_VERSION_KEY,
+  PRIVACY_NOTICE_VERSION,
+} from "@/lib/privacy-notice";
+import { GUEST_KEY } from "@/components/app/AppProvider";
 import { supabase } from "@/integrations/supabase/client";
 import type { AccountType } from "@/lib/types";
 
@@ -45,7 +50,7 @@ function isActiveNavItem(to: string, pathname: string) {
   return pathname.startsWith(to);
 }
 
-type ConsentState = "loading" | "required" | "accepted" | "guest";
+type ConsentState = "loading" | "required" | "required-guest" | "accepted" | "guest";
 
 function ShellRoute() {
   const [consentState, setConsentState] = useState<ConsentState>("loading");
@@ -54,8 +59,12 @@ function ShellRoute() {
     // This check runs before AppProvider mounts, so no local ledger storage or sync starts first.
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      if (!data.session) setConsentState("guest");
-      else
+      if (!data.session) {
+        const isGuest = localStorage.getItem(GUEST_KEY) === "1";
+        const hasGuestConsent =
+          localStorage.getItem(LOCAL_PRIVACY_CONSENT_VERSION_KEY) === PRIVACY_NOTICE_VERSION;
+        setConsentState(isGuest ? (hasGuestConsent ? "accepted" : "required-guest") : "guest");
+      } else
         setConsentState(
           hasCurrentPrivacyConsent(data.session.user.user_metadata) ? "accepted" : "required",
         );
@@ -65,8 +74,13 @@ function ShellRoute() {
     };
   }, []);
   if (consentState === "loading") return <Spinner label="Checking privacy notice…" />;
-  if (consentState === "required") {
-    return <PrivacyConsentGate onAccepted={() => setConsentState("accepted")} />;
+  if (consentState === "required" || consentState === "required-guest") {
+    return (
+      <PrivacyConsentGate
+        guestMode={consentState === "required-guest"}
+        onAccepted={() => setConsentState("accepted")}
+      />
+    );
   }
   return (
     <AppProvider>

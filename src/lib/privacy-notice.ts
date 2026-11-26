@@ -1,6 +1,8 @@
 export const PRIVACY_NOTICE_VERSION = "2026-11-v1";
 
 export const PRIVACY_NOTICE_TITLE = "PocketVault Privacy Notice";
+export const LOCAL_PRIVACY_CONSENT_VERSION_KEY = "pv-privacy-consent-version";
+export const LOCAL_PRIVACY_CONSENT_AT_KEY = "pv-privacy-consent-at";
 
 export const PRIVACY_NOTICE_TEXT = `PocketVault Privacy Notice
 Version: ${PRIVACY_NOTICE_VERSION}

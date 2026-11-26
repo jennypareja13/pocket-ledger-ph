@@ -1,21 +1,34 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { PRIVACY_NOTICE_TEXT, PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
+import { PRIVACY_NOTICE_TEXT, PRIVACY_NOTICE_VERSION, LOCAL_PRIVACY_CONSENT_VERSION_KEY, LOCAL_PRIVACY_CONSENT_AT_KEY } from "@/lib/privacy-notice";
+import { GUEST_KEY } from "@/components/app/AppProvider";
 
-export function PrivacyConsentGate({ onAccepted }: { onAccepted: () => void }) {
+export function PrivacyConsentGate({
+  onAccepted,
+  guestMode = false,
+}: {
+  onAccepted: () => void;
+  guestMode?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
   async function accept() {
     setBusy(true);
     setError(undefined);
-    const { error: updateError } = await supabase.auth.updateUser({
-      data: {
-        privacy_consent_version: PRIVACY_NOTICE_VERSION,
-        privacy_consent_at: new Date().toISOString(),
-      },
-    });
+    const updateError = guestMode
+      ? null
+      : (await supabase.auth.updateUser({
+          data: {
+            privacy_consent_version: PRIVACY_NOTICE_VERSION,
+            privacy_consent_at: new Date().toISOString(),
+          },
+        })).error;
+    if (guestMode) {
+      localStorage.setItem(LOCAL_PRIVACY_CONSENT_VERSION_KEY, PRIVACY_NOTICE_VERSION);
+      localStorage.setItem(LOCAL_PRIVACY_CONSENT_AT_KEY, new Date().toISOString());
+    }
     setBusy(false);
     if (updateError) {
       setError("We could not save your choice. Please try again.");
@@ -26,7 +39,8 @@ export function PrivacyConsentGate({ onAccepted }: { onAccepted: () => void }) {
 
   async function decline() {
     setBusy(true);
-    await supabase.auth.signOut();
+    if (guestMode) localStorage.removeItem(GUEST_KEY);
+    else await supabase.auth.signOut();
     window.location.replace("/auth");
   }
 

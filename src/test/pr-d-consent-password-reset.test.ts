@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PRIVACY_NOTICE_TEXT,
   PRIVACY_NOTICE_VERSION,
+  LOCAL_PRIVACY_CONSENT_VERSION_KEY,
   hasCurrentPrivacyConsent,
 } from "@/lib/privacy-notice";
 import { buildPasswordResetRedirect } from "@/lib/password-reset-url";
@@ -12,6 +13,7 @@ describe("Privacy notice and consent version", () => {
     expect(PRIVACY_NOTICE_VERSION).toMatch(/^\d{4}-\d{2}-v\d+$/);
     expect(PRIVACY_NOTICE_TEXT).not.toContain("[CONFIRM");
     expect(PRIVACY_NOTICE_TEXT).not.toContain("___");
+    expect(LOCAL_PRIVACY_CONSENT_VERSION_KEY).toBe("pv-privacy-consent-version");
   });
   it("requires consent again when the notice version changes", () => {
     const currentConsent = hasCurrentPrivacyConsent({
