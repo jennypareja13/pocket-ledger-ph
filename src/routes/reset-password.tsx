@@ -67,10 +67,8 @@ function ResetPasswordPage() {
     });
     setBusy(false);
     setMessage("If an account matches that email, a password reset link will be sent. Check your inbox.");
-    if (!resendError) {
-      setCooldown(true);
-      window.setTimeout(() => setCooldown(false), 60_000);
-    }
+    setCooldown(true);
+    window.setTimeout(() => setCooldown(false), 60_000);
   }
 
   return (

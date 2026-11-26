@@ -75,7 +75,6 @@ function AuthPage() {
       redirectTo: buildPasswordResetRedirect(window.location.origin),
     });
     setBusy(false);
-    if (error) return setMsg("If an account matches that email, a password reset link will be sent. Check your inbox.");
     setResetSent(true);
     setResetCooldown(true);
     window.setTimeout(() => setResetCooldown(false), 60_000);
