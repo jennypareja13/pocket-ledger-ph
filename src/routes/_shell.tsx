@@ -46,20 +46,33 @@ function isActiveNavItem(to: string, pathname: string) {
 }
 
 function ShellRoute() {
-  const [consentState, setConsentState] = useState<"loading" | "required" | "accepted" | "guest">("loading");
+  const [consentState, setConsentState] = useState<
+    "loading" | "required" | "accepted" | "guest"
+  >("loading");
   useEffect(() => {
     let active = true;
     // This check runs before AppProvider mounts, so no local ledger storage or sync starts first.
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       if (!data.session) setConsentState("guest");
-      else setConsentState(hasCurrentPrivacyConsent(data.session.user.user_metadata) ? "accepted" : "required");
+      else
+        setConsentState(
+          hasCurrentPrivacyConsent(data.session.user.user_metadata) ? "accepted" : "required",
+        );
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
   if (consentState === "loading") return <Spinner label="Checking privacy notice…" />;
-  if (consentState === "required") return <PrivacyConsentGate onAccepted={() => setConsentState("accepted")} />;
-  return <AppProvider><Gate /></AppProvider>;
+  if (consentState === "required") {
+    return <PrivacyConsentGate onAccepted={() => setConsentState("accepted")} />;
+  }
+  return (
+    <AppProvider>
+      <Gate />
+    </AppProvider>
+  );
 }
 
 function Gate() {

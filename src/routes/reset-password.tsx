@@ -48,12 +48,18 @@ function ResetPasswordPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(undefined);
-    if (!isValidPassword(password)) return setError("Password must be at least 8 characters.");
-    if (password !== confirm) return setError("The passwords do not match.");
+    if (!isValidPassword(password)) {
+      return setError("Password must be at least 8 characters.");
+    }
+    if (password !== confirm) {
+      return setError("The passwords do not match.");
+    }
     setBusy(true);
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setBusy(false);
-    if (updateError) return setError("This reset link may have expired. Request a new password reset link.");
+    if (updateError) {
+      return setError("This reset link may have expired. Request a new password reset link.");
+    }
     setMessage("Your password has been updated. You can now sign in.");
     await supabase.auth.signOut();
     window.setTimeout(() => nav({ to: "/auth" }), 1200);
@@ -62,11 +68,13 @@ function ResetPasswordPage() {
   async function resend() {
     setBusy(true);
     setError(undefined);
-    const { error: resendError } = await supabase.auth.resetPasswordForEmail(email, {
+    await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + "/reset-password",
     });
     setBusy(false);
-    setMessage("If an account matches that email, a password reset link will be sent. Check your inbox.");
+    setMessage(
+      "If an account matches that email, a password reset link will be sent. Check your inbox.",
+    );
     setCooldown(true);
     window.setTimeout(() => setCooldown(false), 60_000);
   }
@@ -76,19 +84,67 @@ function ResetPasswordPage() {
       <h1 className="font-display text-2xl font-semibold">Set a new password</h1>
       {!ready ? (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">This reset link is invalid or has expired. Request a new link to continue.</p>
-          <Field label="Email" htmlFor="reset-email"><Input id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
-          {message && <p role="status" className="text-sm">{message}</p>}
-          <Button onClick={resend} disabled={busy || cooldown || !email.trim()}>{cooldown ? "Please wait before requesting another link" : "Send a new reset link"}</Button>
-          <Button variant="outline" onClick={() => nav({ to: "/auth" })}>Back to sign in</Button>
+          <p className="text-sm text-muted-foreground">
+            This reset link is invalid or has expired. Request a new link to continue.
+          </p>
+          <Field label="Email" htmlFor="reset-email">
+            <Input
+              id="reset-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </Field>
+          {message && (
+            <p role="status" className="text-sm">
+              {message}
+            </p>
+          )}
+          <Button onClick={resend} disabled={busy || cooldown || !email.trim()}>
+            {cooldown ? "Please wait before requesting another link" : "Send a new reset link"}
+          </Button>
+          <Button variant="outline" onClick={() => nav({ to: "/auth" })}>
+            Back to sign in
+          </Button>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          <Field label="New password (at least 8 characters)" htmlFor="new-password"><Input id="new-password" type="password" minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></Field>
-          <Field label="Confirm new password" htmlFor="confirm-password"><Input id="confirm-password" type="password" minLength={8} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required /></Field>
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          {message && <p role="status" className="text-sm">{message}</p>}
-          <Button type="submit" className="w-full" disabled={busy}>Update password</Button>
+          <Field label="New password (at least 8 characters)" htmlFor="new-password">
+            <Input
+              id="new-password"
+              type="password"
+              minLength={8}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Confirm new password" htmlFor="confirm-password">
+            <Input
+              id="confirm-password"
+              type="password"
+              minLength={8}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+            />
+          </Field>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p role="status" className="text-sm">
+              {message}
+            </p>
+          )}
+          <Button type="submit" className="w-full" disabled={busy}>
+            Update password
+          </Button>
         </form>
       )}
     </main>

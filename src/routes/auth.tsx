@@ -44,7 +44,11 @@ function AuthPage() {
     e.preventDefault();
     setMsg(undefined);
     if (mode === "up" && (!consent || !isValidPassword(pw))) {
-      return setMsg(!consent ? "Please read and accept the Privacy Notice to create an account." : "Password must be at least 8 characters.");
+      return setMsg(
+        !consent
+          ? "Please read and accept the Privacy Notice to create an account."
+          : "Password must be at least 8 characters.",
+      );
     }
     setBusy(true);
     const r =
@@ -100,7 +104,8 @@ function AuthPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {mode === "in" ? "Sign in to sync your ledger." : "Create your private account."}{" "}
-            Sign-in and account recovery need internet. Previously saved records may remain on this device while offline.
+            Sign-in and account recovery need internet. Previously saved records may remain on this
+            device while offline.
           </p>
         </div>
         <Field label="Email" htmlFor="a-email">
@@ -124,19 +129,59 @@ function AuthPage() {
         </Field>
         {mode === "up" && (
           <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" required checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
-            <span>I have read and agree to the <a className="text-primary underline" href="/privacy-notice" target="_blank" rel="noreferrer">PocketVault Privacy Notice</a>.</span>
+            <input
+              type="checkbox"
+              required
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              I have read and agree to the{" "}
+              <a
+                className="text-primary underline"
+                href="/privacy-notice"
+                target="_blank"
+                rel="noreferrer"
+              >
+                PocketVault Privacy Notice
+              </a>
+              .
+            </span>
           </label>
         )}
         {mode === "in" && (
-          <button type="button" className="w-full text-left text-sm text-primary underline" onClick={() => setForgot(true)}>Forgot password?</button>
+          <button
+            type="button"
+            className="w-full text-left text-sm text-primary underline"
+            onClick={() => setForgot(true)}
+          >
+            Forgot password?
+          </button>
         )}
         {forgot && (
           <div className="space-y-2 rounded-xl border p-3">
-            <p className="text-sm">Enter your email. If an account matches, we will send a reset link.</p>
-            {resetSent && <p role="status" className="text-sm text-muted-foreground">If an account matches that email, a password reset link will be sent. Check your inbox.</p>}
-            <Button type="button" variant="outline" className="w-full" disabled={busy || resetCooldown || !email.trim()} onClick={sendPasswordReset}>{resetCooldown ? "Please wait before requesting another link" : "Send reset link"}</Button>
-            <button type="button" className="text-xs underline" onClick={() => setForgot(false)}>Back to sign in</button>
+            <p className="text-sm">
+              Enter your email. If an account matches, we will send a reset link.
+            </p>
+            {resetSent && (
+              <p role="status" className="text-sm text-muted-foreground">
+                If an account matches that email, a password reset link will be sent. Check your
+                inbox.
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={busy || resetCooldown || !email.trim()}
+              onClick={sendPasswordReset}
+            >
+              {resetCooldown ? "Please wait before requesting another link" : "Send reset link"}
+            </Button>
+            <button type="button" className="text-xs underline" onClick={() => setForgot(false)}>
+              Back to sign in
+            </button>
           </div>
         )}
         {msg && (
@@ -153,7 +198,11 @@ function AuthPage() {
         <button
           type="button"
           className="w-full text-sm text-primary"
-          onClick={() => { setMode(mode === "in" ? "up" : "in"); setForgot(false); setMsg(undefined); }}
+          onClick={() => {
+            setMode(mode === "in" ? "up" : "in");
+            setForgot(false);
+            setMsg(undefined);
+          }}
         >
           {mode === "in" ? "New here? Create an account" : "Have an account? Sign in"}
         </button>
