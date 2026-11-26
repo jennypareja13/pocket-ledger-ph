@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRIVACY_NOTICE_TEXT } from "@/lib/privacy-notice";
 
-export const Route = createFileRoute("/privacy-notice" as never)({
+export const Route = createFileRoute("/privacy-notice")({
   ssr: false,
   head: () => ({ meta: [{ title: "PocketVault Privacy Notice" }] }),
   component: PrivacyNoticePage,
