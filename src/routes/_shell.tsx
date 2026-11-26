@@ -16,6 +16,9 @@ import { createAccount, createSpace } from "@/lib/actions";
 import { parseAmount } from "@/lib/money";
 import { ACCOUNT_TYPES } from "@/lib/labels";
 import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
+import { PrivacyConsentGate } from "@/components/app/PrivacyConsentGate";
+import { hasCurrentPrivacyConsent } from "@/lib/privacy-notice";
+import { supabase } from "@/integrations/supabase/client";
 import type { AccountType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell")({
@@ -43,11 +46,17 @@ function isActiveNavItem(to: string, pathname: string) {
 }
 
 function ShellRoute() {
-  return (
-    <AppProvider>
-      <Gate />
-    </AppProvider>
-  );
+  const [consentState, setConsentState] = useState<"loading" | "required" | "accepted" | "guest">("loading");
+  useState(() => {
+    // This check runs before AppProvider mounts, so no local ledger storage or sync starts first.
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) setConsentState("guest");
+      else setConsentState(hasCurrentPrivacyConsent(data.session.user.user_metadata) ? "accepted" : "required");
+    });
+  });
+  if (consentState === "loading") return <Spinner label="Checking privacy notice…" />;
+  if (consentState === "required") return <PrivacyConsentGate onAccepted={() => setConsentState("accepted")} />;
+  return <AppProvider><Gate /></AppProvider>;
 }
 
 function Gate() {
