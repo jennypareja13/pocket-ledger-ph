@@ -63,9 +63,7 @@ function ShellRoute() {
         const isGuest = localStorage.getItem(GUEST_KEY) === "1";
         const hasGuestConsent =
           localStorage.getItem(LOCAL_PRIVACY_CONSENT_VERSION_KEY) === PRIVACY_NOTICE_VERSION;
-        setConsentState(
-          isGuest ? (hasGuestConsent ? "accepted" : "required-guest") : "guest",
-        );
+        setConsentState(isGuest ? (hasGuestConsent ? "accepted" : "required-guest") : "guest");
       } else {
         setConsentState(
           hasCurrentPrivacyConsent(data.session.user.user_metadata) ? "accepted" : "required",

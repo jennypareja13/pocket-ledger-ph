@@ -22,14 +22,16 @@ export function PrivacyConsentGate({
   async function accept() {
     setBusy(true);
     setError(undefined);
-    const updateError = guestMode
-      ? null
-      : (await supabase.auth.updateUser({
-          data: {
-            privacy_consent_version: PRIVACY_NOTICE_VERSION,
-            privacy_consent_at: new Date().toISOString(),
-          },
-        })).error;
+    let updateError: Error | null = null;
+    if (!guestMode) {
+      const { error: consentError } = await supabase.auth.updateUser({
+        data: {
+          privacy_consent_version: PRIVACY_NOTICE_VERSION,
+          privacy_consent_at: new Date().toISOString(),
+        },
+      });
+      updateError = consentError;
+    }
     if (guestMode) {
       localStorage.setItem(LOCAL_PRIVACY_CONSENT_VERSION_KEY, PRIVACY_NOTICE_VERSION);
       localStorage.setItem(LOCAL_PRIVACY_CONSENT_AT_KEY, new Date().toISOString());
