@@ -1,3 +1,4 @@
+import { PRIVACY_NOTICE_VERSION, hasCurrentPrivacyConsent } from "@/lib/privacy-notice";
 export const PRIVACY_CONSENT_LAST_USER_KEY = "pv-privacy-last-user";
 export const PASSWORD_RECOVERY_MARKER_KEY = "pv-password-recovery-marker";
 export interface ConsentCache { userId: string; version: string; }
@@ -27,12 +28,12 @@ export function decideConsentGate(input: {
 }): ConsentGateDecision {
   const { session, guestFlag, guestConsent, cachedConsent, timedOut } = input;
   if (session) {
-    if (session.user.user_metadata?.["privacy_consent_version"] === "2026-11-v1") return "accepted";
-    if (cachedConsent?.userId === session.user.id && cachedConsent.version === "2026-11-v1") return "accepted";
+    if (hasCurrentPrivacyConsent(session.user.user_metadata)) return "accepted";
+    if (cachedConsent?.userId === session.user.id && cachedConsent.version === PRIVACY_NOTICE_VERSION) return "accepted";
     return "required";
   }
   if (guestFlag) return guestConsent ? "accepted" : "required-guest";
-  if (timedOut && cachedConsent?.version === "2026-11-v1" && Boolean(cachedConsent.userId)) return "accepted";
+  if (timedOut && cachedConsent?.version === PRIVACY_NOTICE_VERSION && Boolean(cachedConsent.userId)) return "accepted";
   return timedOut ? "loading" : "guest";
 }
 export function consentDeclineSignOutOptions(): { scope: "local" } { return { scope: "local" }; }

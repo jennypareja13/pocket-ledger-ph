@@ -69,7 +69,7 @@ describe("Password recovery marker", () => {
   });
 });
 describe("Route verification", () => {
-  const script = readFileSync(new URL("../../scripts/verify-offline-build.mjs", import.meta.url), "utf8");
+  const script = readFileSync("scripts/verify-offline-build.mjs", "utf8");
   it("checks reset-password in the production route manifest", () => { expect(script).toContain('"/reset-password"'); });
   it("checks privacy-notice in the production route manifest", () => { expect(script).toContain('"/privacy-notice"'); });
 });
