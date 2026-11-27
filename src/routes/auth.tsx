@@ -76,14 +76,22 @@ function AuthPage() {
   async function sendPasswordReset() {
     setBusy(true);
     setMsg(undefined);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: buildPasswordResetRedirect(window.location.origin),
-    });
-    setBusy(false);
-    if (error) { setMsg(passwordResetRequestErrorMessage(error)); return; }
-    setResetSent(true);
-    setResetCooldown(true);
-    window.setTimeout(() => setResetCooldown(false), 60_000);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: buildPasswordResetRedirect(window.location.origin),
+      });
+      setBusy(false);
+      if (error) {
+        setMsg(passwordResetRequestErrorMessage(error));
+        return;
+      }
+      setResetSent(true);
+      setResetCooldown(true);
+      window.setTimeout(() => setResetCooldown(false), 60_000);
+    } catch (error) {
+      setBusy(false);
+      setMsg(passwordResetRequestErrorMessage(error));
+    }
   }
 
   async function google() {

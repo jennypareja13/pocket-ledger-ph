@@ -18,7 +18,6 @@ import { ACCOUNT_TYPES } from "@/lib/labels";
 import { decideEmptyLedgerScreen } from "@/lib/empty-ledger-screen";
 import { PrivacyConsentGate } from "@/components/app/PrivacyConsentGate";
 import {
-  hasCurrentPrivacyConsent,
   LOCAL_PRIVACY_CONSENT_VERSION_KEY,
   PRIVACY_NOTICE_VERSION,
 } from "@/lib/privacy-notice";

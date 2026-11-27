@@ -6,7 +6,7 @@ export interface ConsentSession { user: { id: string; user_metadata?: Record<str
 export interface ConsentStorage { getItem(key: string): string | null; setItem(key: string, value: string): void; }
 export type ConsentGateDecision = "accepted" | "required" | "required-guest" | "guest" | "loading";
 export function consentCacheKey(userId: string): string { return `pv-privacy-consent:${userId}`; }
-export function writeConsentCache(storage: ConsentStorage, userId: string, version: string): void {
+export function writeConsentCache(storage: ConsentStorage, userId: string, version: string = PRIVACY_NOTICE_VERSION): void {
   storage.setItem(consentCacheKey(userId), JSON.stringify({ userId, version }));
   storage.setItem(PRIVACY_CONSENT_LAST_USER_KEY, userId);
 }
