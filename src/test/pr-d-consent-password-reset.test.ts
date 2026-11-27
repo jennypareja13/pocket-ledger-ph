@@ -185,7 +185,9 @@ describe("Consent decision and cache", () => {
   it("keeps the decline handler away from IndexedDB and ledger deletion APIs", () => {
     const gate = readFileSync("src/components/app/PrivacyConsentGate.tsx", "utf8");
     expect(gate).toContain("supabase.auth.signOut(consentDeclineSignOutOptions())");
-    expect(gate).not.toMatch(/indexedDB|deleteDatabase|clearLedger|store\.|idbPersistence|supabase\.from/i);
+    expect(gate).not.toMatch(
+      /indexedDB|deleteDatabase|clearLedger|store\.|idbPersistence|supabase\.from/i,
+    );
   });
 });
 describe("Password recovery marker", () => {
