@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PrivacyNoticeRouteImport } from './routes/privacy-notice'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ShellIndexRouteImport } from './routes/_shell.index'
 import { Route as ShellAccountsRouteImport } from './routes/_shell.accounts'
 import { Route as ShellAnalysisRouteImport } from './routes/_shell.analysis'
@@ -29,6 +31,16 @@ const ShellRoute = ShellRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyNoticeRoute = PrivacyNoticeRouteImport.update({
+  id: '/privacy-notice',
+  path: '/privacy-notice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShellIndexRoute = ShellIndexRouteImport.update({
@@ -85,6 +97,8 @@ const ShellTransactionsRoute = ShellTransactionsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof ShellIndexRoute
   '/auth': typeof AuthRoute
+  '/privacy-notice': typeof PrivacyNoticeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/accounts': typeof ShellAccountsRoute
   '/analysis': typeof ShellAnalysisRoute
   '/bnpl': typeof ShellBnplRoute
@@ -97,6 +111,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/privacy-notice': typeof PrivacyNoticeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/accounts': typeof ShellAccountsRoute
   '/analysis': typeof ShellAnalysisRoute
   '/bnpl': typeof ShellBnplRoute
@@ -112,6 +128,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_shell': typeof ShellRouteWithChildren
   '/auth': typeof AuthRoute
+  '/privacy-notice': typeof PrivacyNoticeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_shell/accounts': typeof ShellAccountsRoute
   '/_shell/analysis': typeof ShellAnalysisRoute
   '/_shell/bnpl': typeof ShellBnplRoute
@@ -128,6 +146,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/privacy-notice'
+    | '/reset-password'
     | '/accounts'
     | '/analysis'
     | '/bnpl'
@@ -140,6 +160,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/privacy-notice'
+    | '/reset-password'
     | '/accounts'
     | '/analysis'
     | '/bnpl'
@@ -154,6 +176,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_shell'
     | '/auth'
+    | '/privacy-notice'
+    | '/reset-password'
     | '/_shell/accounts'
     | '/_shell/analysis'
     | '/_shell/bnpl'
@@ -169,6 +193,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   ShellRoute: typeof ShellRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PrivacyNoticeRoute: typeof PrivacyNoticeRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -185,6 +211,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-notice': {
+      id: '/privacy-notice'
+      path: '/privacy-notice'
+      fullPath: '/privacy-notice'
+      preLoaderRoute: typeof PrivacyNoticeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_shell/': {
@@ -291,6 +331,8 @@ const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   ShellRoute: ShellRouteWithChildren,
   AuthRoute: AuthRoute,
+  PrivacyNoticeRoute: PrivacyNoticeRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
