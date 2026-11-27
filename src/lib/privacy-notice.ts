@@ -22,6 +22,8 @@ Your cloud data will be deleted within 30 days after the thesis is approved or d
 Data stored on your own device is not deleted by that request. To remove it, clear PocketVault's site data in your browser settings, such as Chrome Settings, or uninstall the installed app.
 
 This notice will be reviewed by the thesis adviser before PocketVault is published. It is not legal advice and does not by itself establish compliance with the Philippine Data Privacy Act (RA 10173). It does not replace any informed-consent form required by the university or adviser.`;
-export function hasCurrentPrivacyConsent(userMetadata: Record<string, unknown> | null | undefined): boolean {
+export function hasCurrentPrivacyConsent(
+  userMetadata: Record<string, unknown> | null | undefined,
+): boolean {
   return userMetadata?.["privacy_consent_version"] === PRIVACY_NOTICE_VERSION;
 }
