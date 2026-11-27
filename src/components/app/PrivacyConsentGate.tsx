@@ -16,7 +16,7 @@ export function PrivacyConsentGate({
 }: {
   onAccepted: () => void;
   guestMode?: boolean;
-  userId?: string;
+  userId?: string | undefined;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();

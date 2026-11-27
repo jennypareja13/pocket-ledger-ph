@@ -161,6 +161,12 @@ describe("Consent decision and cache", () => {
     expect(consentDeclineSignOutOptions()).toEqual({ scope: "local" });
     expect(shouldClearLedgerOnConsentDecline()).toBe(false);
   });
+
+  it("keeps the decline handler away from IndexedDB and ledger deletion APIs", () => {
+    const gate = readFileSync("src/components/app/PrivacyConsentGate.tsx", "utf8");
+    expect(gate).toContain("supabase.auth.signOut(consentDeclineSignOutOptions())");
+    expect(gate).not.toMatch(/indexedDB|deleteDatabase|clearLedger|store\\./i);
+  });
 });
 describe("Password recovery marker", () => {
   it("detects implicit recovery hashes and PKCE code", () => {

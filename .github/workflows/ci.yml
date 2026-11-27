@@ -35,9 +35,6 @@ jobs:
       - name: Run lint
         run: bun run lint
 
-      - name: Run TypeScript type-check
-        run: bunx tsc --noEmit
-
       - name: Build production app
         run: bun run build
 
@@ -48,6 +45,9 @@ jobs:
             echo "::error::TanStack generated route tree differs from the committed file. Copy the generated diff into the commit."
             exit 1
           fi
+
+      - name: Run TypeScript type-check
+        run: bunx tsc --noEmit
 
       - name: Verify production route entry fingerprints
         run: node scripts/verify-offline-build.mjs

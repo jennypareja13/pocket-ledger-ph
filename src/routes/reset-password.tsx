@@ -19,6 +19,7 @@ if (typeof window !== "undefined") {
     search: window.location.search,
   });
   if (marker) window.sessionStorage.setItem(PASSWORD_RECOVERY_MARKER_KEY, marker);
+  else window.sessionStorage.removeItem(PASSWORD_RECOVERY_MARKER_KEY);
 }
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
