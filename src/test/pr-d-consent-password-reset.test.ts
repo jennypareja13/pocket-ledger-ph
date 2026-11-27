@@ -108,6 +108,17 @@ describe("Consent decision and cache", () => {
       }),
     ).toBe("required");
   });
+  it("does not reuse another account's cached consent", () => {
+    expect(
+      decideConsentGate({
+        session: { user: { id: "u2", user_metadata: { privacy_consent_version: "old" } } },
+        guestFlag: false,
+        guestConsent: false,
+        cachedConsent: { userId: "u1", version: PRIVACY_NOTICE_VERSION },
+        timedOut: false,
+      }),
+    ).toBe("required");
+  });
   it("covers guest consent and no guest consent", () => {
     expect(
       decideConsentGate({
@@ -152,6 +163,15 @@ describe("Consent decision and cache", () => {
         session: null,
         guestFlag: false,
         guestConsent: false,
+        cachedConsent: { userId: "u1", version: "older" },
+        timedOut: true,
+      }),
+    ).toBe("loading");
+    expect(
+      decideConsentGate({
+        session: null,
+        guestFlag: false,
+        guestConsent: false,
         cachedConsent: null,
         timedOut: false,
       }),
@@ -175,6 +195,12 @@ describe("Password recovery marker", () => {
     ).toBe("implicit");
     expect(recoveryMarkerFromUrl({ hash: "", search: "?code=pkce-code" })).toBe("pkce");
     expect(recoveryMarkerFromUrl({ hash: "", search: "" })).toBe(null);
+    expect(
+      recoveryMarkerFromUrl({
+        hash: "#error=access_denied&error_code=otp_expired",
+        search: "",
+      }),
+    ).toBe(null);
   });
   it("requires both a session and a recovery marker", () => {
     expect(canUsePasswordRecovery({ sessionUserId: "u1", recoveryMarker: "implicit" })).toBe(true);
