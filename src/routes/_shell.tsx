@@ -24,6 +24,7 @@ import {
 } from "@/lib/privacy-notice";
 import { GUEST_KEY } from "@/components/app/AppProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { decideConsentGate, readLastConsentCache, writeConsentCache } from "@/lib/privacy-consent";
 import type { AccountType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell")({
@@ -50,44 +51,67 @@ function isActiveNavItem(to: string, pathname: string) {
   return pathname.startsWith(to);
 }
 
-type ConsentState = "loading" | "required" | "required-guest" | "accepted" | "guest";
-
+type ConsentState = "loading" | "required" | "required-guest" | "accepted" | "guest" | "error";
 function ShellRoute() {
   const [consentState, setConsentState] = useState<ConsentState>("loading");
+  const [consentUserId, setConsentUserId] = useState<string>();
+  const [retryCount, setRetryCount] = useState(0);
   useEffect(() => {
     let active = true;
-    // This check runs before AppProvider mounts, so no local ledger storage or sync starts first.
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      if (!data.session) {
-        const isGuest = localStorage.getItem(GUEST_KEY) === "1";
-        const hasGuestConsent =
-          localStorage.getItem(LOCAL_PRIVACY_CONSENT_VERSION_KEY) === PRIVACY_NOTICE_VERSION;
-        setConsentState(isGuest ? (hasGuestConsent ? "accepted" : "required-guest") : "guest");
-      } else {
-        setConsentState(
-          hasCurrentPrivacyConsent(data.session.user.user_metadata) ? "accepted" : "required",
-        );
-      }
+    let usedCacheFallback = false;
+    const cachedConsent = readLastConsentCache(localStorage);
+    const guestFlag = localStorage.getItem(GUEST_KEY) === "1";
+    const guestConsent = localStorage.getItem(LOCAL_PRIVACY_CONSENT_VERSION_KEY) === PRIVACY_NOTICE_VERSION;
+    const sessionRequest = Promise.resolve().then(() => supabase.auth.getSession()).then(({ data, error }) => {
+      if (error) throw error;
+      return { kind: "session" as const, session: data.session };
+    }).catch((error: unknown) => ({ kind: "error" as const, error }));
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<{ kind: "timeout" }>((resolve) => {
+      timeoutId = setTimeout(() => resolve({ kind: "timeout" }), 2_000);
     });
-    return () => {
-      active = false;
-    };
-  }, []);
+    async function applySession(session: import("@supabase/supabase-js").Session | null) {
+      if (!active) return;
+      const decision = decideConsentGate({
+        session: session ? { user: { id: session.user.id, user_metadata: session.user.user_metadata } } : null,
+        guestFlag, guestConsent, cachedConsent, timedOut: false,
+      });
+      if (session && decision === "accepted") {
+        writeConsentCache(localStorage, session.user.id, PRIVACY_NOTICE_VERSION);
+        setConsentUserId(session.user.id);
+      } else if (session) setConsentUserId(session.user.id);
+      setConsentState(decision);
+    }
+    async function check() {
+      const first = await Promise.race([sessionRequest, timeout]);
+      if (!active) return;
+      if (first.kind === "timeout") {
+        const timedDecision = decideConsentGate({ session: null, guestFlag, guestConsent, cachedConsent, timedOut: true });
+        if (timedDecision === "accepted") { usedCacheFallback = true; setConsentState("accepted"); }
+        const later = await sessionRequest;
+        if (!active) return;
+        if (later.kind === "error") { if (!usedCacheFallback) setConsentState("error"); return; }
+        await applySession(later.session);
+        return;
+      }
+      if (first.kind === "error") { setConsentState("error"); return; }
+      await applySession(first.session);
+    }
+    void check();
+    return () => { active = false; clearTimeout(timeoutId); };
+  }, [retryCount]);
   if (consentState === "loading") return <Spinner label="Checking privacy notice…" />;
-  if (consentState === "required" || consentState === "required-guest") {
-    return (
-      <PrivacyConsentGate
-        guestMode={consentState === "required-guest"}
-        onAccepted={() => setConsentState("accepted")}
-      />
-    );
-  }
-  return (
-    <AppProvider>
-      <Gate />
-    </AppProvider>
+  if (consentState === "error") return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-4">
+      <p role="alert" className="text-sm text-destructive">Could not check your session. Retry.</p>
+      <Button onClick={() => { setConsentState("loading"); setRetryCount((count) => count + 1); }}>Retry</Button>
+    </main>
   );
+  if (consentState === "required" || consentState === "required-guest") return (
+    <PrivacyConsentGate guestMode={consentState === "required-guest"} userId={consentUserId}
+      onAccepted={() => setConsentState("accepted")} />
+  );
+  return <AppProvider><Gate /></AppProvider>;
 }
 
 function Gate() {

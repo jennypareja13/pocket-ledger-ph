@@ -11,6 +11,7 @@ import { APP_NAME } from "@/lib/config";
 import { isValidPassword } from "@/lib/password-validation";
 import { buildPasswordResetRedirect } from "@/lib/password-reset-url";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
+import { passwordResetRequestErrorMessage } from "@/lib/privacy-consent";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -79,6 +80,7 @@ function AuthPage() {
       redirectTo: buildPasswordResetRedirect(window.location.origin),
     });
     setBusy(false);
+    if (error) { setMsg(passwordResetRequestErrorMessage(error)); return; }
     setResetSent(true);
     setResetCooldown(true);
     window.setTimeout(() => setResetCooldown(false), 60_000);

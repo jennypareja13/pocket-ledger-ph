@@ -41,5 +41,13 @@ jobs:
       - name: Build production app
         run: bun run build
 
+      - name: Verify generated route tree is committed
+        run: |
+          git diff -- src/routeTree.gen.ts | tee /tmp/route-tree.diff
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            echo "::error::TanStack generated route tree differs from the committed file. Copy the generated diff into the commit."
+            exit 1
+          fi
+
       - name: Verify production route entry fingerprints
         run: node scripts/verify-offline-build.mjs

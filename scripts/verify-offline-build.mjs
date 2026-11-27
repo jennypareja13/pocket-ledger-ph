@@ -29,7 +29,7 @@ if (!rootEntry || !rootEntry.startsWith("/assets/")) {
   throw new Error("The production root route does not declare one /assets/ module entry script.");
 }
 
-const routeKeys = ["/_shell/", "/auth", "/_shell/bnpl", "/_shell/transactions"];
+const routeKeys = ["/_shell/", "/auth", "/_shell/bnpl", "/_shell/transactions", "/reset-password", "/privacy-notice"];
 const routeEvidence = new Map();
 
 for (const routeKey of routeKeys) {
