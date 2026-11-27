@@ -32,6 +32,16 @@ jobs:
       - name: Run tests
         run: bun run test
 
+      - name: Print formatted PR D source files
+        run: |
+          bunx prettier --write src/lib/privacy-consent.ts src/components/app/PrivacyConsentGate.tsx src/routes/_shell.tsx src/routes/auth.tsx src/routes/reset-password.tsx src/test/pr-d-consent-password-reset.test.ts
+          for file in src/lib/privacy-consent.ts src/components/app/PrivacyConsentGate.tsx src/routes/_shell.tsx src/routes/auth.tsx src/routes/reset-password.tsx src/test/pr-d-consent-password-reset.test.ts; do
+            echo "----- BEGIN $file -----"
+            cat "$file"
+            echo "----- END $file -----"
+          done
+          git diff --exit-code -- src/lib/privacy-consent.ts src/components/app/PrivacyConsentGate.tsx src/routes/_shell.tsx src/routes/auth.tsx src/routes/reset-password.tsx src/test/pr-d-consent-password-reset.test.ts
+
       - name: Run lint
         run: bun run lint
 
