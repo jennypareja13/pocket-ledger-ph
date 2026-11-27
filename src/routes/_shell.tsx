@@ -20,7 +20,12 @@ import { PrivacyConsentGate } from "@/components/app/PrivacyConsentGate";
 import { LOCAL_PRIVACY_CONSENT_VERSION_KEY, PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import { GUEST_KEY } from "@/components/app/AppProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { decideConsentGate, readLastConsentCache, writeConsentCache } from "@/lib/privacy-consent";
+import {
+  PASSWORD_RECOVERY_MARKER_KEY,
+  decideConsentGate,
+  readLastConsentCache,
+  writeConsentCache,
+} from "@/lib/privacy-consent";
 import type { AccountType } from "@/lib/types";
 
 export const Route = createFileRoute("/_shell")({
@@ -54,6 +59,13 @@ function ShellRoute() {
   const [retryCount, setRetryCount] = useState(0);
   useEffect(() => {
     let active = true;
+    // A password-recovery session must complete on the reset page before the app shell can mount.
+    if (sessionStorage.getItem(PASSWORD_RECOVERY_MARKER_KEY)) {
+      window.location.replace("/reset-password");
+      return () => {
+        active = false;
+      };
+    }
     let usedCacheFallback = false;
     const cachedConsent = readLastConsentCache(localStorage);
     const guestFlag = localStorage.getItem(GUEST_KEY) === "1";

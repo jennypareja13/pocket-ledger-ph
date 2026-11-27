@@ -229,6 +229,13 @@ describe("Route verification", () => {
     expect(auth).toContain("privacy_consent_version: PRIVACY_NOTICE_VERSION");
     expect(auth).toContain("privacy_consent_at: new Date().toISOString()");
   });
+  it("redirects recovery sessions away from the app shell before AppProvider mounts", () => {
+    const shell = readFileSync("src/routes/_shell.tsx", "utf8");
+    expect(shell).toContain("sessionStorage.getItem(PASSWORD_RECOVERY_MARKER_KEY)");
+    expect(shell.indexOf("sessionStorage.getItem(PASSWORD_RECOVERY_MARKER_KEY)")).toBeLessThan(
+      shell.indexOf("<AppProvider>"),
+    );
+  });
 });
 describe("Password validation and redirect", () => {
   it("requires eight characters", () => {
