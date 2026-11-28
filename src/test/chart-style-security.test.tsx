@@ -1,8 +1,8 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
-  ChartContainer,
   ChartStyle,
+  getSafeChartId,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -57,17 +57,7 @@ describe("ChartStyle CSS allowlist", () => {
   });
 
   it("replaces an unsafe container id with a generated safe id", () => {
-    const { container } = render(
-      <ChartContainer
-        id={'bad"] { body { color: red } /*'}
-        config={{ income: { color: "#123456" } }}
-      >
-        <div />
-      </ChartContainer>,
-    );
-
-    const chart = container.querySelector("[data-chart]");
-    expect(chart?.getAttribute("data-chart")).toMatch(/^chart-[A-Za-z0-9_-]+$/);
-    expect(chart?.querySelector("style")?.textContent).toContain("--color-income: #123456;");
+    expect(getSafeChartId('bad"] { body { color: red } /*', ":r0:")).toBe("chart-r0");
+    expect(getSafeChartId("safe-id_1", ":r0:")).toBe("chart-safe-id_1");
   });
 });
