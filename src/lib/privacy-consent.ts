@@ -98,7 +98,10 @@ export interface RecoveryMarker {
 export function makeRecoveryMarker(kind: RecoveryMarkerKind, now: number = Date.now()): string {
   return JSON.stringify({ kind, at: now } satisfies RecoveryMarker);
 }
-export function isRecoveryMarkerFresh(raw: string | null | undefined, now: number = Date.now()): boolean {
+export function isRecoveryMarkerFresh(
+  raw: string | null | undefined,
+  now: number = Date.now(),
+): boolean {
   if (!raw) return false;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -110,7 +113,9 @@ export function isRecoveryMarkerFresh(raw: string | null | undefined, now: numbe
       !["implicit", "pkce", "event"].includes(String(parsed.kind)) ||
       typeof parsed.at !== "number" ||
       !Number.isFinite(parsed.at)
-    ) return false;
+    ) {
+      return false;
+    }
     const age = now - parsed.at;
     return age >= 0 && age <= PASSWORD_RECOVERY_MARKER_TTL_MS;
   } catch {
