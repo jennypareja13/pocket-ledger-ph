@@ -9,7 +9,9 @@ import { isValidPassword } from "@/lib/password-validation";
 import { buildPasswordResetRedirect } from "@/lib/password-reset-url";
 import {
   PASSWORD_RECOVERY_MARKER_KEY,
-  canUsePasswordRecovery,
+  decideResetPageState,
+  isRecoveryMarkerFresh,
+  makeRecoveryMarker,
   passwordResetRequestErrorMessage,
   recoveryMarkerFromUrl,
 } from "@/lib/privacy-consent";
@@ -18,8 +20,7 @@ if (typeof window !== "undefined") {
     hash: window.location.hash,
     search: window.location.search,
   });
-  if (marker) window.sessionStorage.setItem(PASSWORD_RECOVERY_MARKER_KEY, marker);
-  else window.sessionStorage.removeItem(PASSWORD_RECOVERY_MARKER_KEY);
+  if (marker) window.sessionStorage.setItem(PASSWORD_RECOVERY_MARKER_KEY, makeRecoveryMarker(marker));
 }
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
@@ -42,7 +43,7 @@ function ResetPasswordPage() {
     let active = true;
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active || !session || event !== "PASSWORD_RECOVERY") return;
-      window.sessionStorage.setItem(PASSWORD_RECOVERY_MARKER_KEY, "event");
+      window.sessionStorage.setItem(PASSWORD_RECOVERY_MARKER_KEY, makeRecoveryMarker("event"));
       setReady(true);
       setOrdinarySession(false);
       setEmail(session.user.email ?? "");
@@ -54,16 +55,22 @@ function ResetPasswordPage() {
         if (!active) return;
         const session = sessionData.session;
         const marker = window.sessionStorage.getItem(PASSWORD_RECOVERY_MARKER_KEY);
-        if (
-          !sessionError &&
-          canUsePasswordRecovery({ sessionUserId: session?.user.id, recoveryMarker: marker })
-        ) {
+        const state = sessionError
+          ? "checking"
+          : decideResetPageState({
+              sessionUserId: session?.user.id ?? null,
+              marker,
+              now: Date.now(),
+            });
+        if (state === "form") {
           setReady(true);
           setEmail(session?.user.email ?? "");
         } else {
           setReady(false);
-          setOrdinarySession(Boolean(session && !sessionError));
-          if (!session) window.sessionStorage.removeItem(PASSWORD_RECOVERY_MARKER_KEY);
+          setOrdinarySession(state === "ordinary-session");
+          if (state === "invalid-link" || (marker && !isRecoveryMarkerFresh(marker))) {
+            window.sessionStorage.removeItem(PASSWORD_RECOVERY_MARKER_KEY);
+          }
         }
         setChecking(false);
       })
@@ -162,16 +169,25 @@ function ResetPasswordPage() {
       ) : ordinarySession ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            You are already signed in, but this is not a password-reset session. Settings does not
-            currently provide a password-change control. You can return to your app or sign out and
-            request a new reset link.
+            This link is not a password-reset link. Go back to the app, or sign out and request a
+            new reset link.
           </p>
-          <Button className="w-full" onClick={() => nav({ to: "/" })}>
-            Back to the app
-          </Button>
-          <Button variant="outline" className="w-full" onClick={() => nav({ to: "/auth" })}>
-            Back to sign in
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={() => nav({ to: "/" })}>
+              Back to the app
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={async () => {
+                window.sessionStorage.removeItem(PASSWORD_RECOVERY_MARKER_KEY);
+                await supabase.auth.signOut();
+                await nav({ to: "/auth" });
+              }}
+            >
+              Sign out
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
