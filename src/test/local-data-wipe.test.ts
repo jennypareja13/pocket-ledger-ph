@@ -79,6 +79,20 @@ describe("local device data wipe", () => {
     expect(storage.has("pv-privacy-consent:user-a")).toBe(true);
   });
 
+  it("refuses to wipe a different signed-in profile", async () => {
+    const deleteDatabase = vi.fn(async () => {});
+    await expect(
+      wipeLocalProfileData({
+        profile: "user-b",
+        userId: "user-a",
+        pending: 0,
+        storage: memoryStorage(),
+        deleteDatabase,
+      }),
+    ).rejects.toThrow("does not match");
+    expect(deleteDatabase).not.toHaveBeenCalled();
+  });
+
   it("does not clear local preferences if database deletion fails", async () => {
     const storage = memoryStorage({ "pl-space-user-a": "space-a" });
     await expect(
