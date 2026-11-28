@@ -1,10 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import {
-  ChartStyle,
-  getSafeChartId,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { ChartStyle, getSafeChartId, type ChartConfig } from "@/components/ui/chart";
 
 describe("ChartStyle CSS allowlist", () => {
   it.each([
@@ -18,13 +14,9 @@ describe("ChartStyle CSS allowlist", () => {
     "hsl(var(--chart-1))",
     "var(--chart-1)",
   ])("accepts a supported CSS color: %s", (color) => {
-    const { container } = render(
-      <ChartStyle id="chart-safe" config={{ income: { color } }} />,
-    );
+    const { container } = render(<ChartStyle id="chart-safe" config={{ income: { color } }} />);
 
-    expect(container.querySelector("style")?.textContent).toContain(
-      `--color-income: ${color};`,
-    );
+    expect(container.querySelector("style")?.textContent).toContain(`--color-income: ${color};`);
   });
 
   it("drops a malicious color instead of injecting it into the style element", () => {
@@ -50,7 +42,10 @@ describe("ChartStyle CSS allowlist", () => {
 
   it("rejects unsafe ids passed directly to ChartStyle", () => {
     const { container } = render(
-      <ChartStyle id={'chart-safe"] { body { color: red } /*'} config={{ income: { color: "#123456" } }} />,
+      <ChartStyle
+        id={'chart-safe"] { body { color: red } /*'}
+        config={{ income: { color: "#123456" } }}
+      />,
     );
 
     expect(container.querySelector("style")).toBeNull();
