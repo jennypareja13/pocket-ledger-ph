@@ -192,12 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [store, userId]);
 
   const syncNow = useCallback(async () => {
-    if (
-      !store ||
-      !userId ||
-      currentProfile.current !== userId ||
-      wipingProfile.current === userId
-    )
+    if (!store || !userId || currentProfile.current !== userId || wipingProfile.current === userId)
       return;
     if (activeRun.current?.store === store && !activeRun.current.controller.signal.aborted) return;
     if (!navigator.onLine) {
@@ -307,8 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const wipeLocalData = async (guestConfirmation?: string) => {
-    if (!profile || !store)
-      throw new Error("There is no active local profile to remove.");
+    if (!profile || !store) throw new Error("There is no active local profile to remove.");
     const targetProfile = profile;
     const targetUserId = auth.status === "signed_in" ? auth.userId : null;
     setWipeStatus(null);
