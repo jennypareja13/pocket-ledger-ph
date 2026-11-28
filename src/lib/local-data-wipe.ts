@@ -36,6 +36,8 @@ export async function wipeLocalProfileData(input: LocalWipeRequest): Promise<voi
   if (blocked) throw new Error(blocked);
   if (input.userId && input.profile !== input.userId)
     throw new Error("The signed-in account does not match the local profile.");
+  if (!input.userId && input.profile !== "guest")
+    throw new Error("A signed-out session can only remove the guest profile.");
 
   await input.deleteDatabase(input.profile);
   input.storage.removeItem(`pl-space-${input.profile}`);
