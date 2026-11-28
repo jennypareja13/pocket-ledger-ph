@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { localWipeBlockReason, wipeLocalProfileData } from "@/lib/local-data-wipe";
+import {
+  GUEST_WIPE_WARNING,
+  isGuestWipeConfirmationValid,
+  localWipeBlockReason,
+  wipeLocalProfileData,
+} from "@/lib/local-data-wipe";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -10,15 +15,64 @@ function memoryStorage(initial: Record<string, string> = {}) {
   };
 }
 
+function blockReasonFor(
+  state: {
+    pending: number;
+    errors: number;
+    conflicts: unknown[];
+    syncError?: string;
+    syncRunning?: boolean;
+  },
+  guest = false,
+) {
+  return localWipeBlockReason(
+    () => state,
+    () => ({ error: state.syncError, running: state.syncRunning }),
+    guest,
+  );
+}
+
 describe("local device data wipe", () => {
-  it("blocks when pending changes exist without calling database deletion", async () => {
+  it("blocks rejected records with the specific device-only warning", () => {
+    const state = { pending: 1, errors: 1, conflicts: [] };
+    expect(blockReasonFor(state)).toContain(
+      "Some changes were rejected by the server and exist only on this device",
+    );
+  });
+
+  it("blocks ordinary pending changes", () => {
+    expect(blockReasonFor({ pending: 1, errors: 0, conflicts: [] })).toContain(
+      "unsynced changes",
+    );
+  });
+
+  it("blocks unresolved conflicts separately from pending records", () => {
+    expect(blockReasonFor({ pending: 0, errors: 0, conflicts: ["conflict"] })).toBe(
+      "You have unresolved sync conflicts. Resolve them in Settings first.",
+    );
+  });
+
+  it("blocks a sync error and a running sync", () => {
+    expect(
+      blockReasonFor({ pending: 0, errors: 0, conflicts: [], syncError: "Network unavailable" }),
+    ).toContain("last sync failed");
+    expect(
+      blockReasonFor({ pending: 0, errors: 0, conflicts: [], syncRunning: true }),
+    ).toContain("Sync is still running");
+  });
+
+  it("re-reads live state after the confirmation step instead of using stale render state", async () => {
+    const state = { pending: 0, errors: 0, conflicts: [] as unknown[] };
     const storage = memoryStorage({ "pl-space-user-a": "space-a" });
     const deleteDatabase = vi.fn(async () => {});
+
+    // Represents a new local edit made while the confirmation dialog was open.
+    state.pending = 1;
     await expect(
       wipeLocalProfileData({
         profile: "user-a",
         userId: "user-a",
-        pending: 1,
+        getBlockReason: () => blockReasonFor(state),
         storage,
         deleteDatabase,
       }),
@@ -27,13 +81,63 @@ describe("local device data wipe", () => {
     expect(storage.has("pl-space-user-a")).toBe(true);
   });
 
-  it("blocks after a sync error even when the pending count is zero", () => {
-    expect(localWipeBlockReason({ pending: 0, syncError: "Network unavailable" })).toContain(
-      "last sync failed",
-    );
+  it("aborts and stops background work before checking state and deleting", async () => {
+    const events: string[] = [];
+    await wipeLocalProfileData({
+      profile: "user-a",
+      userId: "user-a",
+      beforeDelete: () => {
+        events.push("abort-and-stop");
+      },
+      getBlockReason: () => {
+        events.push("live-check");
+        return null;
+      },
+      storage: memoryStorage(),
+      deleteDatabase: async () => {
+        events.push("delete-database");
+      },
+    });
+    expect(events).toEqual(["abort-and-stop", "live-check", "delete-database"]);
   });
 
-  it("wipes only the selected user's database and local preferences after a safe sync", async () => {
+  it("runs sign-out only after the database deletion succeeds", async () => {
+    const events: string[] = [];
+    await wipeLocalProfileData({
+      profile: "user-a",
+      userId: "user-a",
+      getBlockReason: () => null,
+      storage: memoryStorage(),
+      deleteDatabase: async () => {
+        events.push("database-deleted");
+      },
+      afterWipe: () => {
+        events.push("sign-out");
+      },
+    });
+    expect(events).toEqual(["database-deleted", "sign-out"]);
+  });
+
+  it("does not sign out or clear preferences when the database wipe fails", async () => {
+    const storage = memoryStorage({ "pl-space-user-a": "space-a" });
+    const signOut = vi.fn();
+    await expect(
+      wipeLocalProfileData({
+        profile: "user-a",
+        userId: "user-a",
+        getBlockReason: () => null,
+        storage,
+        deleteDatabase: async () => {
+          throw new Error("IndexedDB deletion failed");
+        },
+        afterWipe: signOut,
+      }),
+    ).rejects.toThrow("IndexedDB deletion failed");
+    expect(signOut).not.toHaveBeenCalled();
+    expect(storage.has("pl-space-user-a")).toBe(true);
+  });
+
+  it("wipes only the selected user's database and local preferences", async () => {
     const storage = memoryStorage({
       "pl-space-user-a": "space-a",
       "pl-space-user-b": "space-b",
@@ -45,7 +149,7 @@ describe("local device data wipe", () => {
     await wipeLocalProfileData({
       profile: "user-a",
       userId: "user-a",
-      pending: 0,
+      getBlockReason: () => null,
       storage,
       deleteDatabase: async (profile) => {
         databases.delete(profile);
@@ -59,21 +163,44 @@ describe("local device data wipe", () => {
     expect(storage.has("pv-privacy-consent:user-b")).toBe(true);
   });
 
-  it("supports guest mode without touching signed-in users' consent caches", async () => {
+  it("requires the exact typed DELETE phrase for guests", async () => {
+    expect(GUEST_WIPE_WARNING).toBe(
+      "Device-only mode has NO cloud copy. This permanently deletes all your data on this device and cannot be undone. Download a backup first.",
+    );
+    expect(isGuestWipeConfirmationValid("DELETE")).toBe(true);
+    expect(isGuestWipeConfirmationValid("delete")).toBe(false);
+    expect(isGuestWipeConfirmationValid("DELETE ")).toBe(false);
+  });
+
+  it("allows guest wipe without cloud sync checks only after typed confirmation", async () => {
     const storage = memoryStorage({
       "pl-space-guest": "guest-space",
       "pl-guest": "1",
       "pv-privacy-consent:user-a": "consent-a",
     });
     const deleteDatabase = vi.fn(async () => {});
+    const state = { pending: 7, errors: 3, conflicts: ["local-only"], syncError: "offline", syncRunning: true };
+    const getBlockReason = () => blockReasonFor(state, true);
+
+    await expect(
+      wipeLocalProfileData({
+        profile: "guest",
+        userId: null,
+        getBlockReason,
+        storage,
+        deleteDatabase,
+      }),
+    ).rejects.toThrow("Type DELETE exactly");
+
     await wipeLocalProfileData({
       profile: "guest",
       userId: null,
-      pending: 0,
+      guestConfirmation: "DELETE",
+      getBlockReason,
       storage,
       deleteDatabase,
     });
-    expect(deleteDatabase).toHaveBeenCalledWith("guest");
+    expect(deleteDatabase).toHaveBeenCalledWith("guest", undefined);
     expect(storage.has("pl-space-guest")).toBe(false);
     expect(storage.has("pl-guest")).toBe(false);
     expect(storage.has("pv-privacy-consent:user-a")).toBe(true);
@@ -85,27 +212,11 @@ describe("local device data wipe", () => {
       wipeLocalProfileData({
         profile: "user-b",
         userId: "user-a",
-        pending: 0,
+        getBlockReason: () => null,
         storage: memoryStorage(),
         deleteDatabase,
       }),
     ).rejects.toThrow("does not match");
     expect(deleteDatabase).not.toHaveBeenCalled();
-  });
-
-  it("does not clear local preferences if database deletion fails", async () => {
-    const storage = memoryStorage({ "pl-space-user-a": "space-a" });
-    await expect(
-      wipeLocalProfileData({
-        profile: "user-a",
-        userId: "user-a",
-        pending: 0,
-        storage,
-        deleteDatabase: async () => {
-          throw new Error("blocked");
-        },
-      }),
-    ).rejects.toThrow("blocked");
-    expect(storage.has("pl-space-user-a")).toBe(true);
   });
 });
