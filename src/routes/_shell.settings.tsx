@@ -15,6 +15,11 @@ import { Input } from "@/components/ui/input";
 import { useThemePreference } from "@/components/app/ThemeProvider";
 import { bnplEnabled, toggleBnpl } from "@/lib/bnpl-actions";
 import { mainSpaces } from "@/lib/selectors";
+import {
+  GUEST_WIPE_WARNING,
+  SIGNED_IN_WIPE_WARNING,
+  localWipeBlockReason,
+} from "@/lib/local-data-wipe";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({
@@ -29,7 +34,7 @@ export const Route = createFileRoute("/_shell/settings")({
 });
 
 function Settings() {
-  const { auth, snap, store, syncNow, signOut } = useApp();
+  const { auth, snap, store, sync, syncNow, signOut, wipeLocalData, wipeStatus } = useApp();
   const s = useSyncSummary();
   const nav = useNavigate();
   const { space } = useSpace();
@@ -40,6 +45,41 @@ function Settings() {
   const isMainSpace = !!space && mainSpaces(snap.spaces).some((item) => item.id === space.id);
   const bnplOn = isMainSpace && !!space && bnplEnabled(snap, space.id);
   const [bnplBusy, setBnplBusy] = useState(false);
+  const [wipeBusy, setWipeBusy] = useState(false);
+  const [guestWipeOpen, setGuestWipeOpen] = useState(false);
+  const [guestWipeText, setGuestWipeText] = useState("");
+  const wipeBlockReason = localWipeBlockReason(
+    () => snap,
+    () => sync,
+    auth.status === "guest",
+  );
+
+  async function removeDeviceData(guestConfirmation?: string) {
+    setWipeBusy(true);
+    try {
+      await wipeLocalData(guestConfirmation);
+      toast.success("Local PocketVault data removed. You have been signed out.");
+      await nav({ to: "/auth", replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove local data.");
+    } finally {
+      setWipeBusy(false);
+      setGuestWipeOpen(false);
+      setGuestWipeText("");
+    }
+  }
+
+  function requestDeviceDataRemoval() {
+    if (auth.status === "guest") {
+      setGuestWipeText("");
+      setGuestWipeOpen(true);
+      return;
+    }
+    const confirmed = confirm(
+      "Remove PocketVault data from this device and sign out? This permanently deletes the local copy for this account from this browser/app. Cloud data is not deleted. Download a backup first if you want to keep a separate copy.",
+    );
+    if (confirmed) void removeDeviceData();
+  }
 
   async function changeBnpl(enabled: boolean) {
     if (!store || !space || !isMainSpace) return;
@@ -175,6 +215,88 @@ function Settings() {
                 </span>
               </span>
             </label>
+          </Panel>
+        )}
+        {(auth.status === "signed_in" || auth.status === "guest") && (
+          <Panel title="Sign out and remove data from this device">
+            {auth.status === "guest" ? (
+              <p className="text-sm">{GUEST_WIPE_WARNING}</p>
+            ) : (
+              <p className="text-sm">{SIGNED_IN_WIPE_WARNING}</p>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {auth.status === "guest"
+                ? "Guest data is stored only on this device. You must type DELETE to continue."
+                : "This action is blocked while unsynced or rejected changes, unresolved conflicts, a sync error, or a running sync remains. Download a backup first if you need a separate copy."}
+            </p>
+            {wipeBlockReason && (
+              <p className="mt-2 text-sm text-destructive" role="status">
+                {wipeBlockReason}
+              </p>
+            )}
+            {wipeStatus && (
+              <p className="mt-2 text-sm text-amber-700" role="status">
+                {wipeStatus}
+              </p>
+            )}
+            <Button
+              className="mt-3"
+              variant="destructive"
+              onClick={requestDeviceDataRemoval}
+              disabled={wipeBusy || !!wipeBlockReason}
+            >
+              {wipeBusy ? "Removing local data…" : "Sign out and remove local data"}
+            </Button>
+            {guestWipeOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="guest-wipe-title"
+                  aria-describedby="guest-wipe-warning"
+                  className="w-full max-w-md rounded-lg border bg-background p-5 shadow-xl"
+                >
+                  <h2 id="guest-wipe-title" className="text-lg font-semibold">
+                    Permanently delete device-only data?
+                  </h2>
+                  <p id="guest-wipe-warning" className="mt-2 text-sm">
+                    {GUEST_WIPE_WARNING}
+                  </p>
+                  <label
+                    htmlFor="guest-wipe-confirmation"
+                    className="mt-4 block text-sm font-medium"
+                  >
+                    Type DELETE to confirm
+                  </label>
+                  <Input
+                    id="guest-wipe-confirmation"
+                    autoComplete="off"
+                    value={guestWipeText}
+                    onChange={(event) => setGuestWipeText(event.target.value)}
+                    placeholder="DELETE"
+                  />
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setGuestWipeOpen(false);
+                        setGuestWipeText("");
+                      }}
+                      disabled={wipeBusy}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => void removeDeviceData(guestWipeText)}
+                      disabled={wipeBusy || guestWipeText !== "DELETE"}
+                    >
+                      Permanently delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Panel>
         )}
         <Panel title="Sync">

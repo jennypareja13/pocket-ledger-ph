@@ -10,7 +10,8 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { idbPersistence } from "@/lib/idb";
+import { deleteLocalProfileDatabase, idbPersistence } from "@/lib/idb";
+import { localWipeBlockReason, wipeLocalProfileData } from "@/lib/local-data-wipe";
 import { LedgerStore, type Snapshot } from "@/lib/store";
 import { syncOnce } from "@/lib/sync-engine";
 import { cloudRemote } from "@/lib/remote";
@@ -51,6 +52,8 @@ interface AppCtx {
   openTx: (s?: Omit<TxDialogState, "open">) => void;
   closeTx: () => void;
   signOut: () => Promise<void>;
+  wipeLocalData: (guestConfirmation?: string) => Promise<void>;
+  wipeStatus: string | null;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -83,7 +86,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     controller: AbortController;
     store: LedgerStore;
     userId: string;
+    done: Promise<void>;
+    resolveDone: () => void;
   } | null>(null);
+  const wipingProfile = useRef<string | null>(null);
+  const syncInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const uploadTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentProfile = useRef<string | null>(null);
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   useEffect(() => {
@@ -151,6 +159,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const [sync, setSync] = useState<SyncStatus>({ running: false, initialDone: false });
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
+  const [wipeStatus, setWipeStatus] = useState<string | null>(null);
+  const [syncScheduleRevision, setSyncScheduleRevision] = useState(0);
   const signedIn = auth.status === "signed_in";
   const userId = auth.status === "signed_in" ? auth.userId : null;
   useEffect(() => {
@@ -180,7 +192,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [store, userId]);
 
   const syncNow = useCallback(async () => {
-    if (!store || !userId || currentProfile.current !== userId) return;
+    if (!store || !userId || currentProfile.current !== userId || wipingProfile.current === userId)
+      return;
     if (activeRun.current?.store === store && !activeRun.current.controller.signal.aborted) return;
     if (!navigator.onLine) {
       setSync((s) => ({
@@ -190,7 +203,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
       return;
     }
-    const run = { controller: new AbortController(), store, userId };
+    let resolveDone = () => {};
+    const done = new Promise<void>((resolve) => {
+      resolveDone = resolve;
+    });
+    const run = { controller: new AbortController(), store, userId, done, resolveDone };
     activeRun.current = run;
     setSync((s) => ({ ...s, running: true, attempted: true, error: undefined }));
     try {
@@ -218,9 +235,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSync((s) => ({
           ...s,
           running: false,
-          error: run.controller.signal.aborted ? "Sync was cancelled. Please retry." : s.error,
+          error:
+            run.controller.signal.aborted && wipingProfile.current !== userId
+              ? "Sync was cancelled. Please retry."
+              : s.error,
         }));
       }
+      run.resolveDone();
     }
   }, [store, userId]);
 
@@ -228,22 +249,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!online) return;
     syncNow();
     const t = setInterval(syncNow, 30_000);
-    return () => clearInterval(t);
-  }, [online, syncNow]);
+    syncInterval.current = t;
+    return () => {
+      clearInterval(t);
+      if (syncInterval.current === t) syncInterval.current = null;
+    };
+  }, [online, syncNow, syncScheduleRevision]);
   // Upload shortly after local changes.
   useEffect(() => {
     if (!store) return;
-    let t: ReturnType<typeof setTimeout> | undefined;
     const unsub = store.subscribe(() => {
-      if (store.getSnapshot().pending === 0) return;
-      clearTimeout(t);
-      t = setTimeout(syncNow, 1200);
+      if (store.getSnapshot().pending === 0 || wipingProfile.current === userId) return;
+      if (uploadTimeout.current) clearTimeout(uploadTimeout.current);
+      uploadTimeout.current = setTimeout(() => {
+        uploadTimeout.current = null;
+        syncNow();
+      }, 1200);
     });
     return () => {
-      clearTimeout(t);
+      if (uploadTimeout.current) clearTimeout(uploadTimeout.current);
+      uploadTimeout.current = null;
       unsub();
     };
-  }, [store, syncNow]);
+  }, [store, syncNow, userId, syncScheduleRevision]);
 
   const [spaceId, setSpaceIdState] = useState<string | null>(null);
   useEffect(() => {
@@ -273,6 +301,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else setAuth({ status: "signed_out" });
   };
 
+  const wipeLocalData = async (guestConfirmation?: string) => {
+    if (!profile || !store) throw new Error("There is no active local profile to remove.");
+    const targetProfile = profile;
+    const targetUserId = auth.status === "signed_in" ? auth.userId : null;
+    setWipeStatus(null);
+
+    try {
+      await wipeLocalProfileData({
+        profile: targetProfile,
+        userId: targetUserId,
+        guestConfirmation,
+        beforeDelete: async () => {
+          // Lock this profile against new sync attempts before aborting the current one.
+          wipingProfile.current = targetProfile;
+          const run = activeRun.current;
+          run?.controller.abort();
+          activeRun.current = null;
+          if (syncInterval.current) clearInterval(syncInterval.current);
+          syncInterval.current = null;
+          if (uploadTimeout.current) clearTimeout(uploadTimeout.current);
+          uploadTimeout.current = null;
+          if (run) await run.done;
+
+          const settledSync = { ...syncRef.current, running: false };
+          syncRef.current = settledSync;
+          setSync(settledSync);
+        },
+        getBlockReason: () =>
+          localWipeBlockReason(
+            () => store.getSnapshot(),
+            () => syncRef.current,
+            targetUserId === null,
+          ),
+        storage: localStorage,
+        deleteDatabase: deleteLocalProfileDatabase,
+        onBlocked: () =>
+          setWipeStatus(
+            "Deletion is pending because another PocketVault tab still has this database open. Close those tabs; this action will sign out only after the browser confirms deletion.",
+          ),
+        afterWipe: async () => {
+          currentProfile.current = null;
+          setStore(null);
+          if (targetUserId) {
+            const { error } = await supabase.auth.signOut({ scope: "local" });
+            if (error)
+              throw new Error(
+                "Local data was removed, but sign-out did not complete. Please sign out manually.",
+              );
+          } else {
+            setAuth({ status: "signed_out" });
+          }
+        },
+      });
+    } catch (error) {
+      wipingProfile.current = null;
+      setSyncScheduleRevision((value) => value + 1);
+      throw error;
+    }
+  };
+
   return (
     <Ctx.Provider
       value={{
@@ -289,6 +377,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         openTx: (s) => setTxDialog({ open: true, ...s }),
         closeTx: () => setTxDialog({ open: false }),
         signOut,
+        wipeLocalData,
+        wipeStatus,
       }}
     >
       {children}
