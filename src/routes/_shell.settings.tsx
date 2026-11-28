@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_shell/settings")({
 });
 
 function Settings() {
-  const { auth, snap, store, syncNow, signOut } = useApp();
+  const { auth, snap, store, sync, syncNow, signOut, wipeLocalData } = useApp();
   const s = useSyncSummary();
   const nav = useNavigate();
   const { space } = useSpace();
@@ -40,6 +40,24 @@ function Settings() {
   const isMainSpace = !!space && mainSpaces(snap.spaces).some((item) => item.id === space.id);
   const bnplOn = isMainSpace && !!space && bnplEnabled(snap, space.id);
   const [bnplBusy, setBnplBusy] = useState(false);
+  const [wipeBusy, setWipeBusy] = useState(false);
+
+  async function removeDeviceData() {
+    const confirmed = confirm(
+      "Remove PocketVault data from this device and sign out? This permanently deletes the local copy for this account from this browser/app. Cloud data is not deleted. Download a backup first if you want to keep a separate copy.",
+    );
+    if (!confirmed) return;
+    setWipeBusy(true);
+    try {
+      await wipeLocalData();
+      toast.success("Local PocketVault data removed. You have been signed out.");
+      await nav({ to: "/auth", replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove local data.");
+    } finally {
+      setWipeBusy(false);
+    }
+  }
 
   async function changeBnpl(enabled: boolean) {
     if (!store || !space || !isMainSpace) return;
@@ -175,6 +193,26 @@ function Settings() {
                 </span>
               </span>
             </label>
+          </Panel>
+        )}
+        {(auth.status === "signed_in" || auth.status === "guest") && (
+          <Panel title="Sign out and remove data from this device">
+            <p className="text-sm">
+              This removes the local PocketVault database and this device's saved space and consent
+              preferences, then signs you out. Your cloud account and cloud records are not deleted.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              This action is blocked while changes are waiting to sync, a sync error remains, or a
+              sync is running. Download a backup first if you need a separate copy.
+            </p>
+            <Button
+              className="mt-3"
+              variant="destructive"
+              onClick={removeDeviceData}
+              disabled={wipeBusy || snap.pending > 0 || !!sync.error || sync.running}
+            >
+              {wipeBusy ? "Removing local data…" : "Sign out and remove local data"}
+            </Button>
           </Panel>
         )}
         <Panel title="Sync">
