@@ -25,9 +25,7 @@ describe("sensitive error text redaction", () => {
   });
 
   it("redacts message and stack text before server error logging", () => {
-    const error = new Error(
-      "Failed to process 9876543210987654 for jenny.pareja@example.com",
-    );
+    const error = new Error("Failed to process 9876543210987654 for jenny.pareja@example.com");
     error.stack =
       "Error: Failed to process 9876543210987654 for jenny.pareja@example.com\n    at https://example.test/api?token=private-token";
 
