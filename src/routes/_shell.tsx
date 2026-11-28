@@ -23,6 +23,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   PASSWORD_RECOVERY_MARKER_KEY,
   decideConsentGate,
+  decideResetPageState,
+  isRecoveryMarkerFresh,
   readLastConsentCache,
   writeConsentCache,
 } from "@/lib/privacy-consent";
@@ -60,11 +62,20 @@ function ShellRoute() {
   useEffect(() => {
     let active = true;
     // A password-recovery session must complete on the reset page before the app shell can mount.
-    if (sessionStorage.getItem(PASSWORD_RECOVERY_MARKER_KEY)) {
+    const recoveryMarker = sessionStorage.getItem(PASSWORD_RECOVERY_MARKER_KEY);
+    const recoveryState = decideResetPageState({
+      sessionUserId: recoveryMarker && isRecoveryMarkerFresh(recoveryMarker) ? "pending" : null,
+      marker: recoveryMarker,
+      now: Date.now(),
+    });
+    if (recoveryState === "form") {
       window.location.replace("/reset-password");
       return () => {
         active = false;
       };
+    }
+    if (recoveryMarker && !isRecoveryMarkerFresh(recoveryMarker)) {
+      sessionStorage.removeItem(PASSWORD_RECOVERY_MARKER_KEY);
     }
     let usedCacheFallback = false;
     const cachedConsent = readLastConsentCache(localStorage);
