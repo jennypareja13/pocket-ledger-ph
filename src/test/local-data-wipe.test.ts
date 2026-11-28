@@ -45,6 +45,21 @@ describe("local device data wipe", () => {
     expect(blockReasonFor({ pending: 1, errors: 0, conflicts: [] })).toContain("unsynced changes");
   });
 
+  it("reports every applicable blocker when multiple conditions exist", () => {
+    const reason = blockReasonFor({
+      pending: 2,
+      errors: 1,
+      conflicts: ["conflict"],
+      syncError: "Network unavailable",
+      syncRunning: true,
+    });
+    expect(reason).toContain("rejected by the server");
+    expect(reason).toContain("unsynced changes");
+    expect(reason).toContain("unresolved sync conflicts");
+    expect(reason).toContain("last sync failed");
+    expect(reason).toContain("Sync is still running");
+  });
+
   it("blocks unresolved conflicts separately from pending records", () => {
     expect(blockReasonFor({ pending: 0, errors: 0, conflicts: ["conflict"] })).toBe(
       "You have unresolved sync conflicts. Resolve them in Settings first.",
