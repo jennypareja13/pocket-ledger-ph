@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useThemePreference } from "@/components/app/ThemeProvider";
 import { bnplEnabled, toggleBnpl } from "@/lib/bnpl-actions";
 import { mainSpaces } from "@/lib/selectors";
-import { localWipeBlockReason } from "@/lib/local-data-wipe";
+import { GUEST_WIPE_WARNING, localWipeBlockReason } from "@/lib/local-data-wipe";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({
@@ -50,10 +50,10 @@ function Settings() {
     auth.status === "guest",
   );
 
-  async function removeDeviceData() {
+  async function removeDeviceData(guestConfirmation?: string) {
     setWipeBusy(true);
     try {
-      await wipeLocalData();
+      await wipeLocalData(guestConfirmation);
       toast.success("Local PocketVault data removed. You have been signed out.");
       await nav({ to: "/auth", replace: true });
     } catch (error) {
@@ -216,10 +216,7 @@ function Settings() {
         {(auth.status === "signed_in" || auth.status === "guest") && (
           <Panel title="Sign out and remove data from this device">
             {auth.status === "guest" ? (
-              <p className="text-sm">
-                Device-only mode has NO cloud copy. This permanently deletes all your data on this
-                device and cannot be undone. Download a backup first.
-              </p>
+              <p className="text-sm">{GUEST_WIPE_WARNING}</p>
             ) : (
               <p className="text-sm">
                 This removes the local PocketVault database and this device's saved space and consent
@@ -262,8 +259,7 @@ function Settings() {
                     Permanently delete device-only data?
                   </h2>
                   <p id="guest-wipe-warning" className="mt-2 text-sm">
-                    Device-only mode has NO cloud copy. This permanently deletes all your data on
-                    this device and cannot be undone. Download a backup first.
+                    {GUEST_WIPE_WARNING}
                   </p>
                   <label htmlFor="guest-wipe-confirmation" className="mt-4 block text-sm font-medium">
                     Type DELETE to confirm
@@ -288,7 +284,7 @@ function Settings() {
                     </Button>
                     <Button
                       variant="destructive"
-                      onClick={() => void removeDeviceData()}
+                      onClick={() => void removeDeviceData(guestWipeText)}
                       disabled={wipeBusy || guestWipeText !== "DELETE"}
                     >
                       Permanently delete
