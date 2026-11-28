@@ -8,7 +8,9 @@ import {
   hasCurrentPrivacyConsent,
 } from "@/lib/privacy-notice";
 import {
-  canUsePasswordRecovery,
+  decideResetPageState,
+  isRecoveryMarkerFresh,
+  makeRecoveryMarker,
   consentCacheKey,
   consentDeclineSignOutOptions,
   decideConsentGate,
@@ -204,11 +206,41 @@ describe("Password recovery marker", () => {
       }),
     ).toBe(null);
   });
-  it("requires both a session and a recovery marker", () => {
-    expect(canUsePasswordRecovery({ sessionUserId: "u1", recoveryMarker: "implicit" })).toBe(true);
-    expect(canUsePasswordRecovery({ sessionUserId: "u1", recoveryMarker: null })).toBe(false);
-    expect(canUsePasswordRecovery({ sessionUserId: null, recoveryMarker: "pkce" })).toBe(false);
+  it("stores a typed marker with a timestamp and enforces the 60-minute TTL", () => {
+    const raw = makeRecoveryMarker("implicit", 1_000);
+    expect(JSON.parse(raw)).toEqual({ kind: "implicit", at: 1_000 });
+    expect(isRecoveryMarkerFresh(raw, 1_000 + 60 * 60 * 1000)).toBe(true);
+    expect(isRecoveryMarkerFresh(raw, 1_000 + 60 * 60 * 1000 + 1)).toBe(false);
+    expect(isRecoveryMarkerFresh("not-json", 1_001)).toBe(false);
     expect(PASSWORD_RECOVERY_MARKER_KEY).toBe("pv-password-recovery-marker");
+  });
+  it("shows the form after a reload when the URL hash is gone but marker and session remain", () => {
+    const marker = makeRecoveryMarker("implicit", 10_000);
+    expect(decideResetPageState({ sessionUserId: "u1", marker, now: 10_001 })).toBe("form");
+  });
+  it("ignores stale markers and shows an ordinary session", () => {
+    const marker = makeRecoveryMarker("pkce", 1_000);
+    expect(decideResetPageState({ sessionUserId: "u1", marker, now: 3_601_001 })).toBe(
+      "ordinary-session",
+    );
+  });
+  it("returns invalid-link without a session and ordinary-session without a marker", () => {
+    const marker = makeRecoveryMarker("event", 10_000);
+    expect(decideResetPageState({ sessionUserId: null, marker, now: 10_001 })).toBe("invalid-link");
+    expect(decideResetPageState({ sessionUserId: "u1", marker: null, now: 10_001 })).toBe(
+      "ordinary-session",
+    );
+    expect(decideResetPageState({ sessionUserId: undefined, marker, now: 10_001 })).toBe(
+      "checking",
+    );
+  });
+  it("preserves a fresh recovery marker across the shell redirect to /reset-password", () => {
+    const shell = readFileSync("src/routes/_shell.tsx", "utf8");
+    expect(shell).toContain("isRecoveryMarkerFresh(recoveryMarker)");
+    expect(shell).toContain('window.location.replace("/reset-password")');
+    expect(shell).not.toMatch(
+      /removeItem\(PASSWORD_RECOVERY_MARKER_KEY\)[\s\S]*?window\.location\.replace/,
+    );
   });
   it("maps request errors generically and identifies rate limits", () => {
     expect(passwordResetRequestErrorMessage(new Error("offline"))).toContain("internet connection");
