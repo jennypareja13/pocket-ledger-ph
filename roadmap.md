@@ -1,7 +1,7 @@
 # PocketVault roadmap and implementation status
 
 Last reconciled: 2026-11-28  
-Verified main baseline before PR 1: `236b29dfd518d3367a86c64f622d29502eac1dbf`
+Verified main baseline before PR 2: `e8872ac3ff2114fa214793e1abf06de523963253`
 
 This document distinguishes merged repository code from database operations, manual configuration, and unverified deployment state. The owner's Master Brief remains the authority for product decisions.
 
@@ -20,7 +20,7 @@ The following changes are merged to `main`:
 - Offline app shell and service worker support (PR #27). **Opt-in only; default OFF.** Registration requires explicit local opt-in. This is not a claim that offline support is enabled for users.
 - Privacy consent gate, privacy notice version `2026-11-v1`, and password reset flow (PR #28). Repository code is merged. Required Auth dashboard configuration and real-device verification are separate manual checks and are not confirmed here.
 
-PR #28 is the current main commit at the baseline SHA above.
+PR #28 was the main commit before PR 1. PR #29 is now merged as the current main commit at the baseline SHA above.
 
 ## Security completion plan
 
@@ -28,14 +28,18 @@ Security work is being delivered as six separate PRs, in order:
 
 | PR | Scope | Current status |
 |---|---|---|
-| 1 | Repository hygiene: Dependabot, non-blocking dependency audit, pinned Bun, status documentation | In progress on `security/pr1-repo-hygiene` |
-| 2 | Privacy notice v2, chart CSS injection hardening, error-report redaction review | Not started |
+| 1 | Repository hygiene: Dependabot, non-blocking dependency audit, pinned Bun, status documentation | Merged as PR #29 at `e8872ac3ff2114fa214793e1abf06de523963253` |
+| 2 | Privacy notice v2, chart CSS injection hardening, error-report redaction review | In progress on `security/pr2-small-hardening`; not merged |
 | 3 | Security response headers and CSP report-only policy | Not started; owner review required before merge |
 | 4 | Explicit per-user local-data wipe with pending-sync safeguards | Not started; owner review required before merge |
 | 5 | Service-worker exclusions for reset and consent routes | Not started; owner review required before merge |
 | 6 | Server-side size/row limits and terminal sync rejection | Design first; two separate owner approvals required before implementation |
 
 No migration for PR 6 is to be applied by this workflow. Claude applies any reviewed migration only after the owner approves it.
+
+## Dependency audit findings from PR 1
+
+The one-time Bun 1.4.5 audit in PR #29 reported 30 findings: 1 critical, 14 high, 14 moderate, and 1 low. Affected packages included `shell-quote` (critical), `brace-expansion`, `js-yaml`, `launch-editor`, `nanoid`, `source-map-js`, `zod`, `@vitest/mocker`, `esbuild`, `glob`, `minimatch`, `seroval`, and `vite`. No packages were upgraded in PR 1. Remediation requires a separate dependency PR.
 
 ## Current security posture and known gaps
 
@@ -45,7 +49,7 @@ No migration for PR 6 is to be applied by this workflow. Claude applies any revi
 - **Local data deletion:** normal sign-out does not wipe the local ledger. A separate safe wipe is planned for PR 4 and must refuse to run when unsynced changes exist or the last sync failed.
 - **Server-side abuse limits:** 16 KiB per-record and 10,000-row-per-owner limits are not implemented. PR 6 must first fix and test terminal rejection behavior in the sync layer.
 - **Security headers:** not yet added. PR 3 will introduce the requested headers and report-only CSP.
-- **Error telemetry redaction:** not yet confirmed. PR 2 begins with a read-only review of the reporting/capture paths.
+- **Error telemetry redaction:** PR 2's source review found that project-owned wrappers forward raw messages/stacks to Lovable's injected telemetry hooks and that server error logging can emit raw diagnostics. Redaction is being added at those project-owned boundaries.
 
 ## Product roadmap still outstanding
 
