@@ -52,7 +52,7 @@ interface AppCtx {
   openTx: (s?: Omit<TxDialogState, "open">) => void;
   closeTx: () => void;
   signOut: () => Promise<void>;
-  wipeLocalData: () => Promise<void>;
+  wipeLocalData: (guestConfirmation?: string) => Promise<void>;
   wipeStatus: string | null;
 }
 
@@ -306,7 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else setAuth({ status: "signed_out" });
   };
 
-  const wipeLocalData = async () => {
+  const wipeLocalData = async (guestConfirmation?: string) => {
     if (!profile || !store)
       throw new Error("There is no active local profile to remove.");
     const targetProfile = profile;
@@ -317,6 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await wipeLocalProfileData({
         profile: targetProfile,
         userId: targetUserId,
+        guestConfirmation,
         beforeDelete: async () => {
           // Lock this profile against new sync attempts before aborting the current one.
           wipingProfile.current = targetProfile;
