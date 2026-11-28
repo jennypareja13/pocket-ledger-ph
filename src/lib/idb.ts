@@ -31,7 +31,11 @@ export async function deleteLocalProfileDatabase(profile: string): Promise<void>
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error ?? new Error("Could not remove local data."));
     request.onblocked = () =>
-      reject(new Error("PocketVault is open in another tab. Close other PocketVault tabs and try again."));
+      reject(
+        new Error(
+          "PocketVault is open in another tab. Close other PocketVault tabs and try again.",
+        ),
+      );
   });
 }
 
