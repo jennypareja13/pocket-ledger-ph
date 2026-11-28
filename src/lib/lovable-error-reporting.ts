@@ -1,3 +1,5 @@
+import { redactSensitiveErrorText } from "@/lib/error-redaction";
+
 type LovableErrorOptions = {
   mechanism?: "manual" | "onerror" | "unhandledrejection" | "react_error_boundary";
   handled?: boolean;
@@ -26,8 +28,9 @@ declare global {
 
 export function reportLovableError(error: unknown, context: Record<string, unknown> = {}) {
   if (typeof window === "undefined") return;
+  const safeError = redactError(error);
   window.__lovableEvents?.captureException?.(
-    error,
+    safeError,
     {
       source: "react_error_boundary",
       route: window.location.pathname,
@@ -40,20 +43,28 @@ export function reportLovableError(error: unknown, context: Record<string, unkno
     },
   );
   // Prod React does not rethrow boundary-caught errors to window.onerror, so the
-  // editor's telemetry never sees them. Forward to lovable.js's reporting hook,
-  // which is present only inside the editor preview.
-  const stack = error instanceof Error ? error.stack : undefined;
+  // editor's telemetry never sees them. Forward the redacted error to lovable.js's
+  // reporting hook, which is present only inside the editor preview.
   window.__lovableReportRuntimeError?.({
-    message: describeThrown(error),
-    ...(stack !== undefined && { stack }),
+    message: safeError.message,
+    ...(safeError.stack !== undefined && { stack: safeError.stack }),
     filename: window.location.pathname,
   });
+}
+
+function redactError(error: unknown): Error {
+  const safeError = new Error(redactSensitiveErrorText(describeThrown(error)));
+  if (error instanceof Error) {
+    safeError.name = redactSensitiveErrorText(error.name);
+    if (error.stack) safeError.stack = redactSensitiveErrorText(error.stack);
+  }
+  return safeError;
 }
 
 const MAX_SERIALIZED_LENGTH = 2000;
 
 // Loaders and server fns throw raw Responses and plain objects (a Supabase
-// `{ message, code, details }`), which String() reduces to "[object ...]".
+// { message, code, details }), which String() reduces to "[object ...]".
 function describeThrown(error: unknown): string {
   if (error instanceof Response) {
     return `Response ${error.status}${error.url ? ` at ${error.url}` : ""}`;
