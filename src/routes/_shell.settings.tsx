@@ -15,7 +15,11 @@ import { Input } from "@/components/ui/input";
 import { useThemePreference } from "@/components/app/ThemeProvider";
 import { bnplEnabled, toggleBnpl } from "@/lib/bnpl-actions";
 import { mainSpaces } from "@/lib/selectors";
-import { GUEST_WIPE_WARNING, localWipeBlockReason } from "@/lib/local-data-wipe";
+import {
+  GUEST_WIPE_WARNING,
+  SIGNED_IN_WIPE_WARNING,
+  localWipeBlockReason,
+} from "@/lib/local-data-wipe";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({
@@ -218,10 +222,7 @@ function Settings() {
             {auth.status === "guest" ? (
               <p className="text-sm">{GUEST_WIPE_WARNING}</p>
             ) : (
-              <p className="text-sm">
-                This removes the local PocketVault database and this device's saved space and consent
-                preferences, then signs you out. Your cloud account and cloud records are not deleted.
-              </p>
+              <p className="text-sm">{SIGNED_IN_WIPE_WARNING}</p>
             )}
             <p className="mt-2 text-xs text-muted-foreground">
               {auth.status === "guest"
@@ -261,7 +262,10 @@ function Settings() {
                   <p id="guest-wipe-warning" className="mt-2 text-sm">
                     {GUEST_WIPE_WARNING}
                   </p>
-                  <label htmlFor="guest-wipe-confirmation" className="mt-4 block text-sm font-medium">
+                  <label
+                    htmlFor="guest-wipe-confirmation"
+                    className="mt-4 block text-sm font-medium"
+                  >
                     Type DELETE to confirm
                   </label>
                   <Input
