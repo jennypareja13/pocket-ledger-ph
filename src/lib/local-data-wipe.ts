@@ -46,34 +46,42 @@ export function localWipeBlockReason(
   const snapshot = getSnapshot();
   const sync = getSyncState();
 
+  const reasons: string[] = [];
   if (snapshot.errors > 0) {
-    return "Some changes were rejected by the server and exist only on this device. Download a backup and resolve these records before removing local data.";
+    reasons.push(
+      "Some changes were rejected by the server and exist only on this device. Download a backup and resolve these records before removing local data.",
+    );
   }
-  if (snapshot.pending > 0) {
-    return "You have unsynced changes. Connect to the internet and sync them before removing local data.";
+  // pending includes errors; subtract the error subset to detect other queued changes.
+  if (snapshot.pending > snapshot.errors) {
+    reasons.push(
+      "You have unsynced changes. Connect to the internet and sync them before removing local data.",
+    );
   }
   if (snapshot.conflicts.length > 0) {
-    return "You have unresolved sync conflicts. Resolve them in Settings first.";
+    reasons.push("You have unresolved sync conflicts. Resolve them in Settings first.");
   }
   if (sync.error) {
-    return "The last sync failed. Resolve the sync problem and successfully sync before removing local data.";
+    reasons.push(
+      "The last sync failed. Resolve the sync problem and successfully sync before removing local data.",
+    );
   }
   if (sync.running) {
-    return "Sync is still running. Wait for it to finish before removing local data.";
+    reasons.push("Sync is still running. Wait for it to finish before removing local data.");
   }
-  return null;
+  return reasons.length > 0 ? reasons.join(" ") : null;
 }
 
 /** Stop background work, re-check live state, then remove only the selected local profile. */
 export async function wipeLocalProfileData(input: LocalWipeRequest): Promise<void> {
-  await input.beforeDelete?.();
-
   if (input.userId && input.profile !== input.userId)
     throw new Error("The signed-in account does not match the local profile.");
   if (!input.userId && input.profile !== "guest")
     throw new Error("A signed-out session can only remove the guest profile.");
   if (!input.userId && !isGuestWipeConfirmationValid(input.guestConfirmation ?? ""))
     throw new Error("Type DELETE exactly to confirm permanent deletion of device-only data.");
+
+  await input.beforeDelete?.();
 
   const blocked = input.getBlockReason();
   if (blocked) throw new Error(blocked);
