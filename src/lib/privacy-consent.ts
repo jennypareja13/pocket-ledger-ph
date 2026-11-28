@@ -89,11 +89,43 @@ export function recoveryMarkerFromUrl(input: {
   const search = new URLSearchParams(input.search.replace(/^\?/, ""));
   return search.has("code") ? "pkce" : null;
 }
-export function canUsePasswordRecovery(input: {
+export const PASSWORD_RECOVERY_MARKER_TTL_MS = 60 * 60 * 1000;
+export type RecoveryMarkerKind = "implicit" | "pkce" | "event";
+export interface RecoveryMarker {
+  kind: RecoveryMarkerKind;
+  at: number;
+}
+export function makeRecoveryMarker(kind: RecoveryMarkerKind, now: number = Date.now()): string {
+  return JSON.stringify({ kind, at: now } satisfies RecoveryMarker);
+}
+export function isRecoveryMarkerFresh(raw: string | null | undefined, now: number = Date.now()): boolean {
+  if (!raw) return false;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      !("kind" in parsed) ||
+      !("at" in parsed) ||
+      !["implicit", "pkce", "event"].includes(String(parsed.kind)) ||
+      typeof parsed.at !== "number" ||
+      !Number.isFinite(parsed.at)
+    ) return false;
+    const age = now - parsed.at;
+    return age >= 0 && age <= PASSWORD_RECOVERY_MARKER_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+export type ResetPageState = "checking" | "form" | "ordinary-session" | "invalid-link";
+export function decideResetPageState(input: {
   sessionUserId: string | null | undefined;
-  recoveryMarker: string | null | undefined;
-}): boolean {
-  return Boolean(input.sessionUserId && input.recoveryMarker);
+  marker: string | null | undefined;
+  now?: number;
+}): ResetPageState {
+  if (input.sessionUserId === undefined) return "checking";
+  if (input.sessionUserId === null) return "invalid-link";
+  return isRecoveryMarkerFresh(input.marker, input.now) ? "form" : "ordinary-session";
 }
 export function passwordResetRequestErrorMessage(error: unknown): string {
   const message =
