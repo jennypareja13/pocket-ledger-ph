@@ -14,6 +14,9 @@ export interface LocalWipeSyncState {
   running?: boolean | undefined;
 }
 
+export const SIGNED_IN_WIPE_WARNING =
+  "This removes the local PocketVault database and this device's saved space and consent preferences, then signs you out. Your cloud account and cloud records are not deleted.";
+
 export const GUEST_WIPE_WARNING =
   "Device-only mode has NO cloud copy. This permanently deletes all your data on this device and cannot be undone. Download a backup first.";
 
