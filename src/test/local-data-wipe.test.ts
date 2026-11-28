@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   GUEST_WIPE_WARNING,
+  SIGNED_IN_WIPE_WARNING,
   isGuestWipeConfirmationValid,
   localWipeBlockReason,
   wipeLocalProfileData,
@@ -41,9 +42,7 @@ describe("local device data wipe", () => {
   });
 
   it("blocks ordinary pending changes", () => {
-    expect(blockReasonFor({ pending: 1, errors: 0, conflicts: [] })).toContain(
-      "unsynced changes",
-    );
+    expect(blockReasonFor({ pending: 1, errors: 0, conflicts: [] })).toContain("unsynced changes");
   });
 
   it("blocks unresolved conflicts separately from pending records", () => {
@@ -56,9 +55,9 @@ describe("local device data wipe", () => {
     expect(
       blockReasonFor({ pending: 0, errors: 0, conflicts: [], syncError: "Network unavailable" }),
     ).toContain("last sync failed");
-    expect(
-      blockReasonFor({ pending: 0, errors: 0, conflicts: [], syncRunning: true }),
-    ).toContain("Sync is still running");
+    expect(blockReasonFor({ pending: 0, errors: 0, conflicts: [], syncRunning: true })).toContain(
+      "Sync is still running",
+    );
   });
 
   it("re-reads live state after the confirmation step instead of using stale render state", async () => {
@@ -164,6 +163,9 @@ describe("local device data wipe", () => {
   });
 
   it("requires the exact typed DELETE phrase for guests", async () => {
+    expect(SIGNED_IN_WIPE_WARNING).toBe(
+      "This removes the local PocketVault database and this device's saved space and consent preferences, then signs you out. Your cloud account and cloud records are not deleted.",
+    );
     expect(GUEST_WIPE_WARNING).toBe(
       "Device-only mode has NO cloud copy. This permanently deletes all your data on this device and cannot be undone. Download a backup first.",
     );
@@ -179,7 +181,13 @@ describe("local device data wipe", () => {
       "pv-privacy-consent:user-a": "consent-a",
     });
     const deleteDatabase = vi.fn(async () => {});
-    const state = { pending: 7, errors: 3, conflicts: ["local-only"], syncError: "offline", syncRunning: true };
+    const state = {
+      pending: 7,
+      errors: 3,
+      conflicts: ["local-only"],
+      syncError: "offline",
+      syncRunning: true,
+    };
     const getBlockReason = () => blockReasonFor(state, true);
 
     await expect(
