@@ -6,6 +6,54 @@ import { cn } from "@/lib/utils";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+const SAFE_CHART_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const SAFE_CHART_KEY = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+const CSS_NUMBER = String.raw`(?:\d+(?:\.\d+)?|\.\d+)`;
+const CSS_ALPHA = String.raw`(?:${CSS_NUMBER}%?)`;
+const RGB_COMPONENT = String.raw`(?:${CSS_NUMBER}%?)`;
+const HSL_PERCENTAGE = String.raw`${CSS_NUMBER}%`;
+const HSL_HUE = String.raw`(?:${CSS_NUMBER}(?:deg|rad|turn)?)`;
+const RGB_COLOR = new RegExp(
+  String.raw`^rgba?\(\s*${RGB_COMPONENT}\s*(?:,\s*${RGB_COMPONENT}\s*,\s*${RGB_COMPONENT}(?:\s*,\s*${CSS_ALPHA})?|\s+${RGB_COMPONENT}\s+${RGB_COMPONENT}(?:\s*\/\s*${CSS_ALPHA})?)\s*\)$`,
+  "i",
+);
+const HSL_COLOR = new RegExp(
+  String.raw`^hsla?\(\s*${HSL_HUE}\s*(?:,\s*${HSL_PERCENTAGE}\s*,\s*${HSL_PERCENTAGE}(?:\s*,\s*${CSS_ALPHA})?|\s+${HSL_PERCENTAGE}\s+${HSL_PERCENTAGE}(?:\s*\/\s*${CSS_ALPHA})?)\s*\)$`,
+  "i",
+);
+const HEX_COLOR = /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i;
+const CSS_VARIABLE = /^var\(--[A-Za-z_][A-Za-z0-9_-]*\)$/;
+const HSL_VARIABLE = /^hsla?\(\s*var\(--[A-Za-z_][A-Za-z0-9_-]*\)\s*\)$/i;
+
+export function isSafeChartId(value: string): boolean {
+  return SAFE_CHART_ID.test(value);
+}
+
+export function getSafeChartId(id: string | undefined, generatedId: string): string {
+  const requestedId =
+    typeof id === "string" && isSafeChartId(id)
+      ? id
+      : generatedId.replace(/[^A-Za-z0-9_-]/g, "");
+  return `chart-${requestedId || "generated"}`;
+}
+
+export function isSafeChartColor(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const color = value.trim();
+  return (
+    HEX_COLOR.test(color) ||
+    RGB_COLOR.test(color) ||
+    HSL_COLOR.test(color) ||
+    CSS_VARIABLE.test(color) ||
+    HSL_VARIABLE.test(color)
+  );
+}
+
+function safeChartColor(value: unknown): string | null {
+  if (!isSafeChartColor(value)) return null;
+  return value.trim();
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -40,7 +88,7 @@ const ChartContainer = React.forwardRef<
   }
 >(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId();
-  const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
+  const chartId = getSafeChartId(id, uniqueId);
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -62,32 +110,28 @@ const ChartContainer = React.forwardRef<
 ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color);
+  if (!isSafeChartId(id)) return null;
 
-  if (!colorConfig.length) {
-    return null;
-  }
+  const safeEntries = Object.entries(config).filter(([key]) => SAFE_CHART_KEY.test(key));
+  const css = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const declarations = safeEntries.flatMap(([key, itemConfig]) => {
+        const configuredColor =
+          itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ?? itemConfig.color;
+        const color = safeChartColor(configuredColor);
+        return color ? [`  --color-${key}: ${color};`] : [];
+      });
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+      return declarations.length
+        ? `${prefix} [data-chart="${id}"] {\n${declarations.join("\n")}\n}`
+        : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  if (!css) return null;
+
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;

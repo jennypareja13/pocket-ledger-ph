@@ -24,7 +24,7 @@ import {
 import { buildPasswordResetRedirect } from "@/lib/password-reset-url";
 import { isValidPassword, MIN_PASSWORD_LENGTH } from "@/lib/password-validation";
 const noticeHashes: Record<string, string> = {
-  "2026-11-v1": "8482ddbf76f8bf5bd370106a87cb42c4c1564ccd39a0206da22ac1ad880d3c73",
+  "2026-11-v2": "344eaf0214229df2f30241439f0e7c29e9b37a437efc00fa94acae201c660d58",
 };
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));

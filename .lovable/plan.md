@@ -1,7 +1,7 @@
 # PocketVault — implementation status and security completion plan
 
 Last reconciled: 2026-11-28  
-Verified main baseline before PR 1: `236b29dfd518d3367a86c64f622d29502eac1dbf`
+Verified main baseline before PR 2: `e8872ac3ff2114fa214793e1abf06de523963253`
 
 This plan reports merged repository code separately from database application, manual configuration, and deployment. The owner's Master Brief remains the authority for product decisions.
 
@@ -27,7 +27,7 @@ Earlier merged product work remains: PR #8 reminder schedule engine, PR #9 even-
 
 ## 3. Security work sequence
 
-1. **PR 1 — Repository hygiene:** weekly Dependabot updates, non-blocking `bun audit`, pinned Bun runtime, and corrected status documents. No dependency upgrades.
+1. **PR 1 — Repository hygiene:** completed and merged as PR #29. Weekly Dependabot updates, non-blocking `bun audit`, Bun pinned to 1.4.5, and corrected status documents. The one-time audit reported 30 vulnerabilities (1 critical, 14 high, 14 moderate, 1 low); no packages were upgraded.
 2. **PR 2 — Small hardening:** exact privacy notice v2 and version/hash updates; allowlist validation for chart CSS values and chart IDs before style injection; read-only inspection of error reporting/capture and redaction only if safe.
 3. **PR 3 — Security headers:** response headers, enforced frame-ancestors compatible with Lovable preview, and report-only CSP. Wait for owner approval after full code review.
 4. **PR 4 — Local data wipe:** separate explicit destructive action, confirmation, and safeguards that block wiping if unsynced pending changes exist or the last sync failed. Normal sign-out remains unchanged. Wait for owner approval.
@@ -40,7 +40,8 @@ Earlier merged product work remains: PR #8 reminder schedule engine, PR #9 even-
 - Safe local wipe is not implemented. Do not manually delete IndexedDB as a workaround for unsynced data.
 - Security headers and CSP are not implemented yet.
 - Service-worker exclusions for `/reset-password` and `/privacy-notice` are pending PR 5.
-- Privacy notice v1 remains the merged notice until PR 2 is reviewed and merged. PR 2 changes the version to `2026-11-v2` to require renewed consent.
+- Privacy notice v1 remains the main-branch notice until PR 2 is reviewed and merged. PR 2 changes the version to `2026-11-v2` to require renewed consent.
+- The dependency audit findings from PR #29 require a separate remediation PR, prioritizing the critical `shell-quote` advisory and then high-severity findings.
 - Auth dashboard settings and real-device consent/recovery tests are not verified here.
 - Offline support remains opt-in and default OFF.
 - Full visual/accessibility QA, navigation redesign, date-range filters, campaign hub implementation, and tutorial remain separate product work. The tutorial remains last.

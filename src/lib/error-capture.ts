@@ -1,3 +1,5 @@
+import { redactSensitiveErrorText } from "@/lib/error-redaction";
+
 // Captures the original Error out-of-band so server.ts can recover the stack
 // when h3 has already swallowed the throw into a generic 500 Response.
 
@@ -28,7 +30,7 @@ export function describeError(error: unknown): string {
     parts.push(`${label}${current.stack ?? `${current.name}: ${current.message}`}${status}`);
     current = current.cause;
   }
-  return parts.join("\n").slice(0, DESCRIPTION_LENGTH_LIMIT);
+  return redactSensitiveErrorText(parts.join("\n").slice(0, DESCRIPTION_LENGTH_LIMIT));
 }
 
 function describeStatus(error: Error): string {
@@ -55,9 +57,14 @@ function isErrorLike(value: unknown): value is Error {
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
   const expanded = args.map((arg) => {
-    if (!isErrorLike(arg)) return arg;
-    record(arg);
-    return describeError(arg);
+    if (isErrorLike(arg)) {
+      record(arg);
+      return describeError(arg);
+    }
+    if (typeof arg === "string") return redactSensitiveErrorText(arg);
+    if (typeof arg === "object" && arg !== null)
+      return redactSensitiveErrorText(safeStringify(arg));
+    return arg;
   });
   originalConsoleError(...expanded);
 };
