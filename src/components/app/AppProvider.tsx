@@ -295,7 +295,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStore(null);
     if (targetUserId) {
       const { error } = await supabase.auth.signOut({ scope: "local" });
-      if (error) throw new Error("Local data was removed, but sign-out did not complete. Please sign out manually.");
+      if (error)
+        throw new Error(
+          "Local data was removed, but sign-out did not complete. Please sign out manually.",
+        );
     } else {
       setAuth({ status: "signed_out" });
     }
