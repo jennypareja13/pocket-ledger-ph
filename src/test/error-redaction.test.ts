@@ -67,8 +67,10 @@ describe("sensitive error text redaction", () => {
       expect(payload.message).not.toContain("jenny.pareja@example.com");
       expect(payload.stack).not.toContain("access_token=secret");
     } finally {
-      window.__lovableEvents = previousEvents;
-      window.__lovableReportRuntimeError = previousReporter;
+      if (previousEvents) window.__lovableEvents = previousEvents;
+      else delete window.__lovableEvents;
+      if (previousReporter) window.__lovableReportRuntimeError = previousReporter;
+      else delete window.__lovableReportRuntimeError;
     }
   });
 });
