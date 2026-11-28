@@ -1,7 +1,7 @@
 # PocketVault roadmap and implementation status
 
 Last reconciled: 2026-11-28  
-Verified main baseline before PR 2: `e8872ac3ff2114fa214793e1abf06de523963253`
+Verified main baseline before this docs follow-up: `bec73c677493e43b5dac61ce7d2ebb3fb133eb81`
 
 This document distinguishes merged repository code from database operations, manual configuration, and unverified deployment state. The owner's Master Brief remains the authority for product decisions.
 
@@ -18,9 +18,11 @@ The following changes are merged to `main`:
 - BNPL in-app reminder panels (PR #25).
 - Database grant and public default-privilege hardening migrations (PR #26). The owner reports that both migrations have been applied to the database. This document does not independently inspect the database. The migrations do not alter RLS policies, FORCE RLS, or the `push_record` function; see `docs/security/pr-a-database-hardening.md`.
 - Offline app shell and service worker support (PR #27). **Opt-in only; default OFF.** Registration requires explicit local opt-in. This is not a claim that offline support is enabled for users.
-- Privacy consent gate, privacy notice version `2026-11-v1`, and password reset flow (PR #28). Repository code is merged. Required Auth dashboard configuration and real-device verification are separate manual checks and are not confirmed here.
+- Privacy consent gate, privacy notice version `2026-11-v1`, and password reset flow (PR #28). PR #30 updates the notice to version `2026-11-v2`. Required Auth dashboard configuration and real-device verification are separate manual checks and are not confirmed here.
+- Repository hygiene (PR #29): weekly Dependabot updates, pinned Bun 1.4.5, and a non-blocking dependency audit. No packages were upgraded.
+- Small security hardening (PR #30): exact privacy notice v2, chart CSS ID/key/color allowlisting, and redaction of sensitive error text before logging or Lovable telemetry.
 
-PR #28 was the main commit before PR 1. PR #29 is now merged as the current main commit at the baseline SHA above.
+PR #30 is the current main commit at the baseline SHA above. PRs #24 through #30 are merged.
 
 ## Security completion plan
 
@@ -28,8 +30,8 @@ Security work is being delivered as six separate PRs, in order:
 
 | PR | Scope | Current status |
 |---|---|---|
-| 1 | Repository hygiene: Dependabot, non-blocking dependency audit, pinned Bun, status documentation | Merged as PR #29 at `e8872ac3ff2114fa214793e1abf06de523963253` |
-| 2 | Privacy notice v2, chart CSS injection hardening, error-report redaction review | In progress on `security/pr2-small-hardening`; not merged |
+| 1 | Repository hygiene: Dependabot, non-blocking dependency audit, pinned Bun, status documentation | Merged as PR #29 |
+| 2 | Privacy notice v2, chart CSS injection hardening, error-report redaction | Merged as PR #30 |
 | 3 | Security response headers and CSP report-only policy | Not started; owner review required before merge |
 | 4 | Explicit per-user local-data wipe with pending-sync safeguards | Not started; owner review required before merge |
 | 5 | Service-worker exclusions for reset and consent routes | Not started; owner review required before merge |
@@ -45,11 +47,12 @@ The one-time Bun 1.4.5 audit in PR #29 reported 30 findings: 1 critical, 14 high
 
 - **Database grants:** PR #26 is merged. The owner reports migrations 0002 and 0003 have been applied. PR #26 did not change RLS policies, enable FORCE RLS, change `push_record`, or revoke default function EXECUTE privileges. Do not describe this as complete database security.
 - **Offline storage:** PR #27 is merged, but the service worker is opt-in and default OFF. The worker currently excludes `/auth` and backend/API paths; password-reset and privacy-notice route exclusions are scheduled for PR 5.
-- **Consent and recovery:** PR #28 is merged with notice version `2026-11-v1`. PR 2 will deliberately move to `2026-11-v2`, prompting users with v1 consent again. Auth provider settings and real-device flows still need manual verification.
+- **Consent and recovery:** PR #28 provides the consent gate and password reset flow. PR #30 changes the notice version to `2026-11-v2`, so accounts with v1 consent must accept the updated notice again. Auth provider settings and real-device flows still need manual verification.
+- **Chart CSS injection:** PR #30 validates chart IDs, custom-property keys, and supported color syntax before generating the style element. Unsupported values are dropped.
+- **Error diagnostics:** PR #30 redacts long digit runs, email-like strings, and URL query values before project-owned server logging and before passing exception messages/stacks to Lovable's injected telemetry hooks. This is targeted redaction, not a guarantee that every possible secret format is removed.
 - **Local data deletion:** normal sign-out does not wipe the local ledger. A separate safe wipe is planned for PR 4 and must refuse to run when unsynced changes exist or the last sync failed.
 - **Server-side abuse limits:** 16 KiB per-record and 10,000-row-per-owner limits are not implemented. PR 6 must first fix and test terminal rejection behavior in the sync layer.
 - **Security headers:** not yet added. PR 3 will introduce the requested headers and report-only CSP.
-- **Error telemetry redaction:** PR 2's source review found that project-owned wrappers forward raw messages/stacks to Lovable's injected telemetry hooks and that server error logging can emit raw diagnostics. Redaction is being added at those project-owned boundaries.
 
 ## Product roadmap still outstanding
 
