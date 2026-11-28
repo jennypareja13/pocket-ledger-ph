@@ -29,6 +29,14 @@ export function isSafeChartId(value: string): boolean {
   return SAFE_CHART_ID.test(value);
 }
 
+export function getSafeChartId(id: string | undefined, generatedId: string): string {
+  const requestedId =
+    typeof id === "string" && isSafeChartId(id)
+      ? id
+      : generatedId.replace(/[^A-Za-z0-9_-]/g, "");
+  return `chart-${requestedId || "generated"}`;
+}
+
 export function isSafeChartColor(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const color = value.trim();
@@ -80,10 +88,7 @@ const ChartContainer = React.forwardRef<
   }
 >(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId();
-  const requestedId = typeof id === "string" && isSafeChartId(id)
-    ? id
-    : uniqueId.replace(/[^A-Za-z0-9_-]/g, "");
-  const chartId = `chart-${requestedId || "generated"}`;
+  const chartId = getSafeChartId(id, uniqueId);
 
   return (
     <ChartContext.Provider value={{ config }}>
