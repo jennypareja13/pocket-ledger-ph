@@ -21,21 +21,26 @@ function trackDatabase(name: string, db: IDBDatabase): void {
 }
 
 /** Close this tab's open connections, then delete only the requested profile database. */
-export async function deleteLocalProfileDatabase(profile: string): Promise<void> {
+export async function deleteLocalProfileDatabase(
+  profile: string,
+  onBlocked?: () => void,
+): Promise<void> {
   const name = `pocketledger-${profile}`;
   for (const db of openDatabases.get(name) ?? []) db.close();
   openDatabases.delete(name);
 
   await new Promise<void>((resolve, reject) => {
     const request = indexedDB.deleteDatabase(name);
+    let reportedBlocked = false;
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error ?? new Error("Could not remove local data."));
-    request.onblocked = () =>
-      reject(
-        new Error(
-          "PocketVault is open in another tab. Close other PocketVault tabs and try again.",
-        ),
-      );
+    // A blocked delete request cannot be cancelled. Keep awaiting its eventual success;
+    // callers must not clear preferences or sign out while the database still exists.
+    request.onblocked = () => {
+      if (reportedBlocked) return;
+      reportedBlocked = true;
+      onBlocked?.();
+    };
   });
 }
 
