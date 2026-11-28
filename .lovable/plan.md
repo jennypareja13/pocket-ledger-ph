@@ -1,50 +1,55 @@
-# PocketVault — current implementation status and next phases
+# PocketVault — implementation status and security completion plan
 
-Last reconciled: 2026-11-11  
-Verified main commit: `e9deee599c1710b6caed5ab9eea253056c7ce6bf`
+Last reconciled: 2026-11-28  
+Verified main baseline before PR 1: `236b29dfd518d3367a86c64f622d29502eac1dbf`
 
-The owner's `POCKETVAULT_MASTER_BRIEF_FOR_CHATGPT.md` is the authoritative product specification. This plan replaces the earlier staged plan's stale branch assumptions and blocking questions. It reports what is merged to `main`; open PRs and feature branches are not treated as completed work.
+This plan reports merged repository code separately from database application, manual configuration, and deployment. The owner's Master Brief remains the authority for product decisions.
 
-## 1. Verified Git and CI state
+## 1. Verified Git state
 
-- `main` is at `e9deee599c1710b6caed5ab9eea253056c7ce6bf`.
-- Task 4 (remove reimbursements) was merged in [PR #13](https://github.com/jennypareja13/pocket-ledger-ph/pull/13). Its resulting tree matched the expected tree SHA `0f4c9d0d530f50ef28c8a71c84a18badc89f1ba2`.
-- PR #13's PR-head CI run `42931164232` succeeded. The push-triggered CI run for the resulting main commit, `42931298319`, also succeeded. Both ran the workflow job "Test, lint, type-check, and build".
-- The pre-Task-4 backup branch `backup/pre-task4-2026-11-10` remains at `c3d42729084486033b33ec78f6083ca8ee85fac8`.
-- PR #3 (even-split remainder) and PR #4 (BNPL settings/date-range foundation) are still open. PR #3 duplicates work already delivered by merged PR #9. PR #4 is based on an older main commit and must be reviewed/reconciled separately.
+- `main` baseline: `236b29dfd518d3367a86c64f622d29502eac1dbf`.
+- PRs #24, #25, #26, #27, and #28 are merged.
+- PR #28 is the current main commit at the baseline above.
+- The GitHub status check currently displayed for the CI job is **`Test, lint, type-check, and build`**. PR 1 will retain this job name for branch-protection compatibility.
+- PR #26 contains migrations `0002_restrict_ledger_feedback_grants.sql` and `0003_restrict_public_default_privileges.sql`. The owner reports both were applied to the database; this repository check does not independently verify database state.
+- PR #27 adds a handwritten service worker and opt-in registration. Offline support remains **default OFF**.
+- PR #28 adds the privacy consent gate, v1 notice, and password reset flow. Required Auth dashboard configuration and real-device verification have not been confirmed in this plan.
 
-## 2. Completed implementation batches on main
+## 2. Completed work on main
 
-- BNPL reminder engine and unit tests (PR #8). This is pure reminder logic; do not assume the reminder UI, browser notification delivery, push delivery, or service-worker integration is complete.
-- Even-split remainder placement, with extra centavos assigned to the final installment(s) (PR #9).
-- Light as the default theme (PR #10). Full visual redesign and all-page light/dark/system QA remain separate work.
-- Lend and repayment dialog flow (PR #12).
-- Reimbursement feature removal (PR #13): reimbursement transaction fields and UI were removed; validation rejects legacy reimbursement transaction records and unsupported space-purpose values. The old reimbursement feature must not be reintroduced without a new explicit product decision.
+- PR #24: BNPL purchase details appear in payment history.
+- PR #25: BNPL in-app reminder panels.
+- PR #26: database grants and public default-privilege hardening. It removes anonymous direct table grants and selected excessive grants, and revokes anonymous defaults for future public tables/sequences created by postgres. It does not change RLS policies, FORCE RLS, `push_record`, or default function EXECUTE privileges. Review `docs/security/pr-a-database-hardening.md`.
+- PR #27: offline service worker, bounded app-shell/assets cache, explicit opt-in, update prompt, and emergency disable path. The app does not register the worker unless the user opts in; default remains OFF.
+- PR #28: consent gate, versioned privacy notice `2026-11-v1`, and password recovery route with an eight-character client-side minimum. Server-side password policy and redirect allowlist still require manual Auth configuration unless separately verified.
 
-## 3. Remaining work, in approved order
+Earlier merged product work remains: PR #8 reminder schedule engine, PR #9 even-split remainder, PR #10 Light default, PR #12 lend/repayment flow, and PR #13 reimbursement removal.
 
-1. **UI/UX audit and design preparation:** source-level audit exists. Complete visual/browser, mobile, keyboard, screen-reader, contrast, and accessibility verification as part of the later design and QA work.
-2. **Design system, illustrations, backgrounds, and dark mode:** visual redesign remains a separate Lovable phase, but no Lovable build is authorized by this status document. Wait for the owner's explicit phase approval and preserve the Protected Layers identity and approved palette.
-3. **Navigation and core page redesign:** propose the information architecture first; do not implement before approval.
-4. **BNPL grouped payments and reminders:** reminder engine exists and is tested. Still assess/build provider-grouped payments and connect reminders to the approved in-app experience. Do not add OS/push notifications or a service worker without separate approval.
-5. **Financial data filters:** day, Monday–Sunday week, month, and year filters shared by Home, Activity, Analysis, and CSV export are not yet verified as merged to main. PR #4 contains date-range foundation work but is open.
-6. **Responsible BNPL campaign hub:** specification exists on `add-responsible-bnpl-campaign-spec`, not on main. Any campaign tables, RLS, trusted admin role, storage, or migration require explicit approval before implementation or application.
-7. **Testing, accessibility, performance, and security:** CI is running successfully on the latest main commit. Remaining manual and end-to-end checks must be performed and reported separately; CI success alone does not establish production readiness.
-8. **First-time tutorial:** last, only after all other phases and the campaign hub have been implemented and tested.
+## 3. Security work sequence
 
-## 4. Working constraints
+1. **PR 1 — Repository hygiene:** weekly Dependabot updates, non-blocking `bun audit`, pinned Bun runtime, and corrected status documents. No dependency upgrades.
+2. **PR 2 — Small hardening:** exact privacy notice v2 and version/hash updates; allowlist validation for chart CSS values and chart IDs before style injection; read-only inspection of error reporting/capture and redaction only if safe.
+3. **PR 3 — Security headers:** response headers, enforced frame-ancestors compatible with Lovable preview, and report-only CSP. Wait for owner approval after full code review.
+4. **PR 4 — Local data wipe:** separate explicit destructive action, confirmation, and safeguards that block wiping if unsynced pending changes exist or the last sync failed. Normal sign-out remains unchanged. Wait for owner approval.
+5. **PR 5 — Service-worker exclusions:** exclude password reset, privacy notice, and relevant auth/consent routes. Default OFF remains unchanged. Wait for owner approval.
+6. **PR 6 — Server-side limits and safe sync rejection:** design report first, then wait for approval; implementation and unapplied migration files only after a second approval. Claude applies migrations after review.
 
-- GitHub-first. Do not trigger Lovable builds for code or documentation work. Reserve Lovable credits for the separately approved visual/UI phase.
-- One branch and one PR per task. Never commit directly to main or merge without the owner's explicit authorization.
-- Verify exact existing content before edits. Keep diffs within the requested scope and list every changed file.
-- Never weaken strict TypeScript flags. Money remains integer centavos; dates remain Asia/Manila calendar dates.
-- Preserve Main Space / managed-space privacy and never automatically mark BNPL installments paid.
-- No migrations, RLS/auth changes, new dependencies, IndexedDB version changes, destructive data changes, publishing, or deployment without explicit approval.
-- Report checks as executed-and-passed, executed-and-failed, or not executed based on observed GitHub Actions results.
+## 4. Known gaps and deferred work
 
-## 5. Open pull requests
+- Database size and per-owner row caps are not implemented. PR 6 addresses these only after a terminal-rejection design prevents permanent server rejections from retrying forever.
+- Safe local wipe is not implemented. Do not manually delete IndexedDB as a workaround for unsynced data.
+- Security headers and CSP are not implemented yet.
+- Service-worker exclusions for `/reset-password` and `/privacy-notice` are pending PR 5.
+- Privacy notice v1 remains the merged notice until PR 2 is reviewed and merged. PR 2 changes the version to `2026-11-v2` to require renewed consent.
+- Auth dashboard settings and real-device consent/recovery tests are not verified here.
+- Offline support remains opt-in and default OFF.
+- Full visual/accessibility QA, navigation redesign, date-range filters, campaign hub implementation, and tutorial remain separate product work. The tutorial remains last.
 
-- [PR #3 — Fix BNPL even-split remainder placement](https://github.com/jennypareja13/pocket-ledger-ph/pull/3): still open, but the corresponding change is already in merged PR #9. Review as stale/duplicate; do not merge blindly.
-- [PR #4 — BNPL settings and date-range foundation](https://github.com/jennypareja13/pocket-ledger-ph/pull/4): still open, based on an older main commit. Review its diff and reconcile against current main before merging or closing.
-- `add-responsible-bnpl-campaign-spec`: campaign specification branch only; not merged.
+## 5. Operating rules
 
+- GitHub-first; one PR at a time. Create a backup branch and feature branch from the current main before each PR.
+- PR 1 and PR 2 may be self-merged only after successful CI on the exact head SHA. PRs 3–6 must remain open until the owner writes `approved` after reviewing the complete printed code. PR 6 requires approval after the design report and a second approval before implementation.
+- No direct commits to main, no new runtime dependencies, no package upgrades in PR 1, no publishing/deployment claims, and no live database migrations.
+- Claude applies migrations after owner review.
+- Preserve strict TypeScript, integer centavos, Asia/Manila dates, and managed-space privacy.
+- Do not modify `src/lib/sync-engine.ts`, `store.ts`, or `remote.ts` before the PR 6 design approval.
