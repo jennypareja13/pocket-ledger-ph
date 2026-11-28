@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeCatastrophicSsrResponse } from "../server";
-import {
-  buildReportOnlyContentSecurityPolicy,
-  withSecurityHeaders,
-} from "@/lib/security-headers";
+import { buildReportOnlyContentSecurityPolicy, withSecurityHeaders } from "@/lib/security-headers";
 
 describe("server security headers", () => {
   it("adds the requested headers while preserving the original response", async () => {
