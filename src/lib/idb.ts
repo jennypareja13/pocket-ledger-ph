@@ -8,6 +8,33 @@ function req<T>(r: IDBRequest<T>): Promise<T> {
   });
 }
 
+const openDatabases = new Map<string, Set<IDBDatabase>>();
+
+function trackDatabase(name: string, db: IDBDatabase): void {
+  const connections = openDatabases.get(name) ?? new Set<IDBDatabase>();
+  connections.add(db);
+  openDatabases.set(name, connections);
+  db.addEventListener("close", () => {
+    connections.delete(db);
+    if (connections.size === 0) openDatabases.delete(name);
+  });
+}
+
+/** Close this tab's open connections, then delete only the requested profile database. */
+export async function deleteLocalProfileDatabase(profile: string): Promise<void> {
+  const name = `pocketledger-${profile}`;
+  for (const db of openDatabases.get(name) ?? []) db.close();
+  openDatabases.delete(name);
+
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error("Could not remove local data."));
+    request.onblocked = () =>
+      reject(new Error("PocketVault is open in another tab. Close other PocketVault tabs and try again."));
+  });
+}
+
 /** Durable on-device storage. One database per signed-in user (or the device-only profile). */
 export async function idbPersistence(profile: string): Promise<Persistence> {
   const open = indexedDB.open(`pocketledger-${profile}`, 1);
@@ -17,6 +44,7 @@ export async function idbPersistence(profile: string): Promise<Persistence> {
     db.createObjectStore("kv");
   };
   const db = await req(open);
+  trackDatabase(`pocketledger-${profile}`, db);
   const tx = (store: string, mode: IDBTransactionMode) =>
     db.transaction(store, mode).objectStore(store);
   return {
