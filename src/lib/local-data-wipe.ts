@@ -14,10 +14,18 @@ export interface LocalWipeSyncState {
   running?: boolean | undefined;
 }
 
+export const GUEST_WIPE_WARNING =
+  "Device-only mode has NO cloud copy. This permanently deletes all your data on this device and cannot be undone. Download a backup first.";
+
+export function isGuestWipeConfirmationValid(value: string): boolean {
+  return value === "DELETE";
+}
+
 export interface LocalWipeRequest {
   profile: string;
   userId: string | null;
   getBlockReason: () => string | null;
+  guestConfirmation?: string | undefined;
   beforeDelete?: (() => Promise<void> | void) | undefined;
   storage: LocalWipeStorage;
   deleteDatabase: (profile: string, onBlocked?: () => void) => Promise<void>;
@@ -61,6 +69,8 @@ export async function wipeLocalProfileData(input: LocalWipeRequest): Promise<voi
     throw new Error("The signed-in account does not match the local profile.");
   if (!input.userId && input.profile !== "guest")
     throw new Error("A signed-out session can only remove the guest profile.");
+  if (!input.userId && !isGuestWipeConfirmationValid(input.guestConfirmation ?? ""))
+    throw new Error("Type DELETE exactly to confirm permanent deletion of device-only data.");
 
   const blocked = input.getBlockReason();
   if (blocked) throw new Error(blocked);
