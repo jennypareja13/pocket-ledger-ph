@@ -10,7 +10,8 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { idbPersistence } from "@/lib/idb";
+import { deleteLocalProfileDatabase, idbPersistence } from "@/lib/idb";
+import { wipeLocalProfileData } from "@/lib/local-data-wipe";
 import { LedgerStore, type Snapshot } from "@/lib/store";
 import { syncOnce } from "@/lib/sync-engine";
 import { cloudRemote } from "@/lib/remote";
@@ -51,6 +52,7 @@ interface AppCtx {
   openTx: (s?: Omit<TxDialogState, "open">) => void;
   closeTx: () => void;
   signOut: () => Promise<void>;
+  wipeLocalData: () => Promise<void>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -273,6 +275,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else setAuth({ status: "signed_out" });
   };
 
+  const wipeLocalData = async () => {
+    if (!profile) throw new Error("There is no active local profile to remove.");
+    const targetProfile = profile;
+    const targetUserId = auth.status === "signed_in" ? auth.userId : null;
+    await wipeLocalProfileData({
+      profile: targetProfile,
+      userId: targetUserId,
+      pending: snap.pending,
+      syncError: sync.error,
+      syncRunning: sync.running,
+      storage: localStorage,
+      deleteDatabase: deleteLocalProfileDatabase,
+    });
+
+    activeRun.current?.controller.abort();
+    activeRun.current = null;
+    currentProfile.current = null;
+    setStore(null);
+    if (targetUserId) {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) throw new Error("Local data was removed, but sign-out did not complete. Please sign out manually.");
+    } else {
+      setAuth({ status: "signed_out" });
+    }
+  };
+
   return (
     <Ctx.Provider
       value={{
@@ -289,6 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         openTx: (s) => setTxDialog({ open: true, ...s }),
         closeTx: () => setTxDialog({ open: false }),
         signOut,
+        wipeLocalData,
       }}
     >
       {children}
